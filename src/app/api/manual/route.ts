@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const days = parseInt(searchParams.get('days') || '90', 10);
 
   try {
-    const data = getManualData(category, days);
+    const data = await getManualData(category, days);
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error fetching manual data:', error);
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     if (category === 'social' && platform) {
-      saveSocialStats({
+      await saveSocialStats({
         date,
         platform,
         followers: metric === 'followers' ? value : 0,
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         video_views: metric === 'video_views' ? value : 0,
       });
     } else if (category === 'article' && platform) {
-      saveArticleStats({
+      await saveArticleStats({
         date,
         platform,
         article_count: metric === 'article_count' ? value : 0,
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         new_articles: metric === 'new_articles' ? value : 0,
       });
     } else {
-      saveManualData({
+      await saveManualData({
         date,
         category,
         metric: platform ? `${platform}_${metric}` : metric,

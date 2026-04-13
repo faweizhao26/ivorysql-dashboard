@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const days = parseInt(searchParams.get('days') || '365', 10);
 
   try {
-    const events = days > 0 ? getActivityEvents(days) : getAllActivityEvents();
+    const events = days > 0 ? await getActivityEvents(days) : await getAllActivityEvents();
     return NextResponse.json({ events });
   } catch (error) {
     console.error('Error fetching activity events:', error);
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    saveActivityEvent({
+    await saveActivityEvent({
       event_name,
       event_date,
       event_type,
@@ -60,7 +60,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Missing event id' }, { status: 400 });
     }
 
-    updateActivityEvent(id, {
+    await updateActivityEvent(id, {
       event_name,
       event_date,
       event_type,
@@ -90,7 +90,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Missing event id' }, { status: 400 });
     }
 
-    deleteActivityEvent(parseInt(id));
+    await deleteActivityEvent(parseInt(id));
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting activity event:', error);

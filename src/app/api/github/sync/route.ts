@@ -102,8 +102,8 @@ export async function POST() {
       const combinedText = title + ' ' + originalDescription;
       
       summaryPromises.push(
-        translateToChinese(combinedText).then(summary => {
-          saveCommunityEvent({
+        translateToChinese(combinedText).then(async summary => {
+          await saveCommunityEvent({
             date: issue.created_at.split('T')[0],
             source: 'github',
             title: issue.title,
@@ -121,8 +121,8 @@ export async function POST() {
       const combinedText = title + ' ' + originalDescription;
       
       summaryPromises.push(
-        translateToChinese(combinedText).then(summary => {
-          saveCommunityEvent({
+        translateToChinese(combinedText).then(async summary => {
+          await saveCommunityEvent({
             date: pr.created_at.split('T')[0],
             source: 'github',
             title: pr.title,
