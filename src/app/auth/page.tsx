@@ -1,15 +1,11 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 
-function AuthForm() {
+export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,11 +22,7 @@ function AuthForm() {
       const data = await res.json();
 
       if (res.ok) {
-        if (data.level === 'admin') {
-          router.push('/admin');
-        } else {
-          router.push(redirect);
-        }
+        window.location.href = '/';
       } else {
         setError(data.error || 'Invalid password');
       }
@@ -121,18 +113,7 @@ function AuthForm() {
               background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
               border: 'none',
               borderRadius: '10px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'transform 0.2s, box-shadow 0.2s'
-            }}
-            onMouseOver={(e) => {
-              if (!loading) {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 20px rgba(102, 126, 234, 0.4)';
-              }
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
+              cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
             {loading ? 'Verifying...' : 'Access Dashboard'}
@@ -156,13 +137,5 @@ function AuthForm() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function AuthPage() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <AuthForm />
-    </Suspense>
   );
 }
