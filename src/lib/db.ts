@@ -1,7 +1,24 @@
 import { Pool, PoolClient } from 'pg';
 
+function parseDatabaseUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    return {
+      host: parsed.hostname,
+      port: parseInt(parsed.port) || 5432,
+      database: parsed.pathname.slice(1) || 'postgres',
+      user: parsed.username,
+      password: parsed.password,
+    };
+  } catch {
+    return null;
+  }
+}
+
+const dbConfig = parseDatabaseUrl(process.env.DATABASE_URL || '');
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  ...(dbConfig || { connectionString: process.env.DATABASE_URL }),
   ssl: { rejectUnauthorized: false }
 });
 
