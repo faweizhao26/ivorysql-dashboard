@@ -1,0 +1,28 @@
+{
+  "crons": [
+    {
+      "path": "/api/github/sync",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/itpub/sync",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/csdn/sync",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cnblogs/sync",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/juejin/sync",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/modb/sync",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}

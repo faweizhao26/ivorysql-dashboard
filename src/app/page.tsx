@@ -1,65 +1,298 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { ComparisonStatCard, PlatformCard, calculateChange } from '@/components/StatCard';
+import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
+import { TrendChart } from '@/components/Charts';
+import { ActivityTimeline } from '@/components/Timeline';
+
+interface DashboardData {
+  github: {
+    latest: {
+      stars: number;
+      forks: number;
+      watchers: number;
+      open_issues: number;
+      open_prs: number;
+      contributors: number;
+      releases_count: number;
+    } | null;
+    history: Array<{
+      date: string;
+      stars: number;
+      forks: number;
+      contributors: number;
+    }>;
+  };
+  contributors: {
+    latest: {
+      total_contributors: number;
+      contributors_before_2026: number;
+      cumulative_2026: number;
+      new_contributors_monthly: number;
+    } | null;
+    history: Array<{
+      date: string;
+      cumulative_2026: number;
+      new_contributors_daily: number;
+    }>;
+  };
+  social: Array<{
+    platform: string;
+    followers: number;
+    views: number;
+  }>;
+  articles: Array<{
+    platform: string;
+    article_count: number;
+    total_views: number;
+  }>;
+  website: {
+    latest: {
+      pageviews: number;
+      unique_visitors: number;
+    } | null;
+    history: Array<{
+      date: string;
+      pageviews: number;
+    }>;
+  };
+  events: Array<{
+    date: string;
+    source: string;
+    title: string;
+    description: string;
+    url: string;
+    event_type: string;
+  }>;
+}
+
+const socialPlatforms: Record<string, { icon: string; name: string }> = {
+  wechat: { icon: '💚', name: '公众号' },
+  twitter: { icon: '🐦', name: 'Twitter' },
+  bilibili: { icon: '📺', name: 'B站' },
+  youtube: { icon: '▶️', name: 'YouTube' },
+};
+
+const contentPlatforms: Record<string, { icon: string; name: string }> = {
+  csdn: { icon: '🔵', name: 'CSDN' },
+  juejin: { icon: '💎', name: '掘金' },
+  modb: { icon: '🟠', name: '墨天轮' },
+  oschina: { icon: '🟢', name: '开源中国' },
+  sf: { icon: '⚡', name: '思否' },
+  ctoutiao: { icon: '📰', name: '51CTO' },
+  itpub: { icon: '🔷', name: 'ITPUB' },
+  toutiao: { icon: '📱', name: '头条号' },
+  ifclub: { icon: '💬', name: 'IFCLUB' },
+};
+
+export default function HomePage() {
+  const [dateRange, setDateRange] = useState<DateRange>(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return {
+      start: today,
+      end: today,
+      isSingleDay: true
+    };
+  });
+  const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const isSingleDay = dateRange.start === dateRange.end;
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const params = new URLSearchParams({
+          start: dateRange.start,
+          end: dateRange.end
+        });
+        if (comparison?.enabled) {
+          params.set('compare', 'true');
+        }
+        const res = await fetch(`/api/dashboard?${params}`);
+        if (!res.ok) throw new Error('Failed to fetch data');
+        const json = await res.json();
+        setData(json);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, [dateRange, comparison]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-gray-500">加载中...</div>
+      </div>
+    );
+  }
+
+  const github = data?.github;
+  const contributors = data?.contributors;
+  const social = data?.social || [];
+  const articles = data?.articles || [];
+  const website = data?.website;
+  const events = data?.events || [];
+
+  const githubHistory = github?.history || [];
+  const contributorHistory = contributors?.history || [];
+  const websiteHistory = website?.history || [];
+
+  const latestGitHub = github?.latest;
+  const latestWebsite = website?.latest;
+  const displayDate = isSingleDay ? dateRange.start : null;
+
+  const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
+  let comparePeriod = '';
+  if (comparison?.enabled && comparison.customRange) {
+    comparePeriod = `${comparison.customRange.start} ~ ${comparison.customRange.end}`;
+  }
+
+  const socialData = social.reduce((acc, item) => {
+    acc[item.platform] = item;
+    return acc;
+  }, {} as Record<string, { followers: number; views: number }>);
+
+  const articleData = articles.reduce((acc, item) => {
+    acc[item.platform] = item;
+    return acc;
+  }, {} as Record<string, { article_count: number; total_views: number }>);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">数据概览</h1>
+        {displayDate && (
+          <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
+            📅 存档数据: {displayDate}
+          </span>
+        )}
+      </div>
+
+      <TimeRangeSelector onRangeChange={(range) => {
+        setDateRange({ start: range.start, end: range.end, isSingleDay: range.isSingleDay });
+        setComparison(range.comparison);
+      }} />
+
+      <div className="text-sm text-gray-500">
+        当前时间段: <span className="font-medium text-gray-700">{currentPeriod}</span>
+        {comparePeriod && (
+          <>
+            {' | 对比: '}<span className="font-medium text-gray-700">{comparePeriod}</span>
+          </>
+        )}
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">核心指标</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <ComparisonStatCard
+            title="GitHub Stars"
+            current={latestGitHub?.stars || 0}
+            icon="⭐"
+            periodLabel={comparePeriod ? 'vs 上期' : undefined}
+          />
+          <ComparisonStatCard
+            title="GitHub Forks"
+            current={latestGitHub?.forks || 0}
+            icon="🍴"
+            periodLabel={comparePeriod ? 'vs 上期' : undefined}
+          />
+          <ComparisonStatCard
+            title="公众号关注"
+            current={socialData.wechat?.followers || 0}
+            icon="💚"
+            periodLabel={comparePeriod ? 'vs 上期' : undefined}
+          />
+          <ComparisonStatCard
+            title="Twitter 粉丝"
+            current={socialData.twitter?.followers || 0}
+            icon="🐦"
+            periodLabel={comparePeriod ? 'vs 上期' : undefined}
+          />
+          <ComparisonStatCard
+            title="官网 PV"
+            current={latestWebsite?.pageviews || 0}
+            icon="🌐"
+            periodLabel={comparePeriod ? 'vs 上期' : undefined}
+          />
+          <ComparisonStatCard
+            title="贡献者数"
+            current={contributors?.latest?.total_contributors || latestGitHub?.contributors || 0}
+            icon="👥"
+            periodLabel={comparePeriod ? 'vs 上期' : undefined}
+          />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {githubHistory.length > 0 && (
+          <TrendChart
+            title={`Stars 趋势 (${currentPeriod})`}
+            data={githubHistory.map(h => ({ date: h.date, stars: h.stars, forks: h.forks }))}
+            dataKey="stars"
+            color="#4F46E5"
+          />
+        )}
+        {contributorHistory.length > 0 && (
+          <TrendChart
+            title={`贡献者增长趋势 (${currentPeriod})`}
+            data={contributorHistory.map(h => ({ date: h.date, cumulative: h.cumulative_2026 }))}
+            dataKey="cumulative"
+            color="#8B5CF6"
+          />
+        )}
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">社交媒体</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Object.entries(socialPlatforms).map(([key, { icon, name }]) => (
+            <PlatformCard
+              key={key}
+              name={name}
+              icon={icon}
+              followers={socialData[key]?.followers}
+              views={socialData[key]?.views}
+              changePeriod={comparePeriod ? 'vs 上期' : undefined}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          ))}
         </div>
-      </main>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">技术内容平台</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          {Object.entries(contentPlatforms).map(([key, { icon, name }]) => (
+            <PlatformCard
+              key={key}
+              name={name}
+              icon={icon}
+              articles={articleData[key]?.article_count}
+              views={articleData[key]?.total_views}
+              changePeriod={comparePeriod ? 'vs 上期' : undefined}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {websiteHistory.length > 0 && (
+          <TrendChart
+            title={`官网访问量趋势 (${currentPeriod})`}
+            data={websiteHistory.map(h => ({ date: h.date, pageviews: h.pageviews }))}
+            dataKey="pageviews"
+            color="#F59E0B"
+          />
+        )}
+        <ActivityTimeline events={events} title="最新动态" />
+      </div>
     </div>
   );
 }
