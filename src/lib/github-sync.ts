@@ -282,9 +282,9 @@ export async function syncGitHubData(): Promise<{
       releases_count: 0
     };
 
-    saveGitHubStats(githubStats);
+    await saveGitHubStats(githubStats);
 
-    saveContributorStats({
+    await saveContributorStats({
       date: today,
       total_contributors: totalContributors,
       contributors_before_2026: contributors2024 + contributors2025,
