@@ -48,7 +48,9 @@ export default function SocialPage() {
           start: dateRange.start,
           end: dateRange.end
         });
-        const res = await fetch(`/api/social?${params}`);
+        const res = await fetch(`/api/social?${params}`, {
+          credentials: 'include'
+        });
         if (!res.ok) throw new Error('Failed to fetch data');
         const json = await res.json();
         setData(json);

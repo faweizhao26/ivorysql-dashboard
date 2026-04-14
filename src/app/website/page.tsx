@@ -45,7 +45,9 @@ export default function WebsitePage() {
           start: dateRange.start,
           end: dateRange.end
         });
-        const res = await fetch(`/api/website?${params}`);
+        const res = await fetch(`/api/website?${params}`, {
+          credentials: 'include'
+        });
         if (!res.ok) throw new Error('Failed to fetch data');
         const json = await res.json();
         setData(json);

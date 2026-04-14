@@ -112,7 +112,9 @@ export default function HomePage() {
         if (comparison?.enabled) {
           params.set('compare', 'true');
         }
-        const res = await fetch(`/api/dashboard?${params}`);
+        const res = await fetch(`/api/dashboard?${params}`, {
+          credentials: 'include'
+        });
         if (!res.ok) throw new Error('Failed to fetch data');
         const json = await res.json();
         setData(json);

@@ -81,8 +81,8 @@ export default function ContentPage() {
           end: dateRange.end
         });
         const [contentRes, articlesRes] = await Promise.all([
-          fetch(`/api/content?${params}`),
-          fetch(`/api/articles`)
+          fetch(`/api/content?${params}`, { credentials: 'include' }),
+          fetch(`/api/articles`, { credentials: 'include' })
         ]);
         
         if (contentRes.ok) {
@@ -116,7 +116,7 @@ export default function ContentPage() {
       if (res.ok) {
         setIsEditing(false);
         setEditingArticle(null);
-        const articlesRes = await fetch(`/api/articles`);
+        const articlesRes = await fetch(`/api/articles`, { credentials: 'include' });
         if (articlesRes.ok) {
           const json = await articlesRes.json();
           setArticleDetails(json);
@@ -134,7 +134,7 @@ export default function ContentPage() {
     try {
       const res = await fetch(`/api/articles?id=${article.id}`, { method: 'DELETE' });
       if (res.ok) {
-        const articlesRes = await fetch(`/api/articles`);
+        const articlesRes = await fetch(`/api/articles`, { credentials: 'include' });
         if (articlesRes.ok) {
           const json = await articlesRes.json();
           setArticleDetails(json);
