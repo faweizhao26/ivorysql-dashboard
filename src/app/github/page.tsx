@@ -52,13 +52,11 @@ interface GitHubPageData {
 
 export default function GitHubPage() {
   const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const today = new Date();
-    const weekAgo = new Date(today);
-    weekAgo.setDate(weekAgo.getDate() - 7);
+    const today = new Date().toISOString().split('T')[0];
     return {
-      start: weekAgo.toISOString().split('T')[0],
-      end: today.toISOString().split('T')[0],
-      isSingleDay: false
+      start: today,
+      end: today,
+      isSingleDay: true
     };
   });
   const [comparison, setComparison] = useState<Comparison | undefined>(undefined);

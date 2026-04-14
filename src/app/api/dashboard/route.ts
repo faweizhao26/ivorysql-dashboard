@@ -49,35 +49,45 @@ export async function GET(request: Request) {
         socialForDate,
         articleForDate,
         websiteForDate,
-        eventsForDate
+        eventsForDate,
+        githubLatest,
+        contributorLatest,
+        socialLatest,
+        articleLatest
       ] = await Promise.all([
         getGitHubStatsForDate(startDate),
         getContributorStatsForDate(startDate),
         getSocialStatsForDate(startDate),
         getArticleStatsForDate(startDate),
         getWebsiteStatsForDate(startDate),
-        getEventsForDate(startDate)
+        getEventsForDate(startDate),
+        getLatestGitHubStats(),
+        getLatestContributorStats(),
+        getLatestSocialStats(),
+        getLatestArticleStats()
       ]);
 
+      const hasDataForDate = githubForDate || contributorForDate || socialForDate.length > 0;
+
       githubData = {
-        latest: githubForDate,
-        history: githubForDate ? [githubForDate] : [],
-        isArchive: true,
-        archiveDate: startDate
+        latest: githubForDate || githubLatest,
+        history: githubForDate ? [githubForDate] : (githubLatest ? [githubLatest] : []),
+        isArchive: !hasDataForDate,
+        archiveDate: hasDataForDate ? startDate : (githubLatest?.date || null)
       };
       contributorData = {
-        latest: contributorForDate,
-        history: contributorForDate ? [contributorForDate] : [],
-        isArchive: true,
-        archiveDate: startDate
+        latest: contributorForDate || contributorLatest,
+        history: contributorForDate ? [contributorForDate] : (contributorLatest ? [contributorLatest] : []),
+        isArchive: !hasDataForDate,
+        archiveDate: hasDataForDate ? startDate : (contributorLatest?.date || null)
       };
-      socialData = socialForDate;
-      articleData = articleForDate;
+      socialData = socialForDate.length > 0 ? socialForDate : socialLatest;
+      articleData = articleForDate.length > 0 ? articleForDate : articleLatest;
       websiteData = {
         latest: websiteForDate,
         history: websiteForDate ? [websiteForDate] : [],
         isArchive: true,
-        archiveDate: startDate
+        archiveDate: websiteForDate?.date || null
       };
       events = eventsForDate;
     } else {
