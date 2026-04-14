@@ -25,11 +25,13 @@ interface WebsiteData {
 
 export default function WebsitePage() {
   const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
     return {
-      start: today,
-      end: today,
-      isSingleDay: true
+      start: weekAgo.toISOString().split('T')[0],
+      end: today.toISOString().split('T')[0],
+      isSingleDay: false
     };
   });
   const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
