@@ -62,8 +62,26 @@ export default function GitHubPage() {
   const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
   const [data, setData] = useState<GitHubPageData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   const isSingleDay = dateRange.start === dateRange.end;
+
+  async function handleSync() {
+    setSyncing(true);
+    try {
+      const res = await fetch('/api/github/sync', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -118,11 +136,20 @@ export default function GitHubPage() {
           <span className="text-2xl">📊</span>
           <h1 className="text-2xl font-bold text-gray-900">GitHub 数据</h1>
         </div>
-        {displayDate && (
-          <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
-            📅 存档数据: {displayDate}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {displayDate && (
+            <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
+              📅 存档数据: {displayDate}
+            </span>
+          )}
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium disabled:opacity-50"
+          >
+            {syncing ? '同步中...' : '🔄 立即刷新'}
+          </button>
+        </div>
       </div>
 
       <TimeRangeSelector onRangeChange={(range) => {
