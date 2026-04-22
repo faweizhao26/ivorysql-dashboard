@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 
 export default function LogoutButton() {
   const router = useRouter();
-  
+
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/auth');
@@ -14,7 +14,7 @@ export default function LogoutButton() {
   return (
     <button
       onClick={handleLogout}
-      className="px-3 py-1 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+      className="px-3 py-1.5 text-sm font-medium text-secondary hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
     >
       退出
     </button>

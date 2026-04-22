@@ -9,13 +9,13 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
-  { href: "/", label: "🏠 首页" },
-  { href: "/github", label: "📊 GitHub" },
-  { href: "/social", label: "📱 社媒" },
-  { href: "/content", label: "📝 内容" },
-  { href: "/website", label: "🌐 官网" },
-  { href: "/events", label: "📅 活动" },
-  { href: "/admin", label: "⚙️ 管理" },
+  { href: "/", label: "🏠", name: "首页" },
+  { href: "/github", label: "📊", name: "GitHub" },
+  { href: "/social", label: "📱", name: "社媒" },
+  { href: "/content", label: "📝", name: "内容" },
+  { href: "/website", label: "🌐", name: "官网" },
+  { href: "/events", label: "📅", name: "活动" },
+  { href: "/admin", label: "⚙️", name: "管理" },
 ];
 
 export default function RootLayout({
@@ -24,53 +24,55 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" data-theme="light">
-      <body className="min-h-screen bg-gray-100">
-        <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="flex justify-between h-16">
-                <div className="flex items-center gap-6">
-                  <Link href="/" className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">I</span>
-                    </div>
-                    <span className="text-xl font-bold text-gray-900">IvorySQL 数据中心</span>
-                  </Link>
-                  <div className="hidden md:flex items-center gap-1">
-                    {navItems.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        {item.label}
-                      </Link>
-                    ))}
+    <html lang="zh-CN" data-theme="dark">
+      <body className="min-h-screen bg-background">
+        <nav className="bg-[#0f172a] border-b border-[#334155] sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-16">
+              <div className="flex items-center gap-6">
+                <Link href="/" className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <span className="text-white font-bold text-sm">I</span>
                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-gray-400">
-                    最后更新: {new Date().toLocaleDateString('zh-CN')}
-                  </span>
-                  <LogoutButton />
+                  <span className="text-lg font-bold text-primary hidden sm:block">IvorySQL 数据中心</span>
+                </Link>
+                <div className="hidden md:flex items-center gap-1">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="nav-link px-3 py-2 text-sm font-medium rounded-lg hover:bg-[#1e293b] flex items-center gap-1.5"
+                    >
+                      <span>{item.label}</span>
+                      <span className="hidden lg:inline">{item.name}</span>
+                    </Link>
+                  ))}
                 </div>
               </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted hidden sm:block">
+                  最后更新: {new Date().toLocaleDateString('zh-CN')}
+                </span>
+                <LogoutButton />
+              </div>
             </div>
-            <div className="md:hidden border-t border-gray-100 px-4 py-2 flex gap-2 overflow-x-auto">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="px-3 py-1 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg whitespace-nowrap"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          </nav>
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {children}
-          </main>
+          </div>
+          <div className="md:hidden border-t border-[#334155] px-4 py-2 flex gap-2 overflow-x-auto scrollbar-thin">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="nav-link px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap flex items-center gap-1"
+              >
+                <span>{item.label}</span>
+                <span>{item.name}</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {children}
+        </main>
       </body>
     </html>
   );

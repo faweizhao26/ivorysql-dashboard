@@ -62,8 +62,8 @@ export default function WebsitePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-400">加载中...</div>
       </div>
     );
   }
@@ -82,10 +82,10 @@ export default function WebsitePage() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <span className="text-2xl">🌐</span>
-          <h1 className="text-2xl font-bold text-gray-900">官网数据</h1>
+          <h1 className="text-2xl font-bold text-slate-100">官网数据</h1>
         </div>
         {displayDate && (
-          <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
+          <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
             📅 存档数据: {displayDate}
           </span>
         )}
@@ -96,12 +96,12 @@ export default function WebsitePage() {
         setComparison(range.comparison);
       }} />
 
-      <div className="text-sm text-gray-500">
-        当前时间段: <span className="font-medium text-gray-700">{currentPeriod}</span>
+      <div className="text-sm text-slate-400">
+        当前时间段: <span className="font-medium text-slate-200">{currentPeriod}</span>
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">访问数据</h2>
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">访问数据</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             title="页面访问量 (PV)"
@@ -117,8 +117,8 @@ export default function WebsitePage() {
           />
           <StatCard
             title="PV/UV 比"
-            value={latestWebsite?.unique_visitors 
-              ? (latestWebsite.pageviews / latestWebsite.unique_visitors).toFixed(1) 
+            value={latestWebsite?.unique_visitors
+              ? (latestWebsite.pageviews / latestWebsite.unique_visitors).toFixed(1)
               : '0'}
             icon="📊"
           />
@@ -152,62 +152,62 @@ export default function WebsitePage() {
 
       {latestWebsite && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">热门页面</h3>
+          <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+            <h3 className="text-lg font-semibold text-slate-100 mb-4">热门页面</h3>
             {latestWebsite.top_pages && latestWebsite.top_pages.length > 0 ? (
               <div className="space-y-2">
                 {latestWebsite.top_pages.slice(0, 10).map((page: string, index: number) => (
                   <div key={index} className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600 truncate flex-1">{page}</span>
-                    <span className="text-gray-400 ml-2">{index + 1}</span>
+                    <span className="text-slate-400 truncate flex-1">{page}</span>
+                    <span className="text-slate-500 ml-2">{index + 1}</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-gray-400">暂无数据</div>
+              <div className="text-slate-500">暂无数据</div>
             )}
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">流量来源</h3>
+          <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+            <h3 className="text-lg font-semibold text-slate-100 mb-4">流量来源</h3>
             {latestWebsite.sources && latestWebsite.sources.length > 0 ? (
               <div className="space-y-2">
                 {latestWebsite.sources.slice(0, 10).map((source: { name: string; value: number }, index: number) => (
                   <div key={index} className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">{source.name}</span>
-                    <span className="font-medium">{source.value}%</span>
+                    <span className="text-slate-400">{source.name}</span>
+                    <span className="font-medium text-slate-200">{source.value}%</span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-gray-400">暂无数据</div>
+              <div className="text-slate-500">暂无数据</div>
             )}
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">搜索关键词</h3>
+          <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+            <h3 className="text-lg font-semibold text-slate-100 mb-4">搜索关键词</h3>
             {latestWebsite.keywords && latestWebsite.keywords.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {latestWebsite.keywords.slice(0, 20).map((keyword: string, index: number) => (
-                  <span key={index} className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded-full">
+                  <span key={index} className="px-3 py-1 bg-slate-900/50 text-slate-300 text-sm rounded-full">
                     {keyword}
                   </span>
                 ))}
               </div>
             ) : (
-              <div className="text-gray-400">暂无数据</div>
+              <div className="text-slate-500">暂无数据</div>
             )}
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">说明</h3>
-        <div className="text-sm text-gray-600 space-y-2">
-          <p>• <strong>数据来源：</strong>Google Analytics API 自动获取</p>
-          <p>• <strong>更新频率：</strong>每日自动更新</p>
-          <p>• <strong>PV（Page Views）：</strong>页面浏览量</p>
-          <p>• <strong>UV（Unique Visitors）：</strong>独立访客数</p>
+      <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+        <h3 className="text-lg font-semibold text-slate-100 mb-4">说明</h3>
+        <div className="text-sm text-slate-400 space-y-2">
+          <p>• <strong className="text-slate-300">数据来源：</strong>Google Analytics API 自动获取</p>
+          <p>• <strong className="text-slate-300">更新频率：</strong>每日自动更新</p>
+          <p>• <strong className="text-slate-300">PV（Page Views）：</strong>页面浏览量</p>
+          <p>• <strong className="text-slate-300">UV（Unique Visitors）：</strong>独立访客数</p>
         </div>
       </div>
     </div>

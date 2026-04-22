@@ -107,8 +107,8 @@ export default function GitHubPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-400">加载中...</div>
       </div>
     );
   }
@@ -134,18 +134,18 @@ export default function GitHubPage() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <span className="text-2xl">📊</span>
-          <h1 className="text-2xl font-bold text-gray-900">GitHub 数据</h1>
+          <h1 className="text-2xl font-bold text-slate-100">GitHub 数据</h1>
         </div>
         <div className="flex items-center gap-3">
           {displayDate && (
-            <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
+            <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
               📅 存档数据: {displayDate}
             </span>
           )}
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium disabled:opacity-50"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 text-sm font-medium disabled:opacity-50 transition-colors"
           >
             {syncing ? '同步中...' : '🔄 立即刷新'}
           </button>
@@ -157,12 +157,12 @@ export default function GitHubPage() {
         setComparison(range.comparison);
       }} />
 
-      <div className="text-sm text-gray-500">
-        当前时间段: <span className="font-medium text-gray-700">{currentPeriod}</span>
+      <div className="text-sm text-slate-400">
+        当前时间段: <span className="font-medium text-slate-200">{currentPeriod}</span>
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">仓库基础指标</h2>
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">仓库基础指标</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <StatCard
             title="Stars"
@@ -200,7 +200,7 @@ export default function GitHubPage() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">贡献者统计</h2>
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">贡献者统计</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <StatCard
             title="历史贡献者总数"
@@ -241,7 +241,7 @@ export default function GitHubPage() {
             title={`Stars 趋势 (${currentPeriod})`}
             data={githubHistory.map(h => ({ date: h.date, stars: h.stars }))}
             dataKey="stars"
-            color="#4F46E5"
+            color="#6366F1"
           />
         )}
         {githubHistory.length > 0 && (
@@ -249,7 +249,7 @@ export default function GitHubPage() {
             title={`Forks 趋势 (${currentPeriod})`}
             data={githubHistory.map(h => ({ date: h.date, forks: h.forks }))}
             dataKey="forks"
-            color="#10B981"
+            color="#22D3EE"
           />
         )}
       </div>
@@ -260,7 +260,7 @@ export default function GitHubPage() {
             title={`2026 累计贡献者 (${currentPeriod})`}
             data={contributorHistory.map(h => ({ date: h.date, cumulative: h.cumulative_2026 }))}
             dataKey="cumulative"
-            color="#8B5CF6"
+            color="#A855F7"
           />
           <BarChartComponent
             title={`每日新增贡献者 (${currentPeriod})`}

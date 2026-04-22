@@ -137,21 +137,21 @@ export default function AdminPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <span className="text-2xl">⚙️</span>
-        <h1 className="text-2xl font-bold text-gray-900">数据管理后台</h1>
+        <h1 className="text-2xl font-bold text-slate-100">数据管理后台</h1>
       </div>
 
       {hasStaleData && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
           <div className="flex items-start gap-3">
             <span className="text-2xl">⚠️</span>
             <div>
-              <h3 className="font-semibold text-amber-800">数据更新提醒</h3>
-              <p className="text-sm text-amber-700 mt-1">
+              <h3 className="font-semibold text-amber-400">数据更新提醒</h3>
+              <p className="text-sm text-amber-300/80 mt-1">
                 以下平台的数据已经超过设定时间未更新：
               </p>
               <ul className="mt-2 space-y-1">
                 {stalePlatforms.map(p => (
-                  <li key={p.platform} className="text-sm text-amber-700">
+                  <li key={p.platform} className="text-sm text-amber-300/80">
                     • {p.platform} - 已 {p.daysSinceUpdate} 天未更新（建议 {p.updateFrequency} 天内更新）
                   </li>
                 ))}
@@ -161,15 +161,15 @@ export default function AdminPage() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl">
-        <div className="border-b border-gray-200">
+      <div className="bg-slate-800/50 rounded-xl border border-slate-700/50">
+        <div className="border-b border-slate-700">
           <nav className="flex -mb-px">
             <button
               onClick={() => setActiveTab('manual')}
               className={`px-6 py-3 text-sm font-medium border-b-2 ${
                 activeTab === 'manual'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-indigo-500 text-indigo-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
               }`}
             >
               手动录入
@@ -178,8 +178,8 @@ export default function AdminPage() {
               onClick={() => setActiveTab('articles')}
               className={`px-6 py-3 text-sm font-medium border-b-2 ${
                 activeTab === 'articles'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-indigo-500 text-indigo-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
               }`}
             >
               文章详情
@@ -188,8 +188,8 @@ export default function AdminPage() {
               onClick={() => setActiveTab('reminders')}
               className={`px-6 py-3 text-sm font-medium border-b-2 ${
                 activeTab === 'reminders'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-indigo-500 text-indigo-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
               }`}
             >
               提醒设置
@@ -198,8 +198,8 @@ export default function AdminPage() {
               onClick={() => setActiveTab('events')}
               className={`px-6 py-3 text-sm font-medium border-b-2 ${
                 activeTab === 'events'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-indigo-500 text-indigo-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
               }`}
             >
               活动管理
@@ -282,12 +282,12 @@ function ManualDataSection() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-50 rounded-xl p-4">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">录入新数据</h2>
+      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">录入新数据</h2>
 
         {message && (
           <div className={`mb-4 p-3 rounded-lg text-sm ${
-            message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            message.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
           }`}>
             {message.text}
           </div>
@@ -296,11 +296,11 @@ function ManualDataSection() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">数据类型</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">数据类型</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as DataCategory)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="social">社交媒体</option>
                 <option value="article">内容平台</option>
@@ -310,11 +310,11 @@ function ManualDataSection() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">平台</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">平台</label>
               <select
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 {(platforms[category] || []).map((p) => (
                   <option key={p.value} value={p.value}>{p.label}</option>
@@ -323,11 +323,11 @@ function ManualDataSection() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">指标</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">指标</label>
               <select
                 value={metric}
                 onChange={(e) => setMetric(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 {(metricsByCategory[category] || []).map((m) => (
                   <option key={m.value} value={m.value}>{m.label}</option>
@@ -336,37 +336,37 @@ function ManualDataSection() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">日期</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">日期</label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">数值</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">数值</label>
               <input
                 type="number"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="输入数值"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">备注</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">备注</label>
               <input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="可选备注"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
@@ -374,38 +374,38 @@ function ManualDataSection() {
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? '保存中...' : '保存数据'}
           </button>
         </form>
       </div>
 
-      <div className="bg-gray-50 rounded-xl p-4">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">最近录入数据</h2>
+      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">最近录入数据</h2>
 
         {records.length === 0 ? (
-          <div className="text-gray-400 text-center py-8">暂无数据</div>
+          <div className="text-slate-500 text-center py-8">暂无数据</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">日期</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">平台</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">指标</th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-600">数值</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">备注</th>
+                <tr className="border-b border-slate-700">
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">日期</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">平台</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">指标</th>
+                  <th className="text-right py-2 px-3 font-medium text-slate-400">数值</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">备注</th>
                 </tr>
               </thead>
               <tbody>
                 {records.slice(0, 20).map((record, index) => (
-                  <tr key={index} className="border-b border-gray-100">
-                    <td className="py-2 px-3">{record.date}</td>
-                    <td className="py-2 px-3">{record.category}</td>
-                    <td className="py-2 px-3">{record.metric}</td>
-                    <td className="py-2 px-3 text-right font-medium">{record.value.toLocaleString()}</td>
-                    <td className="py-2 px-3 text-gray-500">{record.notes || '-'}</td>
+                  <tr key={index} className="border-b border-slate-700/50">
+                    <td className="py-2 px-3 text-slate-300">{record.date}</td>
+                    <td className="py-2 px-3 text-slate-300">{record.category}</td>
+                    <td className="py-2 px-3 text-slate-300">{record.metric}</td>
+                    <td className="py-2 px-3 text-right font-medium text-slate-200">{record.value.toLocaleString()}</td>
+                    <td className="py-2 px-3 text-slate-500">{record.notes || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1351,27 +1351,27 @@ function EventsSection() {
               </thead>
               <tbody>
                 {events.map((event) => (
-                  <tr key={event.id} className="border-b border-gray-100 hover:bg-gray-100">
-                    <td className="py-2 px-3">{event.event_date}</td>
-                    <td className="py-2 px-3 max-w-xs truncate" title={event.event_name}>
+                  <tr key={event.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                    <td className="py-2 px-3 text-slate-300">{event.event_date}</td>
+                    <td className="py-2 px-3 max-w-xs truncate text-slate-200" title={event.event_name}>
                       {event.event_name}
                     </td>
-                    <td className="py-2 px-3">
+                    <td className="py-2 px-3 text-slate-300">
                       {eventTypeOptions.find(t => t.value === event.event_type)?.label || event.event_type}
                     </td>
-                    <td className="py-2 px-3">{event.location || '-'}</td>
-                    <td className="py-2 px-3 text-right">{event.registrations || 0}</td>
-                    <td className="py-2 px-3 text-right">{event.participants || 0}</td>
+                    <td className="py-2 px-3 text-slate-400">{event.location || '-'}</td>
+                    <td className="py-2 px-3 text-right text-slate-200">{event.registrations || 0}</td>
+                    <td className="py-2 px-3 text-right text-slate-200">{event.participants || 0}</td>
                     <td className="py-2 px-3">
                       <button
                         onClick={() => handleEdit(event)}
-                        className="text-indigo-600 hover:text-indigo-800 text-sm mr-3"
+                        className="text-indigo-400 hover:text-indigo-300 text-sm mr-3"
                       >
                         编辑
                       </button>
                       <button
                         onClick={() => event.id && handleDelete(event.id)}
-                        className="text-red-600 hover:text-red-800 text-sm"
+                        className="text-red-400 hover:text-red-300 text-sm"
                       >
                         删除
                       </button>

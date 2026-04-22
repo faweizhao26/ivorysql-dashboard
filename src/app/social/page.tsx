@@ -65,8 +65,8 @@ export default function SocialPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-400">加载中...</div>
       </div>
     );
   }
@@ -93,10 +93,10 @@ export default function SocialPage() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <span className="text-2xl">📱</span>
-          <h1 className="text-2xl font-bold text-gray-900">社交媒体</h1>
+          <h1 className="text-2xl font-bold text-slate-100">社交媒体</h1>
         </div>
         {displayDate && (
-          <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
+          <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
             📅 存档数据: {displayDate}
           </span>
         )}
@@ -107,8 +107,8 @@ export default function SocialPage() {
         setComparison(range.comparison);
       }} />
 
-      <div className="text-sm text-gray-500">
-        当前时间段: <span className="font-medium text-gray-700">{currentPeriod}</span>
+      <div className="text-sm text-slate-400">
+        当前时间段: <span className="font-medium text-slate-200">{currentPeriod}</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -118,10 +118,10 @@ export default function SocialPage() {
           const previous = platform?.previous;
 
           return (
-            <div key={key} className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+            <div key={key} className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">{icon}</span>
-                <h2 className="text-xl font-semibold text-gray-900">{name}</h2>
+                <h2 className="text-xl font-semibold text-slate-100">{name}</h2>
               </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4">
@@ -136,17 +136,17 @@ export default function SocialPage() {
               </div>
 
               <div className="grid grid-cols-3 gap-2 text-sm">
-                <div className="bg-gray-50 rounded-lg p-3 text-center">
-                  <div className="text-gray-500">帖子/视频</div>
-                  <div className="font-semibold">{current?.posts || 0}</div>
+                <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                  <div className="text-slate-400">帖子/视频</div>
+                  <div className="font-semibold text-slate-200">{current?.posts || 0}</div>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3 text-center">
-                  <div className="text-gray-500">阅读/播放</div>
-                  <div className="font-semibold">{(current?.views || current?.video_views || 0).toLocaleString()}</div>
+                <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                  <div className="text-slate-400">阅读/播放</div>
+                  <div className="font-semibold text-slate-200">{(current?.views || current?.video_views || 0).toLocaleString()}</div>
                 </div>
-                <div className="bg-gray-50 rounded-lg p-3 text-center">
-                  <div className="text-gray-500">评论</div>
-                  <div className="font-semibold">{current?.comments || 0}</div>
+                <div className="bg-slate-900/50 rounded-lg p-3 text-center">
+                  <div className="text-slate-400">评论</div>
+                  <div className="font-semibold text-slate-200">{current?.comments || 0}</div>
                 </div>
               </div>
             </div>

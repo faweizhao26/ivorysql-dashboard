@@ -157,8 +157,8 @@ export default function ContentPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-400">加载中...</div>
       </div>
     );
   }
@@ -213,10 +213,10 @@ export default function ContentPage() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <span className="text-2xl">📝</span>
-          <h1 className="text-2xl font-bold text-gray-900">技术内容平台</h1>
+          <h1 className="text-2xl font-bold text-slate-100">技术内容平台</h1>
         </div>
         {displayDate && (
-          <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
+          <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
             📅 存档数据: {displayDate}
           </span>
         )}
@@ -227,12 +227,12 @@ export default function ContentPage() {
         setComparison(range.comparison);
       }} />
 
-      <div className="text-sm text-gray-500">
-        当前时间段: <span className="font-medium text-gray-700">{currentPeriod}</span>
+      <div className="text-sm text-slate-400">
+        当前时间段: <span className="font-medium text-slate-200">{currentPeriod}</span>
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">汇总数据</h2>
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">汇总数据</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <StatCard
             title="文章总数"
@@ -253,7 +253,7 @@ export default function ContentPage() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">平台详情</h2>
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">平台详情</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {allArticlePlatforms.map(({ key, icon, name }) => {
             const current = articleData[key];
@@ -267,45 +267,45 @@ export default function ContentPage() {
 
             if (!hasData) {
               return (
-                <div key={key} className="bg-white rounded-xl p-5 shadow-sm border border-gray-200 opacity-60">
+                <div key={key} className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 opacity-60">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-xl">{icon}</span>
-                    <span className="font-medium text-gray-900">{name}</span>
+                    <span className="font-medium text-slate-200">{name}</span>
                   </div>
-                  <div className="text-sm text-gray-400">暂无数据</div>
+                  <div className="text-sm text-slate-500">暂无数据</div>
                 </div>
               );
             }
 
             return (
-              <div key={key} className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
+              <div key={key} className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xl">{icon}</span>
-                  <span className="font-medium text-gray-900">{name}</span>
+                  <span className="font-medium text-slate-200">{name}</span>
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">文章数</span>
-                    <span className="font-medium">{platformArticleCount.toLocaleString()}</span>
+                    <span className="text-slate-400">文章数</span>
+                    <span className="font-medium text-slate-200">{platformArticleCount.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">总阅读量</span>
-                    <span className="font-medium">{platformTotalViews.toLocaleString()}</span>
+                    <span className="text-slate-400">总阅读量</span>
+                    <span className="font-medium text-slate-200">{platformTotalViews.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">篇均阅读</span>
-                    <span className="font-medium">{platformAvgViews.toLocaleString()}</span>
+                    <span className="text-slate-400">篇均阅读</span>
+                    <span className="font-medium text-slate-200">{platformAvgViews.toLocaleString()}</span>
                   </div>
                   {platformLikes > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">获赞</span>
-                      <span className="font-medium">{platformLikes.toLocaleString()}</span>
+                      <span className="text-slate-400">获赞</span>
+                      <span className="font-medium text-slate-200">{platformLikes.toLocaleString()}</span>
                     </div>
                   )}
                   {platformComments > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">评论</span>
-                      <span className="font-medium">{platformComments.toLocaleString()}</span>
+                      <span className="text-slate-400">评论</span>
+                      <span className="font-medium text-slate-200">{platformComments.toLocaleString()}</span>
                     </div>
                   )}
                 </div>
@@ -316,59 +316,59 @@ export default function ContentPage() {
       </div>
 
       {isEditing && editingArticle && (
-        <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-200">
-          <h3 className="text-lg font-semibold text-indigo-900 mb-4">编辑文章</h3>
+        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
+          <h3 className="text-lg font-semibold text-slate-100 mb-4">编辑文章</h3>
           <form onSubmit={handleSaveEdit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">日期</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">日期</label>
                 <input
                   type="date"
                   value={editingArticle.date}
                   onChange={(e) => setEditingArticle({ ...editingArticle, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">阅读量</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">阅读量</label>
                 <input
                   type="number"
                   value={editingArticle.views}
                   onChange={(e) => setEditingArticle({ ...editingArticle, views: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">文章标题</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">文章标题</label>
                 <input
                   type="text"
                   value={editingArticle.article_title}
                   onChange={(e) => setEditingArticle({ ...editingArticle, article_title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">文章链接</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">文章链接</label>
                 <input
                   type="url"
                   value={editingArticle.article_url || ''}
                   onChange={(e) => setEditingArticle({ ...editingArticle, article_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
               <div className="flex items-end gap-2">
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500"
                 >
                   保存修改
                 </button>
                 <button
                   type="button"
                   onClick={handleCancelEdit}
-                  className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                  className="px-6 py-2 bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600"
                 >
                   取消
                 </button>
@@ -380,8 +380,8 @@ export default function ContentPage() {
 
       {Object.keys(allArticleDetails).length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">文章详情列表</h2>
-          
+          <h2 className="text-lg font-semibold text-slate-100 mb-4">文章详情列表</h2>
+
           {allArticlePlatforms.map(({ key, icon, name }) => {
             const articles = allArticleDetails[key];
             if (!articles || articles.length === 0) return null;
@@ -392,53 +392,53 @@ export default function ContentPage() {
 
             return (
               <div key={key} className="mb-6">
-                <h3 className="text-base font-medium text-gray-800 mb-3 flex items-center gap-2">
+                <h3 className="text-base font-medium text-slate-200 mb-3 flex items-center gap-2">
                   <span>{icon}</span>
                   <span>{name}</span>
-                  <span className="text-sm text-gray-500">({articles.length} 篇)</span>
+                  <span className="text-sm text-slate-400">({articles.length} 篇)</span>
                 </h3>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 border-b border-gray-200">
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">日期</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600">文章标题</th>
-                        <th className="text-right py-3 px-4 font-medium text-gray-600">阅读</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600 w-24">操作</th>
+                      <tr className="bg-slate-900/50 border-b border-slate-700">
+                        <th className="text-left py-3 px-4 font-medium text-slate-400">日期</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-400">文章标题</th>
+                        <th className="text-right py-3 px-4 font-medium text-slate-400">阅读</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-400 w-24">操作</th>
                       </tr>
                     </thead>
                     <tbody>
                       {displayedArticles.map((article, index) => (
-                        <tr key={article.id || index} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
-                          <td className="py-2 px-4 text-gray-500">{article.date}</td>
+                        <tr key={article.id || index} className="border-b border-slate-700/50 last:border-b-0 hover:bg-slate-700/30">
+                          <td className="py-2 px-4 text-slate-400">{article.date}</td>
                           <td className="py-2 px-4 max-w-md truncate">
                             {article.article_url ? (
-                              <a 
-                                href={article.article_url} 
-                                target="_blank" 
+                              <a
+                                href={article.article_url}
+                                target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                                className="text-indigo-400 hover:text-indigo-300 hover:underline"
                                 title={article.article_title}
                               >
                                 {article.article_title}
                               </a>
                             ) : (
-                              <span className="text-gray-900" title={article.article_title}>
+                              <span className="text-slate-200" title={article.article_title}>
                                 {article.article_title}
                               </span>
                             )}
                           </td>
-                          <td className="py-2 px-4 text-right font-medium">{article.views.toLocaleString()}</td>
+                          <td className="py-2 px-4 text-right font-medium text-slate-200">{article.views.toLocaleString()}</td>
                           <td className="py-2 px-4 flex gap-2">
                             <button
                               onClick={() => handleEdit(article)}
-                              className="text-indigo-600 hover:text-indigo-800 text-sm"
+                              className="text-indigo-400 hover:text-indigo-300 text-sm"
                             >
                               编辑
                             </button>
                             <button
                               onClick={() => handleDeleteArticle(article)}
-                              className="text-red-600 hover:text-red-800 text-sm"
+                              className="text-red-400 hover:text-red-300 text-sm"
                             >
                               删除
                             </button>
@@ -453,17 +453,17 @@ export default function ContentPage() {
                     <button
                       onClick={() => setArticlePages({ ...articlePages, [key]: Math.max(1, currentPage - 1) })}
                       disabled={currentPage === 1}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      className="px-3 py-1 text-sm border border-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-800 text-slate-300"
                     >
                       上一页
                     </button>
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-slate-400">
                       第 {currentPage} / {totalPages} 页
                     </span>
                     <button
                       onClick={() => setArticlePages({ ...articlePages, [key]: Math.min(totalPages, currentPage + 1) })}
                       disabled={currentPage === totalPages}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      className="px-3 py-1 text-sm border border-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-800 text-slate-300"
                     >
                       下一页
                     </button>
@@ -476,10 +476,10 @@ export default function ContentPage() {
       )}
 
       {(!allArticleDetails || Object.keys(allArticleDetails).length === 0) && (
-        <div className="bg-gray-50 rounded-xl p-8 text-center">
-          <p className="text-gray-500">
+        <div className="bg-slate-800/50 rounded-xl p-8 text-center border border-slate-700/50">
+          <p className="text-slate-400">
             暂无文章详情数据。<br />
-            请在 <a href="/admin" className="text-indigo-600 hover:underline">管理后台</a> 的「文章详情」中录入文章数据。
+            请在 <a href="/admin" className="text-indigo-400 hover:underline">管理后台</a> 的「文章详情」中录入文章数据。
           </p>
         </div>
       )}

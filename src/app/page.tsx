@@ -129,8 +129,8 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-gray-500">加载中...</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-400">加载中...</div>
       </div>
     );
   }
@@ -169,9 +169,9 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">数据概览</h1>
+        <h1 className="text-2xl font-bold text-slate-100">数据概览</h1>
         {displayDate && (
-          <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-sm font-medium">
+          <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
             📅 存档数据: {displayDate}
           </span>
         )}
@@ -182,17 +182,17 @@ export default function HomePage() {
         setComparison(range.comparison);
       }} />
 
-      <div className="text-sm text-gray-500">
-        当前时间段: <span className="font-medium text-gray-700">{currentPeriod}</span>
+      <div className="text-sm text-slate-400">
+        当前时间段: <span className="font-medium text-slate-200">{currentPeriod}</span>
         {comparePeriod && (
           <>
-            {' | 对比: '}<span className="font-medium text-gray-700">{comparePeriod}</span>
+            {' | 对比: '}<span className="font-medium text-slate-200">{comparePeriod}</span>
           </>
         )}
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">核心指标</h2>
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">核心指标</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <ComparisonStatCard
             title="GitHub Stars"
@@ -239,7 +239,7 @@ export default function HomePage() {
             title={`Stars 趋势 (${currentPeriod})`}
             data={githubHistory.map(h => ({ date: h.date, stars: h.stars, forks: h.forks }))}
             dataKey="stars"
-            color="#4F46E5"
+            color="#6366F1"
           />
         )}
         {contributorHistory.length > 0 && (
@@ -247,13 +247,13 @@ export default function HomePage() {
             title={`贡献者增长趋势 (${currentPeriod})`}
             data={contributorHistory.map(h => ({ date: h.date, cumulative: h.cumulative_2026 }))}
             dataKey="cumulative"
-            color="#8B5CF6"
+            color="#A855F7"
           />
         )}
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">社交媒体</h2>
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">社交媒体</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Object.entries(socialPlatforms).map(([key, { icon, name }]) => (
             <PlatformCard
@@ -269,7 +269,7 @@ export default function HomePage() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">技术内容平台</h2>
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">技术内容平台</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {Object.entries(contentPlatforms).map(([key, { icon, name }]) => (
             <PlatformCard

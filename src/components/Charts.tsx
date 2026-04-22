@@ -10,7 +10,9 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  Legend
+  Legend,
+  Area,
+  AreaChart
 } from 'recharts';
 
 interface ChartDataPoint {
@@ -23,43 +25,52 @@ interface LineChartProps {
   data: ChartDataPoint[];
   dataKey: string;
   color?: string;
+  gradientId?: string;
 }
 
-export function TrendChart({ title, data, dataKey, color = '#4F46E5' }: LineChartProps) {
+export function TrendChart({ title, data, dataKey, color = '#6366F1', gradientId }: LineChartProps) {
+  const id = gradientId || `gradient-${dataKey}`;
   return (
-    <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+    <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+      <h3 className="text-lg font-semibold text-slate-100 mb-4">{title}</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <AreaChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+            <defs>
+              <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                <stop offset="95%" stopColor={color} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 12, fill: '#94A3B8' }}
               tickFormatter={(value) => {
                 const date = new Date(value);
                 return `${date.getMonth() + 1}/${date.getDate()}`;
               }}
             />
-            <YAxis tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12, fill: '#94A3B8' }} />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#fff',
-                border: '1px solid #e5e7eb',
+                backgroundColor: '#1E293B',
+                border: '1px solid #334155',
                 borderRadius: '8px'
               }}
               formatter={(value) => [typeof value === 'number' ? value.toLocaleString() : value, dataKey]}
               labelFormatter={(label) => `日期: ${label}`}
             />
-            <Line
+            <Area
               type="monotone"
               dataKey={dataKey}
               stroke={color}
               strokeWidth={2}
+              fill={`url(#${id})`}
               dot={{ fill: color, strokeWidth: 2, r: 3 }}
               activeDot={{ r: 5 }}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>
@@ -73,27 +84,27 @@ interface MultiLineChartProps {
   colors?: string[];
 }
 
-export function MultiLineChart({ title, data, dataKeys, colors = ['#4F46E5', '#10B981', '#F59E0B'] }: MultiLineChartProps) {
+export function MultiLineChart({ title, data, dataKeys, colors = ['#6366F1', '#10B981', '#F59E0B'] }: MultiLineChartProps) {
   return (
-    <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+    <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+      <h3 className="text-lg font-semibold text-slate-100 mb-4">{title}</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 12, fill: '#94A3B8' }}
               tickFormatter={(value) => {
                 const date = new Date(value);
                 return `${date.getMonth() + 1}/${date.getDate()}`;
               }}
             />
-            <YAxis tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12, fill: '#94A3B8' }} />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#fff',
-                border: '1px solid #e5e7eb',
+                backgroundColor: '#1E293B',
+                border: '1px solid #334155',
                 borderRadius: '8px'
               }}
               labelFormatter={(label) => `日期: ${label}`}
@@ -123,27 +134,27 @@ interface BarChartProps {
   color?: string;
 }
 
-export function BarChartComponent({ title, data, dataKey, color = '#4F46E5' }: BarChartProps) {
+export function BarChartComponent({ title, data, dataKey, color = '#6366F1' }: BarChartProps) {
   return (
-    <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+    <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
+      <h3 className="text-lg font-semibold text-slate-100 mb-4">{title}</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 12, fill: '#94A3B8' }}
               tickFormatter={(value) => {
                 const date = new Date(value);
                 return `${date.getMonth() + 1}/${date.getDate()}`;
               }}
             />
-            <YAxis tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12, fill: '#94A3B8' }} />
             <Tooltip
               contentStyle={{
-                backgroundColor: '#fff',
-                border: '1px solid #e5e7eb',
+                backgroundColor: '#1E293B',
+                border: '1px solid #334155',
                 borderRadius: '8px'
               }}
               formatter={(value) => [typeof value === 'number' ? value.toLocaleString() : value, dataKey]}
