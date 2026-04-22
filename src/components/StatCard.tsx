@@ -1,5 +1,7 @@
 'use client';
 
+import { PlatformIcon } from './PlatformIcon';
+
 interface StatCardProps {
   title: string;
   value: number | string;
@@ -84,7 +86,8 @@ export function ComparisonStatCard({
 
 interface PlatformCardProps {
   name: string;
-  icon: string;
+  icon?: string;
+  platform?: string;
   followers?: number;
   views?: number;
   articles?: number;
@@ -92,11 +95,15 @@ interface PlatformCardProps {
   changePeriod?: string;
 }
 
-export function PlatformCard({ name, icon, followers, views, articles, change, changePeriod }: PlatformCardProps) {
+export function PlatformCard({ name, icon, platform, followers, views, articles, change, changePeriod }: PlatformCardProps) {
   return (
     <div className="card p-5 hover:scale-[1.02]">
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-2xl">{icon}</span>
+        {platform ? (
+          <PlatformIcon platform={platform} className="w-8 h-8 text-sm" />
+        ) : (
+          <span className="text-2xl">{icon}</span>
+        )}
         <span className="font-semibold text-slate-100">{name}</span>
       </div>
       <div className="space-y-3 text-sm">

@@ -6,6 +6,7 @@ import { ComparisonStatCard, PlatformCard, calculateChange } from '@/components/
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { TrendChart } from '@/components/Charts';
 import { ActivityTimeline } from '@/components/Timeline';
+import { PlatformIcon } from '@/components/PlatformIcon';
 
 interface DashboardData {
   github: {
@@ -75,16 +76,16 @@ const socialPlatforms: Record<string, { icon: string; name: string }> = {
   youtube: { icon: '▶️', name: 'YouTube' },
 };
 
-const contentPlatforms: Record<string, { icon: string; name: string }> = {
-  csdn: { icon: '🔵', name: 'CSDN' },
-  juejin: { icon: '💎', name: '掘金' },
-  modb: { icon: '🟠', name: '墨天轮' },
-  oschina: { icon: '🟢', name: '开源中国' },
-  sf: { icon: '⚡', name: '思否' },
-  ctoutiao: { icon: '📰', name: '51CTO' },
-  itpub: { icon: '🔷', name: 'ITPUB' },
-  toutiao: { icon: '📱', name: '头条号' },
-  ifclub: { icon: '💬', name: 'IFCLUB' },
+const contentPlatforms: Record<string, { name: string }> = {
+  csdn: { name: 'CSDN' },
+  juejin: { name: '掘金' },
+  modb: { name: '墨天轮' },
+  oschina: { name: '开源中国' },
+  sf: { name: '思否' },
+  ctoutiao: { name: '51CTO' },
+  itpub: { name: 'ITPUB' },
+  toutiao: { name: '头条号' },
+  ifclub: { name: 'IFCLUB' },
 };
 
 export default function HomePage() {
@@ -271,11 +272,11 @@ export default function HomePage() {
       <div>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">技术内容平台</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {Object.entries(contentPlatforms).map(([key, { icon, name }]) => (
+          {Object.entries(contentPlatforms).map(([key, { name }]) => (
             <PlatformCard
               key={key}
               name={name}
-              icon={icon}
+              platform={key}
               articles={articleData[key]?.article_count}
               views={articleData[key]?.total_views}
               changePeriod={comparePeriod ? 'vs 上期' : undefined}

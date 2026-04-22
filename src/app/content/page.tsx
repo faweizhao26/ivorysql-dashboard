@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { StatCard, calculateChange } from '@/components/StatCard';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
+import { PlatformIcon } from '@/components/PlatformIcon';
 
 interface ContentData {
   articles: Array<{
@@ -35,21 +36,21 @@ interface ArticlesResponse {
 }
 
 const contentPlatforms = [
-  { key: 'csdn', icon: '🔵', name: 'CSDN' },
-  { key: 'juejin', icon: '💎', name: '掘金' },
-  { key: 'modb', icon: '🟠', name: '墨天轮' },
-  { key: 'oschina', icon: '🟢', name: '开源中国' },
-  { key: 'sf', icon: '⚡', name: '思否' },
-  { key: 'ctoutiao', icon: '📰', name: '51CTO' },
-  { key: 'itpub', icon: '🔷', name: 'ITPUB' },
-  { key: 'toutiao', icon: '📱', name: '头条号' },
-  { key: 'ifclub', icon: '💬', name: 'IFCLUB' },
-  { key: 'zhihu', icon: '❓', name: '知乎' },
-  { key: 'cnblogs', icon: '🌐', name: '博客园' },
+  { key: 'csdn', name: 'CSDN' },
+  { key: 'juejin', name: '掘金' },
+  { key: 'modb', name: '墨天轮' },
+  { key: 'oschina', name: '开源中国' },
+  { key: 'sf', name: '思否' },
+  { key: 'ctoutiao', name: '51CTO' },
+  { key: 'itpub', name: 'ITPUB' },
+  { key: 'toutiao', name: '头条号' },
+  { key: 'ifclub', name: 'IFCLUB' },
+  { key: 'zhihu', name: '知乎' },
+  { key: 'cnblogs', name: '博客园' },
 ];
 
 const allArticlePlatforms = [
-  { key: 'wechat', icon: '💚', name: '公众号' },
+  { key: 'wechat', name: '公众号' },
   ...contentPlatforms
 ];
 
@@ -255,7 +256,7 @@ export default function ContentPage() {
       <div>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">平台详情</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {allArticlePlatforms.map(({ key, icon, name }) => {
+          {allArticlePlatforms.map(({ key, name }) => {
             const current = articleData[key];
             const articles = allArticleDetails[key] || [];
             const platformArticleCount = articles.length;
@@ -269,7 +270,7 @@ export default function ContentPage() {
               return (
                 <div key={key} className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50 opacity-60">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xl">{icon}</span>
+                    <PlatformIcon platform={key} className="w-8 h-8 text-sm" />
                     <span className="font-medium text-slate-200">{name}</span>
                   </div>
                   <div className="text-sm text-slate-500">暂无数据</div>
@@ -280,7 +281,7 @@ export default function ContentPage() {
             return (
               <div key={key} className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xl">{icon}</span>
+                  <PlatformIcon platform={key} className="w-8 h-8 text-sm" />
                   <span className="font-medium text-slate-200">{name}</span>
                 </div>
                 <div className="space-y-2 text-sm">
@@ -382,7 +383,7 @@ export default function ContentPage() {
         <div>
           <h2 className="text-lg font-semibold text-slate-100 mb-4">文章详情列表</h2>
 
-          {allArticlePlatforms.map(({ key, icon, name }) => {
+          {allArticlePlatforms.map(({ key, name }) => {
             const articles = allArticleDetails[key];
             if (!articles || articles.length === 0) return null;
 
@@ -393,7 +394,7 @@ export default function ContentPage() {
             return (
               <div key={key} className="mb-6">
                 <h3 className="text-base font-medium text-slate-200 mb-3 flex items-center gap-2">
-                  <span>{icon}</span>
+                  <PlatformIcon platform={key} className="w-6 h-6 text-sm" />
                   <span>{name}</span>
                   <span className="text-sm text-slate-400">({articles.length} 篇)</span>
                 </h3>
