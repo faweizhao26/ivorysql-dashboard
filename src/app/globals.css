@@ -69,12 +69,12 @@ body {
   background-color: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 1rem;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .card:hover {
-  border-color: #475569;
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.15), 0 0 60px rgba(139, 92, 246, 0.05);
 }
 
 .stat-card {
@@ -87,13 +87,15 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple));
-  transition: all 0.2s ease;
+  background: linear-gradient(135deg, var(--accent-indigo), var(--accent-purple), var(--accent-pink));
+  background-size: 200% 200%;
+  transition: all 0.3s ease;
 }
 
 .btn-primary:hover {
   transform: scale(1.02);
-  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 25px rgba(99, 102, 241, 0.5), 0 0 50px rgba(139, 92, 246, 0.2);
+  background-position: 100% 100%;
 }
 
 .btn-primary:disabled {
@@ -138,11 +140,21 @@ input:focus, select:focus, textarea:focus {
   background: linear-gradient(90deg, var(--card-bg) 25%, #2d3a4f 50%, var(--card-bg) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+  border-radius: 0.5rem;
+}
+
+.skeleton-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .scrollbar-thin::-webkit-scrollbar {
