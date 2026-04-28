@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { StatCard } from '@/components/StatCard';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
+import { PlatformIcon } from '@/components/PlatformIcon';
 
 interface SocialData {
   social: Array<{
@@ -20,10 +21,10 @@ interface SocialData {
 }
 
 const socialPlatforms = [
-  { key: 'wechat', icon: '💚', name: '公众号' },
-  { key: 'twitter', icon: '🐦', name: 'Twitter' },
-  { key: 'bilibili', icon: '📺', name: 'B站' },
-  { key: 'youtube', icon: '▶️', name: 'YouTube' },
+  { key: 'wechat', name: '公众号' },
+  { key: 'twitter', name: 'Twitter' },
+  { key: 'bilibili', name: 'B站' },
+  { key: 'youtube', name: 'YouTube' },
 ];
 
 export default function SocialPage() {
@@ -112,7 +113,7 @@ export default function SocialPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {socialPlatforms.map(({ key, icon, name }) => {
+        {socialPlatforms.map(({ key, name }) => {
           const platform = platformData[key];
           const current = platform?.current;
           const previous = platform?.previous;
@@ -120,7 +121,7 @@ export default function SocialPage() {
           return (
             <div key={key} className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">{icon}</span>
+                <PlatformIcon platform={key} className="w-8 h-8" size={32} />
                 <h2 className="text-xl font-semibold text-slate-100">{name}</h2>
               </div>
 

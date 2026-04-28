@@ -69,11 +69,11 @@ interface DashboardData {
   }>;
 }
 
-const socialPlatforms: Record<string, { icon: string; name: string }> = {
-  wechat: { icon: '💚', name: '公众号' },
-  twitter: { icon: '🐦', name: 'Twitter' },
-  bilibili: { icon: '📺', name: 'B站' },
-  youtube: { icon: '▶️', name: 'YouTube' },
+const socialPlatforms: Record<string, { name: string }> = {
+  wechat: { name: '公众号' },
+  twitter: { name: 'Twitter' },
+  bilibili: { name: 'B站' },
+  youtube: { name: 'YouTube' },
 };
 
 const contentPlatforms: Record<string, { name: string }> = {
@@ -256,11 +256,11 @@ export default function HomePage() {
       <div>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">社交媒体</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {Object.entries(socialPlatforms).map(([key, { icon, name }]) => (
+          {Object.entries(socialPlatforms).map(([key, { name }]) => (
             <PlatformCard
               key={key}
               name={name}
-              icon={icon}
+              platform={key}
               followers={socialData[key]?.followers}
               views={socialData[key]?.views}
               changePeriod={comparePeriod ? 'vs 上期' : undefined}
