@@ -165,19 +165,19 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+    <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-700">时间范围:</span>
-          <div className="flex bg-gray-100 rounded-lg p-1">
+          <span className="text-sm font-medium text-slate-300">时间范围:</span>
+          <div className="flex bg-slate-900/80 rounded-lg p-1">
             {presetOptions.map(opt => (
               <button
                 key={opt.key}
                 onClick={() => handlePresetChange(opt.key)}
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
                   preset === opt.key
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 {opt.label}
@@ -195,9 +195,9 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
                 setCustomStart(e.target.value);
                 setTimeout(handleCustomDateChange, 0);
               }}
-              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="px-3 py-1 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
-            <span className="text-gray-400">至</span>
+            <span className="text-slate-500">至</span>
             <input
               type="date"
               value={customEnd}
@@ -205,30 +205,30 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
                 setCustomEnd(e.target.value);
                 setTimeout(handleCustomDateChange, 0);
               }}
-              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="px-3 py-1 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
         )}
 
-        <div className="flex items-center gap-3 border-l border-gray-200 pl-4">
+        <div className="flex items-center gap-3 border-l border-slate-600 pl-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={comparisonEnabled}
               onChange={handleComparisonChange}
-              className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
+              className="w-4 h-4 text-indigo-600 rounded border-slate-600 bg-slate-900 focus:ring-indigo-500"
             />
-            <span className="text-sm font-medium text-gray-700">开启对比</span>
+            <span className="text-sm font-medium text-slate-300">开启对比</span>
           </label>
 
           {comparisonEnabled && (
-            <div className="flex bg-gray-100 rounded-lg p-1">
+            <div className="flex bg-slate-900/80 rounded-lg p-1">
               <button
                 onClick={() => handleComparisonModeChange('previous')}
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
                   comparisonMode === 'previous'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 vs 上期
@@ -237,8 +237,8 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
                 onClick={() => handleComparisonModeChange('year-over-year')}
                 className={`px-3 py-1 text-sm rounded-md transition-colors ${
                   comparisonMode === 'year-over-year'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 vs 去年同期
@@ -249,7 +249,7 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
       </div>
 
       {comparisonEnabled && comparisonMode === 'previous' && (
-        <div className="mt-3 text-sm text-gray-500">
+        <div className="mt-3 text-sm text-slate-400">
           对比时间段: 
           {(() => {
             const range = preset === 'custom' 
@@ -262,7 +262,7 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
       )}
 
       {comparisonEnabled && comparisonMode === 'year-over-year' && (
-        <div className="mt-3 text-sm text-gray-500">
+        <div className="mt-3 text-sm text-slate-400">
           对比时间段: 
           {(() => {
             const range = preset === 'custom' 

@@ -34,69 +34,30 @@ export default function AuthPage() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      padding: '20px'
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '40px',
-        width: '100%',
-        maxWidth: '400px',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-      }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <h1 style={{
-            fontSize: '28px',
-            fontWeight: 'bold',
-            color: '#1a1a2e',
-            marginBottom: '8px'
-          }}>
-            IvorySQL Dashboard
-          </h1>
-          <p style={{ color: '#666', fontSize: '14px' }}>
-            Enter password to access
-          </p>
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 p-5">
+      <div className="bg-slate-800 rounded-2xl p-10 w-full max-w-md border border-slate-700 shadow-2xl">
+        <div className="text-center mb-8">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <span className="text-white font-bold text-xl">I</span>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-100 mb-2">IvorySQL 数据中心</h1>
+          <p className="text-slate-400 text-sm">请输入密码访问</p>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '24px' }}>
+          <div className="mb-6">
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
-              style={{
-                width: '100%',
-                padding: '14px 16px',
-                fontSize: '16px',
-                border: '2px solid #e1e1e1',
-                borderRadius: '10px',
-                outline: 'none',
-                transition: 'border-color 0.2s',
-                boxSizing: 'border-box'
-              }}
-              onFocus={(e) => e.target.style.borderColor = '#667eea'}
-              onBlur={(e) => e.target.style.borderColor = '#e1e1e1'}
+              placeholder="输入密码"
+              className="w-full px-4 py-3 bg-slate-900 border border-slate-600 rounded-xl text-slate-200 text-base focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors"
               autoFocus
             />
           </div>
 
           {error && (
-            <div style={{
-              background: '#fee',
-              color: '#c00',
-              padding: '12px',
-              borderRadius: '8px',
-              marginBottom: '16px',
-              fontSize: '14px',
-              textAlign: 'center'
-            }}>
+            <div className="bg-red-500/10 text-red-400 p-3 rounded-lg mb-4 text-sm text-center border border-red-500/20">
               {error}
             </div>
           )}
@@ -104,35 +65,18 @@ export default function AuthPage() {
           <button
             type="submit"
             disabled={loading || !password}
-            style={{
-              width: '100%',
-              padding: '14px',
-              fontSize: '16px',
-              fontWeight: '600',
-              color: 'white',
-              background: loading ? '#ccc' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              border: 'none',
-              borderRadius: '10px',
-              cursor: loading ? 'not-allowed' : 'pointer'
-            }}
+            className="w-full py-3 text-base font-semibold text-white rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-500/20"
           >
-            {loading ? 'Verifying...' : 'Access Dashboard'}
+            {loading ? '验证中...' : '进入面板'}
           </button>
         </form>
 
-        <div style={{
-          marginTop: '24px',
-          padding: '16px',
-          background: '#f8f9fa',
-          borderRadius: '8px',
-          fontSize: '12px',
-          color: '#666'
-        }}>
-          <p style={{ marginBottom: '8px' }}>
-            <strong>Viewer:</strong> Read-only access to all data
+        <div className="mt-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700/50">
+          <p className="text-xs text-slate-500 mb-1">
+            <span className="text-slate-400 font-medium">查看密码：</span>只读，可查看所有数据
           </p>
-          <p>
-            <strong>Admin:</strong> Full access including editing
+          <p className="text-xs text-slate-500">
+            <span className="text-slate-400 font-medium">管理密码：</span>完整权限，可编辑数据
           </p>
         </div>
       </div>
