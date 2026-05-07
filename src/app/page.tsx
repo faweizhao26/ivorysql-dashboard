@@ -170,27 +170,36 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-slate-100">数据概览</h1>
-        <div className="flex items-center gap-3">
-          {displayDate && (
-            <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
-              {displayDate}
-            </span>
-          )}
-          <button
-            onClick={() => exportDashboardData(data, currentPeriod)}
-            className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
-          >
-            导出 CSV
-          </button>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/10 p-6 md:p-8">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        <div className="relative flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-100 mb-2">IvorySQL 社区数据中心</h1>
+            <p className="text-slate-400 text-sm max-w-md">实时追踪 GitHub、社交媒体、内容平台的运营数据，助力社区增长决策。</p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            {displayDate && (
+              <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30 hidden sm:inline-flex">
+                {displayDate}
+              </span>
+            )}
+            <button
+              onClick={() => exportDashboardData(data, currentPeriod)}
+              className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors hidden md:block"
+            >
+              导出 CSV
+            </button>
+          </div>
         </div>
       </div>
 
-      <TimeRangeSelector onRangeChange={(range) => {
-        setDateRange({ start: range.start, end: range.end, isSingleDay: range.isSingleDay });
-        setComparison(range.comparison);
-      }} />
+      <div className="flex justify-between items-center">
+        <TimeRangeSelector onRangeChange={(range) => {
+          setDateRange({ start: range.start, end: range.end, isSingleDay: range.isSingleDay });
+          setComparison(range.comparison);
+        }} />
+      </div>
 
       <div className="text-sm text-slate-400">
         当前时间段: <span className="font-medium text-slate-200">{currentPeriod}</span>
@@ -204,42 +213,12 @@ export default function HomePage() {
       <div>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">核心指标</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <ComparisonStatCard
-            title="GitHub Stars"
-            current={latestGitHub?.stars || 0}
-            icon="⭐"
-            periodLabel={comparePeriod ? 'vs 上期' : undefined}
-          />
-          <ComparisonStatCard
-            title="GitHub Forks"
-            current={latestGitHub?.forks || 0}
-            icon="🍴"
-            periodLabel={comparePeriod ? 'vs 上期' : undefined}
-          />
-          <ComparisonStatCard
-            title="公众号关注"
-            current={socialData.wechat?.followers || 0}
-            icon="💚"
-            periodLabel={comparePeriod ? 'vs 上期' : undefined}
-          />
-          <ComparisonStatCard
-            title="Twitter 粉丝"
-            current={socialData.twitter?.followers || 0}
-            icon="🐦"
-            periodLabel={comparePeriod ? 'vs 上期' : undefined}
-          />
-          <ComparisonStatCard
-            title="官网 PV"
-            current={latestWebsite?.pageviews || 0}
-            icon="🌐"
-            periodLabel={comparePeriod ? 'vs 上期' : undefined}
-          />
-          <ComparisonStatCard
-            title="贡献者数"
-            current={contributors?.latest?.total_contributors || latestGitHub?.contributors || 0}
-            icon="👥"
-            periodLabel={comparePeriod ? 'vs 上期' : undefined}
-          />
+          <div className="animate-fade-in stagger-1"><ComparisonStatCard title="GitHub Stars" current={latestGitHub?.stars || 0} icon="⭐" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
+          <div className="animate-fade-in stagger-2"><ComparisonStatCard title="GitHub Forks" current={latestGitHub?.forks || 0} icon="🍴" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
+          <div className="animate-fade-in stagger-3"><ComparisonStatCard title="公众号关注" current={socialData.wechat?.followers || 0} icon="💚" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
+          <div className="animate-fade-in stagger-4"><ComparisonStatCard title="Twitter 粉丝" current={socialData.twitter?.followers || 0} icon="🐦" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
+          <div className="animate-fade-in stagger-5"><ComparisonStatCard title="官网 PV" current={latestWebsite?.pageviews || 0} icon="🌐" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
+          <div className="animate-fade-in stagger-6"><ComparisonStatCard title="贡献者数" current={contributors?.latest?.total_contributors || latestGitHub?.contributors || 0} icon="👥" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
         </div>
       </div>
 
