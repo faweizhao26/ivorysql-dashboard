@@ -139,13 +139,9 @@ export default function SocialPage() {
                   title="粉丝数"
                   value={current?.followers || current?.subscribers || 0}
                 />
-                <StatCard
-                  title="互动数"
-                  value={(current?.likes || 0) + (current?.comments || 0) + (current?.shares || 0)}
-                />
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-sm">
+              <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="bg-slate-900/50 rounded-lg p-3 text-center">
                   <div className="text-slate-400">帖子/视频</div>
                   <div className="font-semibold text-slate-200">{current?.posts || 0}</div>
@@ -153,10 +149,6 @@ export default function SocialPage() {
                 <div className="bg-slate-900/50 rounded-lg p-3 text-center">
                   <div className="text-slate-400">阅读/播放</div>
                   <div className="font-semibold text-slate-200">{(current?.views || current?.video_views || 0).toLocaleString()}</div>
-                </div>
-                <div className="bg-slate-900/50 rounded-lg p-3 text-center">
-                  <div className="text-slate-400">评论</div>
-                  <div className="font-semibold text-slate-200">{current?.comments || 0}</div>
                 </div>
               </div>
             </div>
