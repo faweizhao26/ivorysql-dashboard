@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const STATIC_PATTERN = /\.(js|css|png|ico|svg|woff2?|map|json|txt)$/;
+
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || pathname.includes('.')) {
+  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || STATIC_PATTERN.test(pathname)) {
     return NextResponse.next();
   }
 
@@ -16,7 +18,10 @@ export function middleware(request: NextRequest) {
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!accessPassword || !adminPassword) {
-    return NextResponse.next();
+    return NextResponse.json(
+      { error: 'Server misconfiguration: ACCESS_PASSWORD or ADMIN_PASSWORD not set' },
+      { status: 500 }
+    );
   }
 
   const accessCookie = request.cookies.get('access_level');
@@ -29,7 +34,10 @@ export function middleware(request: NextRequest) {
     if (pathname.startsWith('/admin')) {
       return NextResponse.redirect(new URL('/auth?error=admin_required', request.url));
     }
-    if (pathname.startsWith('/api/articles') && request.method !== 'GET') {
+    if (/^\/api\/(articles|events|manual|reminders)/.test(pathname) && request.method !== 'GET') {
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
+    }
+    if (/^\/api\/(github|itpub|csdn|cnblogs|juejin|modb)\/sync/.test(pathname)) {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
     return NextResponse.next();

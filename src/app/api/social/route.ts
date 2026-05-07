@@ -21,14 +21,14 @@ export async function GET(request: Request) {
 
   try {
     if (platform) {
-      const data = await getSocialStatsByDateRange(startDate, endDate);
+      const data = await getSocialStatsByDateRange(startDate, endDate, platform);
       return NextResponse.json({ platform, data });
     }
 
     const platforms = await getAllSocialPlatforms();
     const allData = await Promise.all(
       platforms.map(async (p) => {
-        const data = await getSocialStatsByDateRange(startDate, endDate);
+        const data = await getSocialStatsByDateRange(startDate, endDate, p);
         return { platform: p, data };
       })
     );

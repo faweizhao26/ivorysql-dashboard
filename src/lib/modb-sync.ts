@@ -15,10 +15,10 @@ interface ModbUserStats {
 
 function extractUserStats(html: string): ModbUserStats | null {
   const nuxtMatch = html.match(/window\.__NUXT__=\(([\s\S]+?)\);<\/script>/);
-  if (!nuxtMatch) return null;
+  if (!nuxtMatch || !nuxtMatch[1]) return null;
 
   try {
-    const nuxtData = eval('(' + nuxtMatch[0].replace('window.__NUXT__=', '').replace(/;<\/script>/, '') + ')');
+    const nuxtData = JSON.parse(nuxtMatch[1]);
     const userTotal = nuxtData?.data?.[0]?.userTotal;
     if (!userTotal) return null;
 

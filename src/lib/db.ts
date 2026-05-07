@@ -19,7 +19,9 @@ const dbConfig = parseDatabaseUrl(process.env.DATABASE_URL || '');
 
 const pool = new Pool({
   ...(dbConfig || { connectionString: process.env.DATABASE_URL }),
-  ssl: { rejectUnauthorized: false }
+  ssl: process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: true }
+    : { rejectUnauthorized: false }
 });
 
 let dbInitialized = false;
@@ -552,7 +554,14 @@ export async function getContributorStatsForDate(date: string): Promise<Contribu
   return result.rows[0] || null;
 }
 
-export async function getSocialStatsByDateRange(startDate: string, endDate: string): Promise<SocialStats[]> {
+export async function getSocialStatsByDateRange(startDate: string, endDate: string, platform?: string): Promise<SocialStats[]> {
+  if (platform) {
+    const result = await pool.query(
+      'SELECT * FROM social_stats WHERE date >= $1 AND date <= $2 AND platform = $3 ORDER BY date ASC',
+      [startDate, endDate, platform]
+    );
+    return result.rows;
+  }
   const result = await pool.query(
     'SELECT * FROM social_stats WHERE date >= $1 AND date <= $2 ORDER BY date ASC',
     [startDate, endDate]
