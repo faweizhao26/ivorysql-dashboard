@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { StatCard } from '@/components/StatCard';
 import { TimeRangeSelector, DateRange } from '@/components/TimeRangeSelector';
+import { downloadCSV } from '@/lib/csv-utils';
 
 interface ActivityEvent {
   id?: number;
@@ -152,12 +153,20 @@ export default function EventsPage() {
           <span className="text-2xl">📅</span>
           <h1 className="text-2xl font-bold text-slate-100">社区活动</h1>
         </div>
-        <button
-          onClick={handleAdd}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 text-sm font-medium transition-colors"
-        >
-          + 新增活动
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => exportEventsData(events, currentPeriod)}
+            className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
+          >
+            导出 CSV
+          </button>
+          <button
+            onClick={handleAdd}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 text-sm font-medium transition-colors"
+          >
+            + 新增活动
+          </button>
+        </div>
       </div>
 
       <TimeRangeSelector onRangeChange={(range) => {
@@ -489,4 +498,22 @@ function EventCard({ event, isUpcoming = false, onEdit, onDelete }: {
       </div>
     </div>
   );
+}
+
+function exportEventsData(events: ActivityEvent[], period: string) {
+  if (!events || events.length === 0) return;
+  const rows = events.map(e => ({
+    名称: e.event_name,
+    日期: e.event_date,
+    类型: e.event_type,
+    地点: e.location || '',
+    场馆: e.venue || '',
+    报名人数: e.registrations,
+    参与人数: e.participants,
+    线上观看: e.online_viewers,
+    描述: e.description || '',
+    链接: e.url || '',
+    时间段: period,
+  }));
+  downloadCSV(rows, `ivorysql-events-${period.replace(/[~ ]/g, '_')}`);
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { StatCard, calculateChange } from '@/components/StatCard';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { PlatformIcon } from '@/components/PlatformIcon';
+import { downloadCSV } from '@/lib/csv-utils';
 
 interface ContentData {
   articles: Array<{
@@ -216,11 +217,19 @@ export default function ContentPage() {
           <span className="text-2xl">📝</span>
           <h1 className="text-2xl font-bold text-slate-100">技术内容平台</h1>
         </div>
-        {displayDate && (
-          <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
-            📅 存档数据: {displayDate}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {displayDate && (
+            <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
+              {displayDate}
+            </span>
+          )}
+          <button
+            onClick={() => exportContentData(data, allArticleDetails, currentPeriod)}
+            className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
+          >
+            导出 CSV
+          </button>
+        </div>
       </div>
 
       <TimeRangeSelector onRangeChange={(range) => {
@@ -486,4 +495,45 @@ export default function ContentPage() {
       )}
     </div>
   );
+}
+
+function exportContentData(data: ContentData | null, articleDetails: Record<string, ArticleDetail[]>, period: string) {
+  if (!data) return;
+  const rows: Record<string, any>[] = [];
+
+  data.articles.forEach(a => {
+    rows.push({
+      指标: '平台汇总',
+      平台: a.platform,
+      文章总数: a.article_count,
+      总阅读量: a.total_views,
+      篇均阅读: a.avg_views,
+      粉丝: a.followers,
+      点赞: a.likes,
+      收藏: a.bookmarks,
+      评论: a.comments,
+      日期: a.date,
+      时间段: period,
+    });
+  });
+
+  if (articleDetails) {
+    Object.entries(articleDetails).forEach(([platform, articles]) => {
+      articles.forEach(a => {
+        rows.push({
+          指标: '文章详情',
+          平台: platform,
+          日期: a.date,
+          标题: a.article_title,
+          链接: a.article_url || '',
+          阅读: a.views,
+          点赞: a.likes,
+          评论: a.comments,
+          时间段: period,
+        });
+      });
+    });
+  }
+
+  downloadCSV(rows, `ivorysql-content-${period.replace(/[~ ]/g, '_')}`);
 }

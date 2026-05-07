@@ -7,6 +7,7 @@ import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRange
 import { TrendChart } from '@/components/Charts';
 import { ActivityTimeline } from '@/components/Timeline';
 import { PlatformIcon } from '@/components/PlatformIcon';
+import { downloadCSV } from '@/lib/csv-utils';
 
 interface DashboardData {
   github: {
@@ -171,11 +172,19 @@ export default function HomePage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-100">数据概览</h1>
-        {displayDate && (
-          <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
-            📅 存档数据: {displayDate}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {displayDate && (
+            <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
+              {displayDate}
+            </span>
+          )}
+          <button
+            onClick={() => exportDashboardData(data, currentPeriod)}
+            className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
+          >
+            导出 CSV
+          </button>
+        </div>
       </div>
 
       <TimeRangeSelector onRangeChange={(range) => {
@@ -298,4 +307,47 @@ export default function HomePage() {
       </div>
     </div>
   );
+}
+
+function exportDashboardData(data: DashboardData | null, period: string) {
+  if (!data) return;
+  const rows: Record<string, any>[] = [];
+
+  if (data.github.latest) {
+    rows.push({ 指标: 'GitHub 概况', Stars: data.github.latest.stars, Forks: data.github.latest.forks, Watchers: data.github.latest.watchers, 'Open Issues': data.github.latest.open_issues, 'Open PRs': data.github.latest.open_prs, 贡献者: data.github.latest.contributors, Releases: data.github.latest.releases_count, 时间段: period });
+  }
+
+  if (data.contributors.latest) {
+    rows.push({ 指标: '贡献者统计', '历史贡献者总数': data.contributors.latest.total_contributors, '2026 前贡献者': data.contributors.latest.contributors_before_2026, '2026 累计新增': data.contributors.latest.cumulative_2026, '本月新增': data.contributors.latest.new_contributors_monthly, 时间段: period });
+  }
+
+  if (data.website.latest) {
+    rows.push({ 指标: '网站数据', PV: data.website.latest.pageviews, UV: data.website.latest.unique_visitors, 时间段: period });
+  }
+
+  data.social.forEach(s => {
+    rows.push({ 指标: '社交媒体', 平台: s.platform, 粉丝: s.followers, 阅读: s.views, 时间段: period });
+  });
+
+  data.articles.forEach(a => {
+    rows.push({ 指标: '内容平台', 平台: a.platform, 文章数: a.article_count, 阅读量: a.total_views, 时间段: period });
+  });
+
+  data.events.forEach(e => {
+    rows.push({ 指标: '活动动态', 日期: e.date, 来源: e.source, 标题: e.title, 描述: e.description, 链接: e.url, 类型: e.event_type, 时间段: period });
+  });
+
+  if (data.github.history.length > 0) {
+    rows.push(...data.github.history.map(h => ({ 指标: 'GitHub 历史', 日期: h.date, Stars: h.stars, Forks: h.forks, 贡献者: h.contributors, 时间段: period })));
+  }
+
+  if (data.contributors.history.length > 0) {
+    rows.push(...data.contributors.history.map(h => ({ 指标: '贡献者历史', 日期: h.date, '2026 累计': h.cumulative_2026, '每日新增': h.new_contributors_daily, 时间段: period })));
+  }
+
+  if (data.website.history.length > 0) {
+    rows.push(...data.website.history.map(h => ({ 指标: '网站历史', 日期: h.date, PV: h.pageviews, 时间段: period })));
+  }
+
+  downloadCSV(rows, `ivorysql-dashboard-${period.replace(/[~ ]/g, '_')}`);
 }

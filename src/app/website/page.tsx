@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { StatCard, calculateChange } from '@/components/StatCard';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { TrendChart } from '@/components/Charts';
+import { downloadCSV } from '@/lib/csv-utils';
 
 interface WebsiteData {
   website: {
@@ -84,11 +85,19 @@ export default function WebsitePage() {
           <span className="text-2xl">🌐</span>
           <h1 className="text-2xl font-bold text-slate-100">官网数据</h1>
         </div>
-        {displayDate && (
-          <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
-            📅 存档数据: {displayDate}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {displayDate && (
+            <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
+              {displayDate}
+            </span>
+          )}
+          <button
+            onClick={() => exportWebsiteData(website, websiteHistory, currentPeriod)}
+            className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
+          >
+            导出 CSV
+          </button>
+        </div>
       </div>
 
       <TimeRangeSelector onRangeChange={(range) => {
@@ -212,4 +221,30 @@ export default function WebsitePage() {
       </div>
     </div>
   );
+}
+
+function exportWebsiteData(website: any, history: any[], period: string) {
+  if (!website) return;
+  const rows: Record<string, any>[] = [];
+  if (website.latest) {
+    rows.push({
+      指标: '网站概况',
+      PV: website.latest.pageviews,
+      UV: website.latest.unique_visitors,
+      热门页面: website.latest.top_pages?.join('; '),
+      流量来源: website.latest.sources?.map((s: { name: string; value: number }) => `${s.name}:${s.value}%`).join('; '),
+      关键词: website.latest.keywords?.join('; '),
+      时间段: period,
+    });
+  }
+  if (history.length > 0) {
+    rows.push(...history.map(h => ({
+      指标: '网站历史',
+      日期: h.date,
+      PV: h.pageviews,
+      UV: h.unique_visitors,
+      时间段: period,
+    })));
+  }
+  downloadCSV(rows, `ivorysql-website-${period.replace(/[~ ]/g, '_')}`);
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { StatCard } from '@/components/StatCard';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { PlatformIcon } from '@/components/PlatformIcon';
+import { downloadCSV } from '@/lib/csv-utils';
 
 interface SocialData {
   social: Array<{
@@ -96,11 +97,19 @@ export default function SocialPage() {
           <span className="text-2xl">📱</span>
           <h1 className="text-2xl font-bold text-slate-100">社交媒体</h1>
         </div>
-        {displayDate && (
-          <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
-            📅 存档数据: {displayDate}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {displayDate && (
+            <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
+              {displayDate}
+            </span>
+          )}
+          <button
+            onClick={() => exportSocialData(socialDataList, currentPeriod)}
+            className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
+          >
+            导出 CSV
+          </button>
+        </div>
       </div>
 
       <TimeRangeSelector onRangeChange={(range) => {
@@ -156,4 +165,22 @@ export default function SocialPage() {
       </div>
     </div>
   );
+}
+
+function exportSocialData(data: SocialData['social'], period: string) {
+  if (!data || data.length === 0) return;
+  const rows = data.map(s => ({
+    平台: s.platform,
+    日期: s.date,
+    粉丝: s.followers,
+    订阅者: s.subscribers,
+    帖子: s.posts,
+    阅读: s.views,
+    视频播放: s.video_views,
+    点赞: s.likes,
+    分享: s.shares,
+    评论: s.comments,
+    时间段: period,
+  }));
+  downloadCSV(rows, `ivorysql-social-${period.replace(/[~ ]/g, '_')}`);
 }
