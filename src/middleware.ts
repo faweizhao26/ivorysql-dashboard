@@ -18,10 +18,8 @@ export function middleware(request: NextRequest) {
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!accessPassword || !adminPassword) {
-    return NextResponse.json(
-      { error: 'Server misconfiguration: ACCESS_PASSWORD or ADMIN_PASSWORD not set' },
-      { status: 500 }
-    );
+    console.error('WARNING: ACCESS_PASSWORD or ADMIN_PASSWORD not set. Auth disabled.');
+    return NextResponse.next();
   }
 
   const accessCookie = request.cookies.get('access_level');
