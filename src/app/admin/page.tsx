@@ -548,20 +548,20 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-50 rounded-xl p-4">
+      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
         <div className="flex justify-between items-start mb-2">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-slate-100">
               {isEditing ? `编辑文章 - ${platformLabel}` : '录入文章数据'}
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-400">
               {isEditing ? '修改文章信息后保存' : '每篇文章需要单独录入，包括标题、链接和阅读量。公众号数据每周手动更新一次。'}
             </p>
           </div>
           {isEditing && (
             <button
               onClick={handleCancelEdit}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-100"
+              className="px-4 py-2 text-sm text-slate-400 hover:text-slate-200 bg-slate-800 border border-slate-600 rounded-lg hover:bg-slate-700/30"
             >
               取消编辑
             </button>
@@ -570,7 +570,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
 
         {message && (
           <div className={`mb-4 p-3 rounded-lg text-sm ${
-            message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            message.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
           }`}>
             {message.text}
           </div>
@@ -579,7 +579,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">平台</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">平台</label>
               <select
                 value={platform}
                 onChange={(e) => {
@@ -587,7 +587,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                   setIsEditing(false);
                 }}
                 disabled={isEditing}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-800 disabled:cursor-not-allowed"
               >
                 {articlePlatforms.map((p) => (
                   <option key={p.value} value={p.value}>{p.label}</option>
@@ -596,70 +596,70 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">日期</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">日期</label>
               <input
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">文章标题</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">文章标题</label>
               <input
                 type="text"
                 value={articleTitle}
                 onChange={(e) => setArticleTitle(e.target.value)}
                 placeholder="输入文章标题"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">文章链接</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">文章链接</label>
               <input
                 type="url"
                 value={articleUrl}
                 onChange={(e) => setArticleUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">阅读量</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">阅读量</label>
               <input
                 type="number"
                 value={views}
                 onChange={(e) => setViews(e.target.value)}
                 placeholder="阅读量"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">点赞数</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">点赞数</label>
               <input
                 type="number"
                 value={likes}
                 onChange={(e) => setLikes(e.target.value)}
                 placeholder="点赞数"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">评论数</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">评论数</label>
               <input
                 type="number"
                 value={comments}
                 onChange={(e) => setComments(e.target.value)}
                 placeholder="评论数"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
@@ -674,11 +674,11 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
         </form>
       </div>
 
-      <div className="bg-gray-50 rounded-xl p-4">
+      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+          <h2 className="text-lg font-semibold text-slate-100">
             {platformLabel} 文章列表
-            <span className="ml-2 text-sm font-normal text-gray-500">
+            <span className="ml-2 text-sm font-normal text-slate-400">
               (共 {articles.length} 篇)
             </span>
           </h2>
@@ -686,31 +686,31 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
             href={`/content?platform=${platform}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline"
+            className="text-sm text-indigo-400 hover:text-indigo-300 hover:underline"
           >
             查看详情 →
           </a>
         </div>
 
         {articles.length === 0 ? (
-          <div className="text-gray-400 text-center py-8">暂无文章数据</div>
+          <div className="text-slate-500 text-center py-8">暂无文章数据</div>
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-2 px-3 font-medium text-gray-600">日期</th>
-                    <th className="text-left py-2 px-3 font-medium text-gray-600">标题</th>
-                    <th className="text-right py-2 px-3 font-medium text-gray-600">阅读</th>
-                    <th className="text-right py-2 px-3 font-medium text-gray-600">点赞</th>
-                    <th className="text-right py-2 px-3 font-medium text-gray-600">评论</th>
-                    <th className="text-left py-2 px-3 font-medium text-gray-600">操作</th>
+                  <tr className="border-b border-slate-700">
+                    <th className="text-left py-2 px-3 font-medium text-slate-400">日期</th>
+                    <th className="text-left py-2 px-3 font-medium text-slate-400">标题</th>
+                    <th className="text-right py-2 px-3 font-medium text-slate-400">阅读</th>
+                    <th className="text-right py-2 px-3 font-medium text-slate-400">点赞</th>
+                    <th className="text-right py-2 px-3 font-medium text-slate-400">评论</th>
+                    <th className="text-left py-2 px-3 font-medium text-slate-400">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {displayedArticles.map((article, index) => (
-                    <tr key={article.id || index} className="border-b border-gray-100 hover:bg-gray-100">
+                    <tr key={article.id || index} className="border-b border-slate-700/50 hover:bg-slate-700/30">
                       <td className="py-2 px-3">{article.date}</td>
                       <td className="py-2 px-3 max-w-xs truncate">
                         {article.article_url ? (
@@ -718,13 +718,13 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                             href={article.article_url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                            className="text-indigo-400 hover:text-indigo-300 hover:underline"
                             title={article.article_title}
                           >
                             {article.article_title}
                           </a>
                         ) : (
-                          <span className="text-gray-900" title={article.article_title}>
+                          <span className="text-slate-100" title={article.article_title}>
                             {article.article_title}
                           </span>
                         )}
@@ -735,7 +735,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                       <td className="py-2 px-3">
                         <button
                           onClick={() => handleEdit(article)}
-                          className="text-indigo-600 hover:text-indigo-800 text-sm mr-3"
+                          className="text-indigo-400 hover:text-indigo-300 text-sm mr-3"
                         >
                           编辑
                         </button>
@@ -757,17 +757,17 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                 <button
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                  className="px-3 py-1 text-sm bg-slate-800 border border-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700/30"
                 >
                   上一页
                 </button>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-slate-400">
                   第 {page} / {totalPages} 页
                 </span>
                 <button
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                  className="px-3 py-1 text-sm bg-slate-800 border border-slate-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700/30"
                 >
                   下一页
                 </button>
@@ -866,16 +866,16 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-50 rounded-xl p-4">
-        <h2 className="text-lg font-semibold text-gray-900 mb-2">提醒设置</h2>
-        <p className="text-sm text-gray-500 mb-4">
+      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+        <h2 className="text-lg font-semibold text-slate-100 mb-2">提醒设置</h2>
+        <p className="text-sm text-slate-400 mb-4">
           设置各平台的数据更新频率和提醒方式。当数据超过设定时间未更新时，会在后台首页显示警告。
           支持配置 Discord/Slack Webhook 来发送自动提醒。
         </p>
 
         {message && (
           <div className={`mb-4 p-3 rounded-lg text-sm ${
-            message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            message.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
           }`}>
             {message.text}
           </div>
@@ -884,11 +884,11 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">平台</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">平台</label>
               <select
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 {[...articlePlatforms, ...platforms.social.map(p => ({ value: p.value, label: p.label }))].map((p) => (
                   <option key={p.value} value={p.value}>{p.label}</option>
@@ -897,25 +897,25 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">更新频率（天）</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">更新频率（天）</label>
               <input
                 type="number"
                 value={updateFrequency}
                 onChange={(e) => setUpdateFrequency(parseInt(e.target.value) || 7)}
                 min={1}
                 max={365}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Webhook URL</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Webhook URL</label>
               <input
                 type="url"
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
                 placeholder="https://discord.com/api/webhooks/... 或 Slack webhook URL"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
@@ -928,7 +928,7 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
                 onChange={(e) => setReminderEnabled(e.target.checked)}
                 className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500"
               />
-              <span className="text-sm font-medium text-gray-700">启用提醒</span>
+              <span className="text-sm font-medium text-slate-300">启用提醒</span>
             </label>
 
             <button
@@ -942,27 +942,27 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
         </form>
       </div>
 
-      <div className="bg-gray-50 rounded-xl p-4">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">已配置的平台</h2>
+      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">已配置的平台</h2>
 
         {settings.length === 0 ? (
-          <div className="text-gray-400 text-center py-8">暂无配置</div>
+          <div className="text-slate-500 text-center py-8">暂无配置</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">平台</th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-600">更新频率</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">上次更新</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">上次提醒</th>
-                  <th className="text-center py-2 px-3 font-medium text-gray-600">状态</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">操作</th>
+                <tr className="border-b border-slate-700">
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">平台</th>
+                  <th className="text-right py-2 px-3 font-medium text-slate-400">更新频率</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">上次更新</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">上次提醒</th>
+                  <th className="text-center py-2 px-3 font-medium text-slate-400">状态</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">操作</th>
                 </tr>
               </thead>
               <tbody>
                 {settings.map((setting, index) => (
-                  <tr key={index} className="border-b border-gray-100">
+                  <tr key={index} className="border-b border-slate-700/50">
                     <td className="py-2 px-3 font-medium">{setting.platform}</td>
                     <td className="py-2 px-3 text-right">{setting.update_frequency_days} 天</td>
                     <td className="py-2 px-3">
@@ -978,8 +978,8 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
                     <td className="py-2 px-3 text-center">
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         setting.reminder_enabled 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-600'
+                          ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                          : 'bg-slate-800 text-slate-400'
                       }`}>
                         {setting.reminder_enabled ? '已启用' : '已禁用'}
                       </span>
@@ -987,13 +987,13 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
                     <td className="py-2 px-3">
                       <button
                         onClick={() => loadSettings(setting)}
-                        className="text-indigo-600 hover:text-indigo-800 text-sm mr-3"
+                        className="text-indigo-400 hover:text-indigo-300 text-sm mr-3"
                       >
                         编辑
                       </button>
                       <button
                         onClick={() => sendReminder(setting.platform)}
-                        className="text-blue-600 hover:text-blue-800 text-sm"
+                        className="text-blue-600 hover:text-blue-400 text-sm"
                         disabled={!setting.webhook_url}
                         title={setting.webhook_url ? '发送提醒' : '需要配置 Webhook URL'}
                       >
@@ -1008,9 +1008,9 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
         )}
       </div>
 
-      <div className="bg-blue-50 rounded-xl p-4">
-        <h3 className="font-semibold text-blue-800 mb-2">💡 如何配置 Webhook 提醒？</h3>
-        <div className="text-sm text-blue-700 space-y-2">
+      <div className="bg-indigo-500/10 rounded-xl p-4 border border-indigo-500/30">
+        <h3 className="font-semibold text-blue-400 mb-2">💡 如何配置 Webhook 提醒？</h3>
+        <div className="text-sm text-blue-300 space-y-2">
           <p><strong>Discord:</strong> 服务器设置 → 集成 → Webhook → 新建 Webhook → 复制 URL</p>
           <p><strong>Slack:</strong> Slack App → Incoming Webhooks → 添加新 Webhook → 选择频道 → 复制 URL</p>
           <p className="mt-2">配置 Webhook 后，系统会在数据超过设定时间未更新时自动发送提醒。</p>
@@ -1167,20 +1167,20 @@ function EventsSection() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-50 rounded-xl p-4">
+      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
         <div className="flex justify-between items-start mb-2">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold text-slate-100">
               {isEditing ? '编辑活动' : '创建新活动'}
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-400">
               {isEditing ? '修改活动信息后保存' : '录入活动基本信息，包括名称、日期、类型和地点等。'}
             </p>
           </div>
           {isEditing && (
             <button
               onClick={resetForm}
-              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-100"
+              className="px-4 py-2 text-sm text-slate-400 hover:text-slate-200 bg-slate-800 border border-slate-600 rounded-lg hover:bg-slate-700/30"
             >
               取消编辑
             </button>
@@ -1189,7 +1189,7 @@ function EventsSection() {
 
         {message && (
           <div className={`mb-4 p-3 rounded-lg text-sm ${
-            message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+            message.type === 'success' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
           }`}>
             {message.text}
           </div>
@@ -1198,34 +1198,34 @@ function EventsSection() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">活动名称</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">活动名称</label>
               <input
                 type="text"
                 value={eventName}
                 onChange={(e) => setEventName(e.target.value)}
                 placeholder="输入活动名称"
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">日期</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">日期</label>
               <input
                 type="date"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">活动类型</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">活动类型</label>
               <select
                 value={eventType}
                 onChange={(e) => setEventType(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 {eventTypeOptions.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -1236,82 +1236,82 @@ function EventsSection() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">地点</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">地点</label>
               <input
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="城市或线上"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">场馆</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">场馆</label>
               <input
                 type="text"
                 value={venue}
                 onChange={(e) => setVenue(e.target.value)}
                 placeholder="具体场馆名称"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">报名人数</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">报名人数</label>
               <input
                 type="number"
                 value={registrations}
                 onChange={(e) => setRegistrations(e.target.value)}
                 placeholder="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">参与人数</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">参与人数</label>
               <input
                 type="number"
                 value={participants}
                 onChange={(e) => setParticipants(e.target.value)}
                 placeholder="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">线上观看人数</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">线上观看人数</label>
               <input
                 type="number"
                 value={onlineViewers}
                 onChange={(e) => setOnlineViewers(e.target.value)}
                 placeholder="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
 
             <div className="md:col-span-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">活动链接</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">活动链接</label>
               <input
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">活动描述</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1">活动描述</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="简要描述活动内容..."
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
 
@@ -1325,28 +1325,28 @@ function EventsSection() {
         </form>
       </div>
 
-      <div className="bg-gray-50 rounded-xl p-4">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">
           活动列表
-          <span className="ml-2 text-sm font-normal text-gray-500">
+          <span className="ml-2 text-sm font-normal text-slate-400">
             (共 {events.length} 个)
           </span>
         </h2>
 
         {events.length === 0 ? (
-          <div className="text-gray-400 text-center py-8">暂无活动数据</div>
+          <div className="text-slate-500 text-center py-8">暂无活动数据</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">日期</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">活动名称</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">类型</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">地点</th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-600">报名</th>
-                  <th className="text-right py-2 px-3 font-medium text-gray-600">参与</th>
-                  <th className="text-left py-2 px-3 font-medium text-gray-600">操作</th>
+                <tr className="border-b border-slate-700">
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">日期</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">活动名称</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">类型</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">地点</th>
+                  <th className="text-right py-2 px-3 font-medium text-slate-400">报名</th>
+                  <th className="text-right py-2 px-3 font-medium text-slate-400">参与</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-400">操作</th>
                 </tr>
               </thead>
               <tbody>

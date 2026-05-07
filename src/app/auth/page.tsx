@@ -24,10 +24,10 @@ export default function AuthPage() {
       if (res.ok) {
         window.location.href = '/';
       } else {
-        setError(data.error || 'Invalid password');
+        setError(data.error || '密码错误');
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError('发生错误，请重试');
     } finally {
       setLoading(false);
     }

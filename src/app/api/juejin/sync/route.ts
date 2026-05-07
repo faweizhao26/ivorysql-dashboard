@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { saveArticleDetails, recalculateArticleStatsForDate } from '@/lib/db';
 
 const PLATFORM = 'juejin';
 const USER_ID = '761327331579511';
@@ -78,13 +79,12 @@ export async function scrapeJuejin(): Promise<{
       return { success: true, articles: 0 };
     }
 
-    const { saveArticleDetails, recalculateArticleStatsForDate } = require('@/lib/db');
     let saved = 0;
     const datesSet = new Set<string>();
 
     for (const article of allArticles) {
       try {
-        saveArticleDetails({
+        await saveArticleDetails({
           date: article.date,
           platform: PLATFORM,
           article_title: article.title,
@@ -102,9 +102,9 @@ export async function scrapeJuejin(): Promise<{
       }
     }
 
-    datesSet.forEach(date => {
-      recalculateArticleStatsForDate(PLATFORM, date);
-    });
+    await Promise.all(Array.from(datesSet).map(date =>
+      recalculateArticleStatsForDate(PLATFORM, date)
+    ));
 
     console.log('Juejin sync complete: ' + saved + ' articles saved');
 

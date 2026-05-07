@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { saveArticleDetails, recalculateArticleStatsForDate } from '@/lib/db';
 
 const PLATFORM = 'cnblogs';
 
@@ -65,13 +66,12 @@ export async function scrapeCnblogs(username: string = 'ivorysql'): Promise<{
       return { success: true, articles: 0 };
     }
 
-    const { saveArticleDetails, recalculateArticleStatsForDate } = require('@/lib/db');
     let saved = 0;
     const datesSet = new Set<string>();
 
     for (const article of allArticles) {
       try {
-        saveArticleDetails({
+        await saveArticleDetails({
           date: article.date || new Date().toISOString().split('T')[0],
           platform: PLATFORM,
           article_title: article.title,
@@ -90,9 +90,9 @@ export async function scrapeCnblogs(username: string = 'ivorysql'): Promise<{
       }
     }
 
-    datesSet.forEach(date => {
-      recalculateArticleStatsForDate(PLATFORM, date);
-    });
+    await Promise.all(Array.from(datesSet).map(date =>
+      recalculateArticleStatsForDate(PLATFORM, date)
+    ));
 
     console.log('cnblogs sync complete: ' + saved + ' articles saved');
 

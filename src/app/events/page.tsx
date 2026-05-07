@@ -141,8 +141,9 @@ export default function EventsPage() {
   const totalParticipants = events.reduce((sum, e) => sum + (e.participants || 0), 0);
   const totalRegistrations = events.reduce((sum, e) => sum + (e.registrations || 0), 0);
   const totalOnline = events.reduce((sum, e) => sum + (e.online_viewers || 0), 0);
-  const upcomingEvents = events.filter(e => new Date(e.event_date) >= new Date());
-  const pastEvents = events.filter(e => new Date(e.event_date) < new Date());
+  const today = new Date().toISOString().split('T')[0];
+  const upcomingEvents = events.filter(e => e.event_date >= today);
+  const pastEvents = events.filter(e => e.event_date < today);
 
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
 
