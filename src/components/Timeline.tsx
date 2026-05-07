@@ -70,7 +70,10 @@ export function ActivityTimeline({ events, title = '社区动态' }: ActivityTim
                   {event.source}
                 </span>
                 <span className="text-xs text-slate-500">
-                  {format(parseISO(event.date), 'MM/dd HH:mm')}
+                  {event.date.includes('T') || event.date.includes(':')
+                    ? format(parseISO(event.date), 'MM/dd HH:mm')
+                    : event.date
+                  }
                 </span>
               </div>
               <a

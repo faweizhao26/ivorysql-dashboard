@@ -64,6 +64,7 @@ export default function GitHubPage() {
   const [data, setData] = useState<GitHubPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncVer, setSyncVer] = useState(0);
 
   const isSingleDay = dateRange.start === dateRange.end;
 
@@ -75,7 +76,7 @@ export default function GitHubPage() {
         credentials: 'include'
       });
       if (res.ok) {
-        window.location.reload();
+        setSyncVer(v => v + 1);
       }
     } catch (err) {
       console.error(err);
@@ -104,7 +105,7 @@ export default function GitHubPage() {
       }
     }
     fetchData();
-  }, [dateRange]);
+  }, [dateRange, syncVer]);
 
   if (loading) {
     return (

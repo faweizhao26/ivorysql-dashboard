@@ -20,6 +20,12 @@ interface ChartDataPoint {
   [key: string]: string | number;
 }
 
+function formatDateTick(value: string): string {
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return value;
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
 interface LineChartProps {
   title: string;
   data: ChartDataPoint[];
@@ -46,10 +52,7 @@ export function TrendChart({ title, data, dataKey, color = '#6366F1', gradientId
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12, fill: '#94A3B8' }}
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                return `${date.getMonth() + 1}/${date.getDate()}`;
-              }}
+              tickFormatter={formatDateTick}
             />
             <YAxis tick={{ fontSize: 12, fill: '#94A3B8' }} />
             <Tooltip
@@ -95,10 +98,7 @@ export function MultiLineChart({ title, data, dataKeys, colors = ['#6366F1', '#1
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12, fill: '#94A3B8' }}
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                return `${date.getMonth() + 1}/${date.getDate()}`;
-              }}
+              tickFormatter={formatDateTick}
             />
             <YAxis tick={{ fontSize: 12, fill: '#94A3B8' }} />
             <Tooltip
@@ -145,10 +145,7 @@ export function BarChartComponent({ title, data, dataKey, color = '#6366F1' }: B
             <XAxis
               dataKey="date"
               tick={{ fontSize: 12, fill: '#94A3B8' }}
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                return `${date.getMonth() + 1}/${date.getDate()}`;
-              }}
+              tickFormatter={formatDateTick}
             />
             <YAxis tick={{ fontSize: 12, fill: '#94A3B8' }} />
             <Tooltip

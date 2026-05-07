@@ -99,11 +99,8 @@ export default function EventsPage() {
     if (!editingEvent) return;
 
     try {
-      const url = isEditing ? '/api/events' : '/api/events';
-      const method = isEditing ? 'PUT' : 'POST';
-      
-      const res = await fetch(url, {
-        method,
+      const res = await fetch('/api/events', {
+        method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingEvent)
       });
@@ -395,7 +392,7 @@ function EventCard({ event, isUpcoming = false, onEdit, onDelete }: {
   onEdit?: (event: ActivityEvent) => void;
   onDelete?: (id: number) => void;
 }) {
-  const eventType = eventTypeOptions.find(t => t.value === event.event_type) || eventTypeOptions[5];
+  const eventType = eventTypeOptions.find(t => t.value === event.event_type) || eventTypeOptions.find(t => t.value === 'other') || eventTypeOptions[0];
   const attendanceRate = event.registrations > 0
     ? Math.round((event.participants / event.registrations) * 100)
     : 0;

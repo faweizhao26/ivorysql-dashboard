@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import LogoutButton from "@/components/logout-button";
+import LastUpdated from "@/components/LastUpdated";
 
 export const metadata: Metadata = {
   title: "IvorySQL 运营数据面板",
@@ -51,7 +52,7 @@ export default function RootLayout({
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-sm text-muted hidden sm:block">
-                  最后更新: {new Date().toLocaleDateString('zh-CN')}
+                  <LastUpdated />
                 </span>
                 <LogoutButton />
               </div>
