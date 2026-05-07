@@ -261,11 +261,13 @@ export async function syncGitHubData(): Promise<{
     let contributors2024 = 0;
     let contributors2025 = 0;
     let contributors2026 = 0;
+    let contributorsBefore2026 = 0;
 
     contributorsMap.forEach((info) => {
       if (info.years.has(2024)) contributors2024++;
       if (info.years.has(2025)) contributors2025++;
       if (info.years.has(2026)) contributors2026++;
+      if (info.years.has(2024) || info.years.has(2025)) contributorsBefore2026++;
     });
 
     const totalContributors = contributorsMap.size;
@@ -287,12 +289,12 @@ export async function syncGitHubData(): Promise<{
     await saveContributorStats({
       date: today,
       total_contributors: totalContributors,
-      contributors_before_2026: contributors2024 + contributors2025,
+      contributors_before_2026: contributorsBefore2026,
       new_contributors_daily: 0,
       new_contributors_weekly: 0,
       new_contributors_monthly: contributors2026,
       new_contributors_quarterly: contributors2026,
-      cumulative_2026: totalContributors
+      cumulative_2026: contributors2026 + contributorsBefore2026
     });
 
     console.log(`Sync complete:`);

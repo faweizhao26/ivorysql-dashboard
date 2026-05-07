@@ -313,6 +313,7 @@ export async function updateAllGitHubData(): Promise<void> {
   const contributorStats = await analyzeContributors();
   
   const today = getToday();
+  const cumulative2026 = Object.values(contributorStats.cumulative_2026).pop() ?? 0;
   const stats: GitHubStats = {
     date: today,
     stars: repoData.stars,
@@ -321,25 +322,23 @@ export async function updateAllGitHubData(): Promise<void> {
     subscribers: repoData.subscribers,
     open_issues: repoData.open_issues,
     open_prs: repoData.open_prs,
-    contributors: contributorStats.total_before_2026 + (Object.values(contributorStats.cumulative_2026).pop() ?? 0),
+    contributors: cumulative2026,
     releases_count: repoData.releases_count
   };
   
-  const cumulative2026 = Object.values(contributorStats.cumulative_2026).pop() ?? 0;
-  
-  saveGitHubStats(stats);
+  await saveGitHubStats(stats);
   console.log(`Saved GitHub stats: Stars=${stats.stars}, Contributors=${stats.contributors}`);
   console.log(`  - Contributors before 2026: ${contributorStats.total_before_2026}`);
   console.log(`  - Contributors in 2026 (cumulative): ${cumulative2026}`);
-  
+
   const todayObj = new Date(today);
   const weekKey = getWeekKey(todayObj);
   const monthKey = getMonthKey(todayObj);
   const quarterKey = getQuarterKey(todayObj);
-  
-  saveContributorStats({
+
+  await saveContributorStats({
     date: today,
-    total_contributors: contributorStats.total_before_2026 + cumulative2026,
+    total_contributors: cumulative2026,
     contributors_before_2026: contributorStats.total_before_2026,
     new_contributors_daily: contributorStats.daily_2026[today] || 0,
     new_contributors_weekly: contributorStats.weekly_2026[weekKey] || 0,
@@ -349,7 +348,7 @@ export async function updateAllGitHubData(): Promise<void> {
   });
   
   const events = await fetchLatestEvents();
-  events.forEach(event => {
+  await Promise.all(events.map(event =>
     saveCommunityEvent({
       date: event.date,
       source: event.source,
@@ -357,8 +356,8 @@ export async function updateAllGitHubData(): Promise<void> {
       description: event.description,
       url: event.url,
       event_type: event.event_type
-    });
-  });
+    })
+  ));
   console.log(`Saved ${events.length} community events`);
   
   console.log('GitHub data update completed!');

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { saveManualData, getManualData, saveSocialStats, saveArticleStats, getToday } from '@/lib/db';
+import { saveManualData, getManualData, saveSocialStats, saveArticleStats, getToday, getSocialStatsForDate, getArticleStatsForDate } from '@/lib/db';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -28,30 +28,36 @@ export async function POST(request: Request) {
     }
 
     if (category === 'social' && platform) {
+      const existing = await getSocialStatsForDate(date);
+      const prev = existing.find(s => s.platform === platform);
+
       await saveSocialStats({
         date,
         platform,
-        followers: metric === 'followers' ? value : 0,
-        posts: metric === 'posts' ? value : 0,
-        views: metric === 'views' ? value : 0,
-        likes: metric === 'likes' ? value : 0,
-        shares: metric === 'shares' ? value : 0,
-        comments: metric === 'comments' ? value : 0,
-        subscribers: metric === 'subscribers' ? value : 0,
-        video_views: metric === 'video_views' ? value : 0,
+        followers: metric === 'followers' ? value : (prev?.followers || 0),
+        posts: metric === 'posts' ? value : (prev?.posts || 0),
+        views: metric === 'views' ? value : (prev?.views || 0),
+        likes: metric === 'likes' ? value : (prev?.likes || 0),
+        shares: metric === 'shares' ? value : (prev?.shares || 0),
+        comments: metric === 'comments' ? value : (prev?.comments || 0),
+        subscribers: metric === 'subscribers' ? value : (prev?.subscribers || 0),
+        video_views: metric === 'video_views' ? value : (prev?.video_views || 0),
       });
     } else if (category === 'article' && platform) {
+      const existing = await getArticleStatsForDate(date);
+      const prev = existing.find(s => s.platform === platform);
+
       await saveArticleStats({
         date,
         platform,
-        article_count: metric === 'article_count' ? value : 0,
-        total_views: metric === 'total_views' ? value : 0,
-        avg_views: metric === 'avg_views' ? value : 0,
-        likes: metric === 'likes' ? value : 0,
-        bookmarks: metric === 'bookmarks' ? value : 0,
-        comments: metric === 'comments' ? value : 0,
-        followers: metric === 'followers' ? value : 0,
-        new_articles: metric === 'new_articles' ? value : 0,
+        article_count: metric === 'article_count' ? value : (prev?.article_count || 0),
+        total_views: metric === 'total_views' ? value : (prev?.total_views || 0),
+        avg_views: metric === 'avg_views' ? value : (prev?.avg_views || 0),
+        likes: metric === 'likes' ? value : (prev?.likes || 0),
+        bookmarks: metric === 'bookmarks' ? value : (prev?.bookmarks || 0),
+        comments: metric === 'comments' ? value : (prev?.comments || 0),
+        followers: metric === 'followers' ? value : (prev?.followers || 0),
+        new_articles: metric === 'new_articles' ? value : (prev?.new_articles || 0),
       });
     } else {
       await saveManualData({

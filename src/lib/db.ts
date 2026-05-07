@@ -790,8 +790,9 @@ export async function recalculateArticleStatsForDate(platform: string, date: str
       total_views = EXCLUDED.total_views,
       avg_views = EXCLUDED.avg_views,
       likes = EXCLUDED.likes,
-      bookmarks = EXCLUDED.bookmarks,
+      bookmarks = article_stats.bookmarks,
       comments = EXCLUDED.comments,
+      followers = article_stats.followers,
       new_articles = EXCLUDED.new_articles
   `, [date, platform, article_count, total_views, avg_views, likes, 0, comments, 0, article_count]);
 }
