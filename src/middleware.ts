@@ -14,6 +14,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Vercel cron jobs have no auth cookie, allow them through
+  if (request.headers.get('x-vercel-cron') === '1') {
+    return NextResponse.next();
+  }
+
   const accessPassword = process.env.ACCESS_PASSWORD;
   const adminPassword = process.env.ADMIN_PASSWORD;
 

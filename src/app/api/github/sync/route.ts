@@ -144,9 +144,5 @@ export async function POST() {
 }
 
 export async function GET() {
-  return NextResponse.json({
-    configured: !!GITHUB_TOKEN,
-    org: GITHUB_ORG,
-    repo: GITHUB_REPO
-  });
+  return POST();
 }

@@ -126,9 +126,5 @@ export async function POST() {
 }
 
 export async function GET() {
-  return NextResponse.json({
-    platform: 'juejin',
-    userId: USER_ID,
-    configured: true
-  });
+  return POST();
 }

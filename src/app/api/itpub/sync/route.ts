@@ -14,9 +14,11 @@ export async function POST() {
 }
 
 export async function GET() {
-  return NextResponse.json({
-    platform: 'itpub',
-    userId: ITPUB_USER_ID,
-    configured: true
-  });
+  try {
+    const result = await scrapeITPub(ITPUB_USER_ID);
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error('ITPub sync error:', error);
+    return NextResponse.json({ error: error.message || 'Failed to sync ITPub data' }, { status: 500 });
+  }
 }

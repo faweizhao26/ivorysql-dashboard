@@ -141,10 +141,5 @@ export async function POST() {
 }
 
 export async function GET() {
-  return NextResponse.json({
-    platform: 'csdn',
-    username: 'IvorySQL',
-    configured: true,
-    note: 'CSDN has anti-scraping protection. Only recent articles (first page) can be fetched.'
-  });
+  return POST();
 }

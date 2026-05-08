@@ -114,9 +114,5 @@ export async function POST() {
 }
 
 export async function GET() {
-  return NextResponse.json({
-    platform: 'cnblogs',
-    username: 'ivorysql',
-    configured: true
-  });
+  return POST();
 }
