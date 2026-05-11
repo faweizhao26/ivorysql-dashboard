@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import { saveArticleDetails, recalculateArticleStatsForDate } from '@/lib/db';
+import { saveArticleDetails, recalculateArticleStatsForDate, deleteArticleDetailsByDate } from '@/lib/db';
 
 const PLATFORM = 'csdn';
 
 function parseCSDNDate(dateStr: string): string {
   if (!dateStr) return new Date().toISOString().split('T')[0];
-  
+
   const now = new Date();
   dateStr = dateStr.trim();
-  
+
   if (dateStr.includes('小时前') || dateStr.includes('hours ago')) {
     const hours = parseInt(dateStr.match(/(\d+)/)?.[1] || '0');
     const d = new Date(now.getTime() - hours * 60 * 60 * 1000);
@@ -22,45 +22,47 @@ function parseCSDNDate(dateStr: string): string {
     const d = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
     return d.toISOString().split('T')[0];
   }
-  
-  const match = dateStr.match(/(\d{4})[.-](\d{2})[.-](\d{2})/);
+
+  const match = dateStr.match(/(\d{4})[.\/-](\d{1,2})[.\/-](\d{1,2})/);
   if (match) {
-    return match[1] + '-' + match[2] + '-' + match[3];
+    return match[1] + '-' + match[2].padStart(2, '0') + '-' + match[3].padStart(2, '0');
   }
-  
+
   return new Date().toISOString().split('T')[0];
 }
 
 function extractArticles(html: string) {
-  const articles: { title: string; link: string; views: number; date: string }[] = [];
-  
-  const articleBlocks = html.match(/<article class="blog-list-box"([\s\S]*?)<\/article>/g) || [];
-  
+  const articles: { title: string; link: string; views: number; likes: number; comments: number; date: string }[] = [];
+
+  const articleBlocks = html.match(/<article class="blog-list-box"[\s\S]*?<\/article>/g) || [];
+
   for (const block of articleBlocks) {
     const titleMatch = block.match(/<h4[^>]*>([^<]+)<\/h4>/);
     const linkMatch = block.match(/href="(https:\/\/blog\.csdn\.net\/[^"]+article\/details\/[^"]+)"/);
-    const viewsMatch = block.match(/view-num[^>]*>\s*([^<]+)<span[^>]*>\s*阅读/);
-    const dateMatch = block.match(/博文更新于\s*([^<]+)</);
-    
-    if (titleMatch && linkMatch) {
-      const title = titleMatch[1].trim();
-      const link = linkMatch[1];
-      
-      let views = 0;
-      if (viewsMatch) {
-        const viewsStr = viewsMatch[1].replace(/[^\d]/g, '');
-        views = parseInt(viewsStr) || 0;
-      }
-      
-      let date = '';
-      if (dateMatch) {
-        date = parseCSDNDate(dateMatch[1]);
-      }
-      
-      articles.push({ title, link, views, date });
+
+    if (!titleMatch || !linkMatch) continue;
+
+    const title = titleMatch[1].trim();
+    const link = linkMatch[1];
+
+    const viewsMatch = block.match(/view-num[^>]*>(\d+)</);
+    const views = viewsMatch ? parseInt(viewsMatch[1]) : 0;
+
+    const likesMatch = block.match(/give-like-num[^>]*>(\d+)</);
+    const likes = likesMatch ? parseInt(likesMatch[1]) : 0;
+
+    const commentsMatch = block.match(/comment-num[^>]*>(\d+)</);
+    const comments = commentsMatch ? parseInt(commentsMatch[1]) : 0;
+
+    const dateMatch = block.match(/博文更新于\s*[\d.]+\s*·/);
+    let date = '';
+    if (dateMatch) {
+      date = parseCSDNDate(dateMatch[0]);
     }
+
+    articles.push({ title, link, views, likes, comments, date });
   }
-  
+
   return articles;
 }
 
@@ -80,22 +82,27 @@ export async function scrapeCSDN(username: string = 'IvorySQL'): Promise<{
   error?: string;
 }> {
   const baseUrl = `https://blog.csdn.net/${username}`;
-  
+
   console.log(`Starting CSDN sync for user: ${username}`);
 
   try {
     const html = await fetchPage(baseUrl);
     const articles = extractArticles(html);
-    
+
     console.log(`Found ${articles.length} articles`);
 
     if (articles.length === 0) {
       return { success: true, articles: 0 };
     }
 
-    let saved = 0;
-    const datesSet = new Set<string>();
+    const datesSet = new Set(articles.map(a => a.date).filter(Boolean));
 
+    // Delete old data for dates being synced, then re-insert
+    await Promise.all(Array.from(datesSet).map(date =>
+      deleteArticleDetailsByDate(PLATFORM, date)
+    ));
+
+    let saved = 0;
     for (const article of articles) {
       try {
         await saveArticleDetails({
@@ -104,16 +111,12 @@ export async function scrapeCSDN(username: string = 'IvorySQL'): Promise<{
           article_title: article.title,
           article_url: article.link,
           views: article.views,
-          likes: 0,
-          comments: 0
+          likes: article.likes,
+          comments: article.comments
         });
-        const dateKey = article.date.split(' ')[0];
-        if (dateKey) datesSet.add(dateKey);
         saved++;
       } catch (err: any) {
-        if (!err.message.includes('UNIQUE')) {
-          console.error('Error saving article:', err.message);
-        }
+        console.error('Error saving article:', err.message);
       }
     }
 
