@@ -641,6 +641,10 @@ export async function saveArticleDetails(article: ArticleDetails): Promise<void>
   `, [article.date, article.platform, article.article_title, article.article_url || null, article.views, article.likes, article.comments]);
 }
 
+export async function deleteArticleDetailsByDate(platform: string, date: string): Promise<void> {
+  await pool.query('DELETE FROM article_details WHERE platform = $1 AND date = $2', [platform, date]);
+}
+
 export async function getArticleDetailsByPlatform(platform: string, days: number = 30): Promise<ArticleDetails[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
