@@ -3,30 +3,39 @@ import { saveArticleDetails, recalculateArticleStatsForDate } from '@/lib/db';
 
 const PLATFORM = 'cnblogs';
 
-function extractArticles(html: string, fullHtml: string) {
+function extractArticles(html: string) {
   const articles: { title: string; link: string; views: number; date: string }[] = [];
-  
-  const titleMatches = html.matchAll(/<a class="postTitle2[^"]*" href="([^"]+)"[^>]*>[\s\S]*?<span>([^<]+)<\/span>/g);
-  
-  for (const match of titleMatches) {
-    const link = match[1];
-    const title = match[2].trim();
-    
-    const dateMatch = fullHtml.substring(fullHtml.indexOf(match[0]) - 500, fullHtml.indexOf(match[0])).match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
-    
-    let date = '';
-    if (dateMatch) {
-      date = dateMatch[1] + '-' + dateMatch[2].padStart(2, '0') + '-' + dateMatch[3].padStart(2, '0');
-    }
-    
-    const viewMatch = fullHtml.substring(fullHtml.indexOf(match[0]), fullHtml.indexOf(match[0]) + 1000).match(/class="post-view-count"[^>]*>阅读\((\d+)\)/);
-    const views = viewMatch ? parseInt(viewMatch[1]) : 0;
-    
-    if (title && link) {
-      articles.push({ title, link, views, date });
+
+  const dayBlocks = html.match(/<div class="day"[^>]*>[\s\S]*?(?=<div class="day"|$)/g);
+  if (!dayBlocks) return articles;
+
+  for (const block of dayBlocks) {
+    const dayDateMatch = block.match(/<a[^>]*>(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    const dayDate = dayDateMatch
+      ? `${dayDateMatch[1]}-${dayDateMatch[2].padStart(2, '0')}-${dayDateMatch[3].padStart(2, '0')}`
+      : '';
+
+    const postMatches = block.matchAll(/<a class="postTitle2[^"]*" href="([^"]+)"[^>]*>\s*<span>([^<]+)<\/span>/g);
+
+    let lastIndex = 0;
+    for (const postMatch of postMatches) {
+      const link = postMatch[1];
+      const title = postMatch[2].trim();
+      const postIndex = postMatch.index;
+
+      const postDescSection = block.substring(postIndex);
+      const postedMatch = postDescSection.match(/posted\s*@\s*(\d{4}-\d{2}-\d{2})/);
+      const date = postedMatch ? postedMatch[1] : dayDate;
+
+      const viewMatch = postDescSection.match(/class="post-view-count"[^>]*>\s*阅读\((\d+)\)/);
+      const views = viewMatch ? parseInt(viewMatch[1]) : 0;
+
+      if (title && link) {
+        articles.push({ title, link, views, date });
+      }
     }
   }
-  
+
   return articles;
 }
 
@@ -46,17 +55,17 @@ export async function scrapeCnblogs(username: string = 'ivorysql'): Promise<{
   error?: string;
 }> {
   const baseUrl = 'https://www.cnblogs.com/' + username;
-  
+
   console.log('Starting cnblogs sync for user: ' + username);
 
   try {
     const allArticles: { title: string; link: string; views: number; date: string }[] = [];
-    
+
     for (let page = 1; page <= 5; page++) {
       const url = page === 1 ? baseUrl : baseUrl + '?page=' + page;
       const html = await fetchPage(url);
-      const articles = extractArticles(html, html);
-      
+      const articles = extractArticles(html);
+
       if (articles.length === 0) break;
       allArticles.push(...articles);
       await new Promise(r => setTimeout(r, 500));
@@ -80,8 +89,7 @@ export async function scrapeCnblogs(username: string = 'ivorysql'): Promise<{
           likes: 0,
           comments: 0
         });
-        const dateKey = article.date.split(' ')[0];
-        if (dateKey) datesSet.add(dateKey);
+        if (article.date) datesSet.add(article.date);
         saved++;
       } catch (err: any) {
         if (!err.message.includes('UNIQUE')) {
@@ -95,7 +103,6 @@ export async function scrapeCnblogs(username: string = 'ivorysql'): Promise<{
     ));
 
     console.log('cnblogs sync complete: ' + saved + ' articles saved');
-
     return { success: true, articles: saved };
   } catch (error: any) {
     console.error('cnblogs sync error:', error);
