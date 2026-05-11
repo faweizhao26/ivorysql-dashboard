@@ -75,7 +75,7 @@ export async function scrapeITPub(userId: string): Promise<{
 
     for (const article of allArticles) {
       try {
-        saveArticleDetails({
+        await saveArticleDetails({
           date: article.date,
           platform: PLATFORM,
           article_title: article.title,
@@ -84,7 +84,7 @@ export async function scrapeITPub(userId: string): Promise<{
           likes: 0,
           comments: 0
         });
-        datesSet.add(article.date.split(' ')[0]);
+        if (article.date) datesSet.add(article.date.split(' ')[0]);
         saved++;
       } catch (err: any) {
         if (!err.message.includes('UNIQUE')) {
@@ -93,9 +93,9 @@ export async function scrapeITPub(userId: string): Promise<{
       }
     }
 
-    datesSet.forEach(date => {
-      recalculateArticleStatsForDate(PLATFORM, date);
-    });
+    await Promise.all(Array.from(datesSet).map(date =>
+      recalculateArticleStatsForDate(PLATFORM, date)
+    ));
 
     console.log(`ITPub sync complete: ${saved} articles saved`);
 
