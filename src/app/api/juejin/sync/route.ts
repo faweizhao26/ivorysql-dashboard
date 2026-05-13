@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { saveArticleDetails, recalculateArticleStatsForDate, deleteArticleDetailsByDate } from '@/lib/db';
+import { saveArticleDetails, recalculateArticleStatsForDate } from '@/lib/db';
 
 const PLATFORM = 'juejin';
 const USER_ID = '761327331579511';
@@ -86,14 +86,9 @@ export async function scrapeJuejin(): Promise<{
       return { success: true, articles: 0 };
     }
 
-    const datesSet = new Set(allArticles.map(a => a.date).filter(Boolean));
-
-    // Delete old data for dates being synced
-    await Promise.all(Array.from(datesSet).map(date =>
-      deleteArticleDetailsByDate(PLATFORM, date)
-    ));
-
     let saved = 0;
+    const datesSet = new Set<string>();
+
     for (const article of allArticles) {
       try {
         await saveArticleDetails({
@@ -105,6 +100,7 @@ export async function scrapeJuejin(): Promise<{
           likes: article.likes,
           comments: 0
         });
+        if (article.date) datesSet.add(article.date);
         saved++;
       } catch (err: any) {
         console.error('Error saving article:', err.message);

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { saveArticleDetails, recalculateArticleStatsForDate, deleteArticleDetailsByDate } from '@/lib/db';
+import { saveArticleDetails, recalculateArticleStatsForDate } from '@/lib/db';
 
 const PLATFORM = 'csdn';
 
@@ -95,14 +95,9 @@ export async function scrapeCSDN(username: string = 'IvorySQL'): Promise<{
       return { success: true, articles: 0 };
     }
 
-    const datesSet = new Set(articles.map(a => a.date).filter(Boolean));
-
-    // Delete old data for dates being synced, then re-insert
-    await Promise.all(Array.from(datesSet).map(date =>
-      deleteArticleDetailsByDate(PLATFORM, date)
-    ));
-
     let saved = 0;
+    const datesSet = new Set<string>();
+
     for (const article of articles) {
       try {
         await saveArticleDetails({
@@ -114,6 +109,7 @@ export async function scrapeCSDN(username: string = 'IvorySQL'): Promise<{
           likes: article.likes,
           comments: article.comments
         });
+        if (article.date) datesSet.add(article.date);
         saved++;
       } catch (err: any) {
         console.error('Error saving article:', err.message);

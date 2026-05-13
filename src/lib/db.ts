@@ -638,6 +638,11 @@ export async function saveArticleDetails(article: ArticleDetails): Promise<void>
     INSERT INTO article_details 
     (date, platform, article_title, article_url, views, likes, comments)
     VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ON CONFLICT (date, platform, article_title) DO UPDATE SET
+      article_url = EXCLUDED.article_url,
+      views = EXCLUDED.views,
+      likes = EXCLUDED.likes,
+      comments = EXCLUDED.comments
   `, [article.date, article.platform, article.article_title, article.article_url || null, article.views, article.likes, article.comments]);
 }
 
