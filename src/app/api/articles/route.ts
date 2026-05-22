@@ -60,11 +60,12 @@ export async function GET(request: Request) {
 
     const platforms = await getAllArticleDetailsPlatforms();
     const allData: Record<string, any[]> = {};
-    
+
     for (const p of platforms) {
       const data = await getArticleDetailsByPlatform(p, 365);
-      if (data.length > 0) {
-        allData[p] = data;
+      const filtered = data.filter((d: any) => d.date >= startDate && d.date <= endDate);
+      if (filtered.length > 0) {
+        allData[p] = filtered;
       }
     }
 
