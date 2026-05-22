@@ -23,7 +23,7 @@ export function StatCard({ title, value, change, changeLabel, prefix = '', suffi
         )}
         <span className="text-sm text-slate-400 font-medium">{title}</span>
       </div>
-      <div className="text-4xl font-bold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent] text-transparent mb-2">
+      <div className="text-4xl font-bold text-slate-900 dark:bg-gradient-to-r dark:from-slate-100 dark:to-slate-300 dark:bg-clip-text dark:[-webkit-background-clip:text] dark:[-webkit-text-fill-color:transparent] dark:text-transparent mb-2">
         {prefix}{typeof value === 'number' ? value.toLocaleString() : value}{suffix}
       </div>
       {change !== undefined && change !== 0 && (
@@ -66,7 +66,7 @@ export function ComparisonStatCard({
         )}
         <span className="text-sm text-slate-400 font-medium">{title}</span>
       </div>
-      <div className="text-4xl font-bold bg-gradient-to-r from-slate-100 to-slate-300 bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent] text-transparent mb-1">
+      <div className="text-4xl font-bold text-slate-900 dark:bg-gradient-to-r dark:from-slate-100 dark:to-slate-300 dark:bg-clip-text dark:[-webkit-background-clip:text] dark:[-webkit-text-fill-color:transparent] dark:text-transparent mb-1">
         {prefix}{typeof current === 'number' ? current.toLocaleString() : current}{suffix}
       </div>
       {previous !== undefined && (
@@ -110,19 +110,19 @@ export function PlatformCard({ name, icon, platform, followers, views, articles,
         {followers !== undefined && (
           <div className="flex justify-between items-center">
             <span className="text-slate-500">粉丝</span>
-            <span className="font-semibold bg-gradient-to-r from-slate-200 to-slate-300 bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent] text-transparent">{followers.toLocaleString()}</span>
+            <span className="text-slate-900 font-semibold dark:bg-gradient-to-r dark:from-slate-200 dark:to-slate-300 dark:bg-clip-text dark:[-webkit-background-clip:text] dark:[-webkit-text-fill-color:transparent] dark:text-transparent">{followers.toLocaleString()}</span>
           </div>
         )}
         {views !== undefined && (
           <div className="flex justify-between items-center">
             <span className="text-slate-500">阅读/播放</span>
-            <span className="font-semibold bg-gradient-to-r from-slate-200 to-slate-300 bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent] text-transparent">{views.toLocaleString()}</span>
+            <span className="text-slate-900 font-semibold dark:bg-gradient-to-r dark:from-slate-200 dark:to-slate-300 dark:bg-clip-text dark:[-webkit-background-clip:text] dark:[-webkit-text-fill-color:transparent] dark:text-transparent">{views.toLocaleString()}</span>
           </div>
         )}
         {articles !== undefined && (
           <div className="flex justify-between items-center">
             <span className="text-slate-500">文章</span>
-            <span className="font-semibold bg-gradient-to-r from-slate-200 to-slate-300 bg-clip-text [-webkit-background-clip:text] [-webkit-text-fill-color:transparent] text-transparent">{articles.toLocaleString()}</span>
+            <span className="text-slate-900 font-semibold dark:bg-gradient-to-r dark:from-slate-200 dark:to-slate-300 dark:bg-clip-text dark:[-webkit-background-clip:text] dark:[-webkit-text-fill-color:transparent] dark:text-transparent">{articles.toLocaleString()}</span>
           </div>
         )}
       </div>
