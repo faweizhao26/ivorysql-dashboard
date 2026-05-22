@@ -84,7 +84,7 @@ export default function ContentPage() {
         });
         const [contentRes, articlesRes] = await Promise.all([
           fetch(`/api/content?${params}`, { credentials: 'include' }),
-          fetch(`/api/articles`, { credentials: 'include' })
+          fetch(`/api/articles?start=${dateRange.start}&end=${dateRange.end}`, { credentials: 'include' })
         ]);
         
         if (contentRes.ok) {
