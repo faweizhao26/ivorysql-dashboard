@@ -262,6 +262,9 @@ export interface ArticleDetails {
   views: number;
   likes: number;
   comments: number;
+  content_category?: string;
+  content_source?: string;
+  published_date?: string;
 }
 
 export interface ReminderSettings {
@@ -619,14 +622,18 @@ export async function getEventsForDate(date: string): Promise<CommunityEvent[]> 
 export async function saveArticleDetails(article: ArticleDetails): Promise<void> {
   await pool.query(`
     INSERT INTO article_details 
-    (date, platform, article_title, article_url, views, likes, comments)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    (date, platform, article_title, article_url, views, likes, comments, content_category, content_source, published_date)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     ON CONFLICT (date, platform, article_title) DO UPDATE SET
       article_url = EXCLUDED.article_url,
       views = EXCLUDED.views,
       likes = EXCLUDED.likes,
-      comments = EXCLUDED.comments
-  `, [article.date, article.platform, article.article_title, article.article_url || null, article.views, article.likes, article.comments]);
+      comments = EXCLUDED.comments,
+      content_category = COALESCE(EXCLUDED.content_category, article_details.content_category),
+      content_source = COALESCE(EXCLUDED.content_source, article_details.content_source)
+  `, [article.date, article.platform, article.article_title, article.article_url || null,
+    article.views, article.likes, article.comments,
+    article.content_category || null, article.content_source || null, article.published_date || null]);
 }
 
 export async function deleteArticleDetailsByDate(platform: string, date: string): Promise<void> {

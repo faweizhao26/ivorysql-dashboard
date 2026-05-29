@@ -30,6 +30,8 @@ interface ArticleDetail {
   views: number;
   likes: number;
   comments: number;
+  content_category?: string;
+  content_source?: string;
 }
 
 interface ArticlesResponse {
@@ -360,6 +362,46 @@ export default function ContentPage() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">内容分类</label>
+                <select
+                  value={editingArticle.content_category || ''}
+                  onChange={(e) => setEditingArticle({ ...editingArticle, content_category: e.target.value || undefined })}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">-- 不设置 --</option>
+                  <option>PG 技术日志</option>
+                  <option>社区活动相关</option>
+                  <option>社区新闻动态</option>
+                  <option>发版公告</option>
+                  <option>IvorySQL 技术文章-研发供稿</option>
+                  <option>IvorySQL 技术文章-来自社区</option>
+                  <option>PG 技术文章-非翻译</option>
+                  <option>PG 技术文章-翻译</option>
+                  <option>HOW 2026 演讲整理</option>
+                  <option>HOW 2025 演讲整理</option>
+                  <option>节日祝福</option>
+                  <option>其他</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">内容来源</label>
+                <select
+                  value={editingArticle.content_source || ''}
+                  onChange={(e) => setEditingArticle({ ...editingArticle, content_source: e.target.value || undefined })}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">-- 不设置 --</option>
+                  <option>研发供稿</option>
+                  <option>活动演讲</option>
+                  <option>PGnexus 邮件</option>
+                  <option>社区</option>
+                  <option>PGWeekly</option>
+                  <option>其他</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
                 <label className="block text-sm font-medium text-slate-300 mb-1">文章链接</label>
                 <input
                   type="url"
@@ -413,6 +455,7 @@ export default function ContentPage() {
                       <tr className="bg-slate-900/50 border-b border-slate-700">
                         <th className="text-left py-3 px-4 font-medium text-slate-400">日期</th>
                         <th className="text-left py-3 px-4 font-medium text-slate-400">文章标题</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-400 hidden md:table-cell">分类/来源</th>
                         <th className="text-right py-3 px-4 font-medium text-slate-400">阅读</th>
                         <th className="text-left py-3 px-4 font-medium text-slate-400 w-24">操作</th>
                       </tr>
@@ -436,6 +479,14 @@ export default function ContentPage() {
                               <span className="text-slate-200" title={article.article_title}>
                                 {article.article_title}
                               </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-4 text-slate-400 hidden md:table-cell text-xs">
+                            {article.content_category && (
+                              <span className="inline-block px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 mr-1">{article.content_category}</span>
+                            )}
+                            {article.content_source && (
+                              <span className="inline-block px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400">{article.content_source}</span>
                             )}
                           </td>
                           <td className="py-2 px-4 text-right font-medium text-slate-200">{article.views.toLocaleString()}</td>
