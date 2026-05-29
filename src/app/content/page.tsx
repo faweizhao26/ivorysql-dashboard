@@ -69,6 +69,7 @@ export default function ContentPage() {
   const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
   const [data, setData] = useState<ContentData | null>(null);
   const [articleDetails, setArticleDetails] = useState<ArticlesResponse | null>(null);
+  const [allArticleDetails, setAllArticleDetails] = useState<ArticlesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingArticle, setEditingArticle] = useState<ArticleDetail | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -84,18 +85,23 @@ export default function ContentPage() {
           start: dateRange.start,
           end: dateRange.end
         });
-        const [contentRes, articlesRes] = await Promise.all([
+        const [contentRes, statsArticlesRes, allArticlesRes] = await Promise.all([
           fetch(`/api/content?${params}`, { credentials: 'include' }),
-          fetch(`/api/articles?start=${dateRange.start}&end=${dateRange.end}`, { credentials: 'include' })
+          fetch(`/api/articles?start=${dateRange.start}&end=${dateRange.end}`, { credentials: 'include' }),
+          fetch(`/api/articles?start=2020-01-01&end=2099-12-31`, { credentials: 'include' })
         ]);
         
         if (contentRes.ok) {
           const json = await contentRes.json();
           setData(json);
         }
-        if (articlesRes.ok) {
-          const json = await articlesRes.json();
+        if (statsArticlesRes.ok) {
+          const json = await statsArticlesRes.json();
           setArticleDetails(json);
+        }
+        if (allArticlesRes.ok) {
+          const json = await allArticlesRes.json();
+          setAllArticleDetails(json);
         }
       } catch (err) {
         console.error(err);
@@ -168,7 +174,8 @@ export default function ContentPage() {
   }
 
   const articleDataList = data?.articles || [];
-  const allArticleDetails = articleDetails?.articles || {};
+  const statsArticleDetails = articleDetails?.articles || {};
+  const allArticlesForTable = allArticleDetails?.articles || {};
 
   const articleData = allArticlePlatforms.reduce((acc, { key }) => {
     const platformItems = articleDataList.filter(s => s.platform === key);
@@ -178,7 +185,7 @@ export default function ContentPage() {
   }, {} as Record<string, any>);
 
   const platformDetailsFromArticles = allArticlePlatforms.reduce((acc, { key }) => {
-    const articles = allArticleDetails[key] || [];
+    const articles = statsArticleDetails[key] || [];
     if (articles.length > 0) {
       const totalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
       const totalLikes = articles.reduce((sum, a) => sum + (a.likes || 0), 0);
@@ -197,7 +204,7 @@ export default function ContentPage() {
   }, {} as Record<string, any>);
 
   const totals = allArticlePlatforms.reduce((acc, { key }) => {
-    const articles = allArticleDetails[key] || [];
+    const articles = statsArticleDetails[key] || [];
     if (articles.length > 0) {
       acc.articles += articles.length;
       acc.views += articles.reduce((sum, a) => sum + (a.views || 0), 0);
@@ -226,7 +233,7 @@ export default function ContentPage() {
             </span>
           )}
           <button
-            onClick={() => exportContentData(data, allArticleDetails, currentPeriod)}
+            onClick={() => exportContentData(data, statsArticleDetails, currentPeriod)}
             className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
           >
             导出 CSV
@@ -269,7 +276,7 @@ export default function ContentPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {allArticlePlatforms.map(({ key, name }) => {
             const current = articleData[key];
-            const articles = allArticleDetails[key] || [];
+            const articles = statsArticleDetails[key] || [];
             const platformArticleCount = articles.length;
             const platformTotalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
             const platformAvgViews = platformArticleCount > 0 ? Math.round(platformTotalViews / platformArticleCount) : 0;
@@ -430,12 +437,12 @@ export default function ContentPage() {
         </div>
       )}
 
-      {Object.keys(allArticleDetails).length > 0 && (
+      {Object.keys(allArticlesForTable).length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-slate-100 mb-4">文章详情列表</h2>
 
           {allArticlePlatforms.map(({ key, name }) => {
-            const articles = allArticleDetails[key];
+            const articles = allArticlesForTable[key];
             if (!articles || articles.length === 0) return null;
 
             const currentPage = articlePages[key] || 1;
@@ -455,7 +462,8 @@ export default function ContentPage() {
                       <tr className="bg-slate-900/50 border-b border-slate-700">
                         <th className="text-left py-3 px-4 font-medium text-slate-400">日期</th>
                         <th className="text-left py-3 px-4 font-medium text-slate-400">文章标题</th>
-                        <th className="text-left py-3 px-4 font-medium text-slate-400 hidden md:table-cell">分类/来源</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-400 hidden md:table-cell w-28">分类</th>
+                        <th className="text-left py-3 px-4 font-medium text-slate-400 hidden md:table-cell w-24">来源</th>
                         <th className="text-right py-3 px-4 font-medium text-slate-400">阅读</th>
                         <th className="text-left py-3 px-4 font-medium text-slate-400 w-24">操作</th>
                       </tr>
@@ -483,8 +491,10 @@ export default function ContentPage() {
                           </td>
                           <td className="py-2 px-4 text-slate-400 hidden md:table-cell text-xs">
                             {article.content_category && (
-                              <span className="inline-block px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 mr-1">{article.content_category}</span>
+                              <span className="inline-block px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400">{article.content_category}</span>
                             )}
+                          </td>
+                          <td className="py-2 px-4 text-slate-400 hidden md:table-cell text-xs">
                             {article.content_source && (
                               <span className="inline-block px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400">{article.content_source}</span>
                             )}
@@ -536,7 +546,7 @@ export default function ContentPage() {
         </div>
       )}
 
-      {(!allArticleDetails || Object.keys(allArticleDetails).length === 0) && (
+      {(!allArticleDetails || Object.keys(allArticlesForTable).length === 0) && (
         <div className="bg-slate-800/50 rounded-xl p-8 text-center border border-slate-700/50">
           <p className="text-slate-400">
             暂无文章详情数据。<br />
