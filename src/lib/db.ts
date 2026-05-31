@@ -81,7 +81,11 @@ async function initDb() {
         views INTEGER DEFAULT 0,
         likes INTEGER DEFAULT 0,
         comments INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        content_category TEXT,
+        content_source TEXT,
+        published_date TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(date, platform, article_title)
       );
 
       CREATE TABLE IF NOT EXISTS website_stats (
