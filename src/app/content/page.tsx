@@ -282,7 +282,9 @@ export default function ContentPage() {
             const platformAvgViews = platformArticleCount > 0 ? Math.round(platformTotalViews / platformArticleCount) : 0;
             const platformLikes = articles.reduce((sum, a) => sum + (a.likes || 0), 0);
             const platformComments = articles.reduce((sum, a) => sum + (a.comments || 0), 0);
-            const hasData = platformArticleCount > 0 || current?.followers;
+            const allTimeArticles = allArticlesForTable[key] || [];
+            const allTimeTotalViews = allTimeArticles.reduce((sum: number, a: any) => sum + (a.views || 0), 0);
+            const hasData = allTimeArticles.length > 0 || current?.followers;
 
             if (!hasData) {
               return (
@@ -298,17 +300,29 @@ export default function ContentPage() {
 
             return (
               <div key={key} className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
-                <div className="flex items-center gap-2 mb-3">
-                  <PlatformIcon platform={key} className="w-8 h-8 text-sm" />
-                  <span className="font-medium text-slate-200">{name}</span>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <PlatformIcon platform={key} className="w-8 h-8 text-sm" />
+                    <span className="font-medium text-slate-200">{name}</span>
+                  </div>
+                  <button
+                    onClick={() => exportPlatformArticles(key, name, allTimeArticles)}
+                    className="text-xs text-slate-400 hover:text-indigo-400 px-2 py-1 rounded border border-slate-600 hover:border-indigo-500/50 transition-colors"
+                  >
+                    导出
+                  </button>
+                </div>
+                <div className="mb-3 p-2 rounded-lg bg-slate-900/50 text-center">
+                  <div className="text-xs text-slate-400">总阅读量（全部）</div>
+                  <div className="text-lg font-bold text-slate-200">{allTimeTotalViews.toLocaleString()}</div>
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">文章数</span>
+                    <span className="text-slate-400">文章数（当前时段）</span>
                     <span className="font-medium text-slate-200">{platformArticleCount.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">总阅读量</span>
+                    <span className="text-slate-400">阅读量（当前时段）</span>
                     <span className="font-medium text-slate-200">{platformTotalViews.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
@@ -556,6 +570,20 @@ export default function ContentPage() {
       )}
     </div>
   );
+}
+
+function exportPlatformArticles(key: string, name: string, articles: any[]) {
+  if (!articles || articles.length === 0) return;
+  const rows = articles.map((a: any) => ({
+    平台: key,
+    日期: a.date,
+    标题: a.article_title,
+    链接: a.article_url || '',
+    阅读量: a.views,
+    分类: a.content_category || '',
+    来源: a.content_source || '',
+  }));
+  downloadCSV(rows, `ivorysql-${key}-${name}`);
 }
 
 function exportContentData(data: ContentData | null, articleDetails: Record<string, ArticleDetail[]>, period: string) {
