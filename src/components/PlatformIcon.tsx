@@ -29,6 +29,7 @@ const simpleIcons: Record<string, string> = {
   bilibili: 'bilibili',
   youtube: 'youtube',
   twitter: 'x',
+  shipinhao: 'wechat',
 };
 
 const fallbackColors: Record<string, string> = {
@@ -47,6 +48,7 @@ const fallbackColors: Record<string, string> = {
   bilibili: '#00A1D6',
   youtube: '#FF0000',
   twitter: '#1b8ef2',
+  shipinhao: '#fa9d3b',
 };
 
 export function PlatformIcon({ platform, className = '', size = 32 }: PlatformLogoProps) {

@@ -43,6 +43,7 @@ interface StalePlatform {
 const platforms = {
   social: [
     { value: 'wechat', label: '公众号' },
+    { value: 'shipinhao', label: '视频号' },
     { value: 'twitter', label: 'Twitter' },
     { value: 'bilibili', label: 'B站' },
     { value: 'youtube', label: 'YouTube' },

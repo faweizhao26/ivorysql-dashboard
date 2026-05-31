@@ -72,6 +72,7 @@ interface DashboardData {
 
 const socialPlatforms: Record<string, { name: string }> = {
   wechat: { name: '公众号' },
+  shipinhao: { name: '视频号' },
   twitter: { name: 'Twitter' },
   bilibili: { name: 'B站' },
   youtube: { name: 'YouTube' },

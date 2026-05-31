@@ -29,6 +29,7 @@ interface PlatformCardData {
 
 const socialPlatforms: PlatformCardData[] = [
   { key: 'wechat', name: '公众号', accent: '#07C160', description: '微信公众平台' },
+  { key: 'shipinhao', name: '视频号', accent: '#fa9d3b', description: '微信视频号' },
   { key: 'twitter', name: 'Twitter', accent: '#1b8ef2', description: '海外社交媒体' },
   { key: 'bilibili', name: 'B站', accent: '#00A1D6', description: '视频社区' },
   { key: 'youtube', name: 'YouTube', accent: '#FF0000', description: '视频平台' },
