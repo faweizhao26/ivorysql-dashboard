@@ -308,6 +308,17 @@ export default function HomePage() {
         )}
         <ActivityTimeline events={events} title="最新动态" />
       </div>
+
+      {downloads && (
+        <div>
+          <h2 className="text-lg font-semibold text-slate-100 mb-4">📦 下载统计（实时）</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="card p-5"><div className="text-sm text-slate-400 mb-1">GitHub Release</div><div className="text-2xl font-bold text-slate-200">{downloads.github?.total?.toLocaleString() || 0}</div></div>
+            <div className="card p-5"><div className="text-sm text-slate-400 mb-1">Docker Hub</div><div className="text-2xl font-bold text-slate-200">{downloads.docker?.total?.toLocaleString() || 0}</div></div>
+            <div className="card p-5"><div className="text-sm text-slate-400 mb-1">合计</div><div className="text-2xl font-bold text-slate-200">{((downloads.github?.total || 0) + (downloads.docker?.total || 0)).toLocaleString()}</div></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
