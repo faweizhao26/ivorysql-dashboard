@@ -644,6 +644,23 @@ export async function deleteArticleDetailsByDate(platform: string, date: string)
   await pool.query('DELETE FROM article_details WHERE platform = $1 AND date = $2', [platform, date]);
 }
 
+export async function saveDownloadStats(date: string, githubTotal: number, dockerTotal: number): Promise<void> {
+  await pool.query(
+    'INSERT INTO download_stats (date, github_total, docker_total) VALUES ($1, $2, $3) ON CONFLICT (date) DO UPDATE SET github_total = $2, docker_total = $3',
+    [date, githubTotal, dockerTotal]
+  );
+}
+
+export async function getDownloadStatsHistory(days: number = 90): Promise<any[]> {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+  const result = await pool.query(
+    'SELECT * FROM download_stats WHERE date >= $1 ORDER BY date ASC',
+    [since.toISOString().split('T')[0]]
+  );
+  return result.rows;
+}
+
 export async function getArticleDetailsByPlatform(platform: string, days: number = 30): Promise<ArticleDetails[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);

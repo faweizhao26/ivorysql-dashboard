@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { syncGitHubData } from '@/lib/github-sync';
-import { saveCommunityEvent } from '@/lib/db';
+import { saveCommunityEvent, saveDownloadStats } from '@/lib/db';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_ORG = process.env.GITHUB_ORG || 'IvorySQL';
@@ -135,6 +135,40 @@ export async function POST() {
     }
 
     await Promise.all(summaryPromises);
+
+    // Record download stats
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const [ghRes, dockerRes] = await Promise.all([
+        fetch(`https://api.github.com/repos/IvorySQL/IvorySQL/releases?per_page=100`, {
+          headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, 'User-Agent': 'IvorySQL' }
+        }),
+        fetch('https://hub.docker.com/v2/repositories/ivorysql/?page_size=50')
+      ]);
+
+      let githubDownloads = 0;
+      if (ghRes.ok) {
+        const releases = await ghRes.json();
+        for (const r of (releases || [])) {
+          for (const a of (r.assets || [])) {
+            githubDownloads += a.download_count || 0;
+          }
+        }
+      }
+
+      let dockerPulls = 0;
+      if (dockerRes.ok) {
+        const docker = await dockerRes.json();
+        for (const r of (docker.results || [])) {
+          dockerPulls += r.pull_count || 0;
+        }
+      }
+
+      await saveDownloadStats(today, githubDownloads, dockerPulls);
+      console.log(`Download stats: GitHub=${githubDownloads}, Docker=${dockerPulls}`);
+    } catch (e) {
+      console.error('Failed to record download stats:', e);
+    }
 
     return NextResponse.json(result);
   } catch (error) {
