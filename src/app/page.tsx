@@ -102,6 +102,7 @@ export default function HomePage() {
   const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [downloads, setDownloads] = useState<any>(null);
 
   const isSingleDay = dateRange.start === dateRange.end;
 
@@ -129,6 +130,11 @@ export default function HomePage() {
     }
     fetchData();
   }, [dateRange, comparison]);
+
+  useEffect(() => {
+    fetch('/api/downloads', { credentials: 'include' })
+      .then(r => r.json()).then(setDownloads).catch(() => {});
+  }, []);
 
   if (loading) {
     return (
@@ -282,6 +288,37 @@ export default function HomePage() {
             dataKey="pageviews"
             color="#F59E0B"
           />
+        )}
+        {downloads && (
+          <div className="card p-6">
+            <h2 className="text-lg font-semibold text-slate-100 mb-4">📦 下载统计</h2>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-slate-400">GitHub Release 安装包</span>
+                  <span className="font-bold text-slate-200">{downloads.github?.total?.toLocaleString() || 0}</span>
+                </div>
+                {downloads.github?.releases?.slice(0, 5).map((r: any) => (
+                  <div key={r.tag} className="flex justify-between text-xs text-slate-500 ml-2">
+                    <span>{r.tag} ({r.date})</span>
+                    <span>{r.total.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-slate-400">Docker Hub 拉取</span>
+                  <span className="font-bold text-slate-200">{downloads.docker?.total?.toLocaleString() || 0}</span>
+                </div>
+                {downloads.docker?.repos?.map((r: any) => (
+                  <div key={r.name} className="flex justify-between text-xs text-slate-500 ml-2">
+                    <span>{r.name}</span>
+                    <span>{r.pulls.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
         <ActivityTimeline events={events} title="最新动态" />
       </div>
