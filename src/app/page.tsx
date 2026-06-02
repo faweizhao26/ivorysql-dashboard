@@ -107,7 +107,6 @@ export default function HomePage() {
   const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [downloads, setDownloads] = useState<any>(null);
 
   const isSingleDay = dateRange.start === dateRange.end;
 
@@ -136,11 +135,6 @@ export default function HomePage() {
     fetchData();
   }, [dateRange, comparison]);
 
-  useEffect(() => {
-    fetch('/api/downloads', { credentials: 'include' })
-      .then(r => r.json()).then(setDownloads).catch(() => {});
-  }, []);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -155,7 +149,6 @@ export default function HomePage() {
   const articles = data?.articles || [];
   const website = data?.website;
   const events = data?.events || [];
-  const downloadsHistory = data?.downloads || [];
 
   const githubHistory = github?.history || [];
   const contributorHistory = contributors?.history || [];
@@ -287,18 +280,7 @@ export default function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {downloadsHistory.length > 1 ? (
-          <TrendChart
-            title="下载趋势（GitHub + Docker）"
-            data={downloadsHistory.map(d => ({
-              date: d.date,
-              github: d.github_total,
-              docker: d.docker_total,
-            }))}
-            dataKey="github"
-            color="#6366F1"
-          />
-        ) : websiteHistory.length > 0 && (
+        {websiteHistory.length > 0 && (
           <TrendChart
             title={`官网访问量趋势 (${currentPeriod})`}
             data={websiteHistory.map(h => ({ date: h.date, pageviews: h.pageviews }))}
@@ -308,17 +290,6 @@ export default function HomePage() {
         )}
         <ActivityTimeline events={events} title="最新动态" />
       </div>
-
-      {downloads && (
-        <div>
-          <h2 className="text-lg font-semibold text-slate-100 mb-4">📦 下载统计（实时）</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="card p-5"><div className="text-sm text-slate-400 mb-1">GitHub Release</div><div className="text-2xl font-bold text-slate-200">{downloads.github?.total?.toLocaleString() || 0}</div></div>
-            <div className="card p-5"><div className="text-sm text-slate-400 mb-1">Docker Hub</div><div className="text-2xl font-bold text-slate-200">{downloads.docker?.total?.toLocaleString() || 0}</div></div>
-            <div className="card p-5"><div className="text-sm text-slate-400 mb-1">合计</div><div className="text-2xl font-bold text-slate-200">{((downloads.github?.total || 0) + (downloads.docker?.total || 0)).toLocaleString()}</div></div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

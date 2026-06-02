@@ -10,6 +10,7 @@ const items = [
   { href: '/social', icon: 'social', name: '社媒' },
   { href: '/content', icon: 'content', name: '内容' },
   { href: '/website', icon: 'website', name: '官网' },
+  { href: '/downloads', icon: 'download', name: '下载' },
   { href: '/events', icon: 'events', name: '活动' },
   { href: '/admin', icon: 'admin', name: '管理' },
 ];
