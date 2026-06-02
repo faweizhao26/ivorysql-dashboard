@@ -68,6 +68,11 @@ interface DashboardData {
     url: string;
     event_type: string;
   }>;
+  downloads: Array<{
+    date: string;
+    github_total: number;
+    docker_total: number;
+  }>;
 }
 
 const socialPlatforms: Record<string, { name: string }> = {
@@ -150,6 +155,7 @@ export default function HomePage() {
   const articles = data?.articles || [];
   const website = data?.website;
   const events = data?.events || [];
+  const downloadsHistory = data?.downloads || [];
 
   const githubHistory = github?.history || [];
   const contributorHistory = contributors?.history || [];
@@ -281,44 +287,24 @@ export default function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {websiteHistory.length > 0 && (
+        {downloadsHistory.length > 1 ? (
+          <TrendChart
+            title="下载趋势（GitHub + Docker）"
+            data={downloadsHistory.map(d => ({
+              date: d.date,
+              github: d.github_total,
+              docker: d.docker_total,
+            }))}
+            dataKey="github"
+            color="#6366F1"
+          />
+        ) : websiteHistory.length > 0 && (
           <TrendChart
             title={`官网访问量趋势 (${currentPeriod})`}
             data={websiteHistory.map(h => ({ date: h.date, pageviews: h.pageviews }))}
             dataKey="pageviews"
             color="#F59E0B"
           />
-        )}
-        {downloads && (
-          <div className="card p-6">
-            <h2 className="text-lg font-semibold text-slate-100 mb-4">📦 下载统计</h2>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-400">GitHub Release 安装包</span>
-                  <span className="font-bold text-slate-200">{downloads.github?.total?.toLocaleString() || 0}</span>
-                </div>
-                {downloads.github?.releases?.slice(0, 5).map((r: any) => (
-                  <div key={r.tag} className="flex justify-between text-xs text-slate-500 ml-2">
-                    <span>{r.tag} ({r.date})</span>
-                    <span>{r.total.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-slate-400">Docker Hub 拉取</span>
-                  <span className="font-bold text-slate-200">{downloads.docker?.total?.toLocaleString() || 0}</span>
-                </div>
-                {downloads.docker?.repos?.map((r: any) => (
-                  <div key={r.name} className="flex justify-between text-xs text-slate-500 ml-2">
-                    <span>{r.name}</span>
-                    <span>{r.pulls.toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         )}
         <ActivityTimeline events={events} title="最新动态" />
       </div>

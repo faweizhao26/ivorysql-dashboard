@@ -16,7 +16,8 @@ import {
   getWebsiteStatsByDateRange,
   getWebsiteStatsForDate,
   getEventsByDateRange,
-  getEventsForDate
+  getEventsForDate,
+  getDownloadStatsHistory
 } from '@/lib/db';
 
 export async function GET(request: Request) {
@@ -135,13 +136,18 @@ export async function GET(request: Request) {
       events = eventsData;
     }
 
+    const [downloadHistory] = await Promise.all([
+      getDownloadStatsHistory(365)
+    ]);
+
     const response: Record<string, any> = {
       github: githubData,
       contributors: contributorData,
       social: socialData,
       articles: articleData,
       website: websiteData,
-      events: events
+      events: events,
+      downloads: downloadHistory || []
     };
 
     return NextResponse.json(response);
