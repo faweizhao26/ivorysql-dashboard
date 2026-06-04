@@ -52,13 +52,12 @@ export async function GET() {
     const topSources = (sources.data || []).slice(0, 10).map((m: any) => m.x);
 
     // Save daily stats
-    for (const pv of (pageviews.pageviews || pageviews.data || [])) {
-      // Umami v1 API returns { t: "2026-06-04 00:00:00", y: 9 } or similar
-      const dateStr = pv.t || pv.x || '';
-      const date = typeof dateStr === 'string' ? dateStr.split(' ')[0] : '';
-      const views = pv.y || pv.v || 0;
-      const visitors = pv.u || 0;
+    for (const pv of (pageviews.pageviews || [])) {
+      // Umami v1: { x: "2026-06-04T00:00:00Z", y: 12 }
+      const date = (pv.x || '').substring(0, 10);
       if (!date) continue;
+      const views = pv.y || 0;
+      const visitors = (pageviews.sessions || []).find((s: any) => (s.x || '').startsWith(date))?.y || 0;
       await pool.query(
         `INSERT INTO website_stats (date, pageviews, unique_visitors, top_pages, sources, keywords)
          VALUES ($1, $2, $3, $4, $5, $6)
@@ -78,8 +77,8 @@ export async function GET() {
       websiteId: WEBSITE_ID,
       daysSaved: (pageviews.pageviews || []).length,
       stats: {
-        totalPageviews: pageviews.pageviews?.reduce((s: number, p: any) => s + (p.y || 0), 0) || 0,
-        totalVisitors: pageviews.pageviews?.reduce((s: number, p: any) => s + (p.u || 0), 0) || 0,
+        totalPageviews: (pageviews.pageviews || []).reduce((s: number, p: any) => s + (p.y || 0), 0) || 0,
+        totalVisitors: (pageviews.sessions || []).reduce((s: number, p: any) => s + (p.y || 0), 0) || 0,
       },
     });
   } catch (error: any) {
