@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server';
 import { getWebsiteStatsForDate, getToday } from '@/lib/db';
 
 const UMAMI_TOKEN = process.env.UMAMI_TOKEN;
-const UMAMI_API = 'https://api.umami.is';
-const WEBSITE_DOMAIN = 'ivorysql.org';
+const UMAMI_API = 'https://cloud.umami.is';
+const WEBSITE_ID = 'd0465d4e-0252-45bf-a99b-b12fe2ae0732';
 
 async function umamiFetch(endpoint: string) {
   const url = `${UMAMI_API}${endpoint}`;
@@ -26,39 +26,27 @@ export async function GET() {
   }
 
   try {
-    // Get website list
-    const websites = await umamiFetch('/api/websites');
-    const site = websites.data.find((w: any) => w.domain === WEBSITE_DOMAIN);
-    if (!site) {
-      return NextResponse.json({ error: `Website ${WEBSITE_DOMAIN} not found in Umami` }, { status: 404 });
-    }
-
     const today = getToday();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 90);
     const startStr = startDate.getTime();
+    const endStr = Date.now();
 
-    // Get stats
-    const stats = await umamiFetch(
-      `/api/websites/${site.id}/stats?startAt=${startStr}&endAt=${Date.now()}`
-    );
-
-    // Get pageview data from Umami and save to DB
     const { Pool } = await import('pg');
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false },
     });
 
-    // Fetch daily pageviews for the last 90 days
+    // Fetch daily pageviews
     const pageviews = await umamiFetch(
-      `/api/websites/${site.id}/pageviews?startAt=${startStr}&endAt=${Date.now()}&unit=day`
+      `/api/websites/${WEBSITE_ID}/pageviews?startAt=${startStr}&endAt=${endStr}&unit=day`
     );
 
-    // Get top pages, sources, keywords in parallel
+    // Get top pages, sources
     const [metrics, sources] = await Promise.all([
-      umamiFetch(`/api/websites/${site.id}/metrics?startAt=${startStr}&endAt=${Date.now()}&type=url`).catch(() => ({ data: [] })),
-      umamiFetch(`/api/websites/${site.id}/metrics?startAt=${startStr}&endAt=${Date.now()}&type=referrer`).catch(() => ({ data: [] })),
+      umamiFetch(`/api/websites/${WEBSITE_ID}/metrics?startAt=${startStr}&endAt=${endStr}&type=url`).catch(() => ({ data: [] })),
+      umamiFetch(`/api/websites/${WEBSITE_ID}/metrics?startAt=${startStr}&endAt=${endStr}&type=referrer`).catch(() => ({ data: [] })),
     ]);
 
     const topPages = (metrics.data || []).slice(0, 10).map((m: any) => m.x);
@@ -84,8 +72,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      websiteId: site.id,
-      siteName: site.name,
+      websiteId: WEBSITE_ID,
       daysSaved: (pageviews.pageviews || []).length,
       stats: {
         totalPageviews: pageviews.pageviews?.reduce((s: number, p: any) => s + (p.y || 0), 0) || 0,
