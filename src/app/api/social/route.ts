@@ -27,6 +27,10 @@ export async function GET(request: Request) {
     }
 
     const platforms = await getAllSocialPlatforms();
+    if (platforms.length === 0) {
+      return NextResponse.json({ platforms: [], social: [] });
+    }
+
     const allData = await Promise.all(
       platforms.map(async (p) => {
         const data = await getSocialStatsByDateRange(startDate, endDate, p);
@@ -34,16 +38,21 @@ export async function GET(request: Request) {
       })
     );
 
-    let social = allData.flatMap(d => d.data);
+    // Fill in latest data for platforms with no data in range
+    const social = await Promise.all(
+      allData.map(async ({ platform: p, data }) => {
+        if (data.length > 0) return data;
+        const rangeData = await getSocialStatsByDateRange(startDate, endDate, p);
+        if (rangeData.length > 0) return rangeData;
+        const latest = await getSocialStatsByDateRange('2020-01-01', endDate, p);
+        return latest.slice(-1); // latest single row
+      })
+    );
 
-    // If no data for the selected range, fall back to latest data per platform
-    if (social.length === 0 && isSingleDay) {
-      const latest = await getLatestSocialStats();
-      social = latest;
-      return NextResponse.json({ platforms, social, isFallback: true, fallbackDate: startDate });
-    }
-
-    return NextResponse.json({ platforms, social });
+    return NextResponse.json({
+      platforms,
+      social: social.flat()
+    });
   } catch (error) {
     console.error('Error fetching social data:', error);
     return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
