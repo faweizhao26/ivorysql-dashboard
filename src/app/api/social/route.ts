@@ -42,10 +42,9 @@ export async function GET(request: Request) {
     const social = await Promise.all(
       allData.map(async ({ platform: p, data }) => {
         if (data.length > 0) return data;
-        const rangeData = await getSocialStatsByDateRange(startDate, endDate, p);
-        if (rangeData.length > 0) return rangeData;
+        // Fetch the latest single entry for this platform
         const latest = await getSocialStatsByDateRange('2020-01-01', endDate, p);
-        return latest.slice(-1); // latest single row
+        return latest.slice(-1);
       })
     );
 

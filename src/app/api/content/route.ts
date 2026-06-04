@@ -27,6 +27,10 @@ export async function GET(request: Request) {
     }
 
     const platforms = await getAllArticlePlatforms();
+    if (platforms.length === 0) {
+      return NextResponse.json({ platforms: [], articles: [] });
+    }
+
     const allData = await Promise.all(
       platforms.map(async (p) => {
         const data = await getArticleStatsByDateRange(startDate, endDate, p);
@@ -34,15 +38,19 @@ export async function GET(request: Request) {
       })
     );
 
-    let articles = allData.flatMap(d => d.data);
+    // Fill in latest data for platforms with no data in range
+    const articles = await Promise.all(
+      allData.map(async ({ platform: p, data }) => {
+        if (data.length > 0) return data;
+        const latest = await getArticleStatsByDateRange('2020-01-01', endDate, p);
+        return latest.slice(-1);
+      })
+    );
 
-    if (articles.length === 0 && isSingleDay) {
-      const latest = await getLatestArticleStats();
-      articles = latest;
-      return NextResponse.json({ platforms, articles, isFallback: true, fallbackDate: startDate });
-    }
-
-    return NextResponse.json({ platforms, articles });
+    return NextResponse.json({
+      platforms,
+      articles: articles.flat()
+    });
   } catch (error) {
     console.error('Error fetching content data:', error);
     return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
