@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getWebsiteStatsForDate, getToday } from '@/lib/db';
 
 const UMAMI_TOKEN = process.env.UMAMI_TOKEN;
-const UMAMI_API = 'https://cloud.umami.is';
+const UMAMI_API = 'https://api.umami.is';
 const WEBSITE_DOMAIN = 'ivorysql.org';
 
 async function umamiFetch(endpoint: string) {
@@ -15,7 +15,7 @@ async function umamiFetch(endpoint: string) {
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Umami API error: ${res.status} - ${text.substring(0, 100)}`);
+    throw new Error(`Umami API error: ${res.status} - ${text.substring(0, 150)}`);
   }
   return res.json();
 }
