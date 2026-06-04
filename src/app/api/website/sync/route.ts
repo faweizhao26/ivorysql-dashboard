@@ -52,8 +52,12 @@ export async function GET() {
     const topSources = (sources.data || []).slice(0, 10).map((m: any) => m.x);
 
     // Save daily stats
-    for (const pv of (pageviews.pageviews || [])) {
-      const date = pv.t?.split(' ')[0]; // "2026-06-04 00:00"
+    for (const pv of (pageviews.pageviews || pageviews.data || [])) {
+      // Umami v1 API returns { t: "2026-06-04 00:00:00", y: 9 } or similar
+      const dateStr = pv.t || pv.x || '';
+      const date = typeof dateStr === 'string' ? dateStr.split(' ')[0] : '';
+      const views = pv.y || pv.v || 0;
+      const visitors = pv.u || 0;
       if (!date) continue;
       await pool.query(
         `INSERT INTO website_stats (date, pageviews, unique_visitors, top_pages, sources, keywords)
@@ -63,7 +67,7 @@ export async function GET() {
            unique_visitors = EXCLUDED.unique_visitors,
            top_pages = EXCLUDED.top_pages,
            sources = EXCLUDED.sources`,
-        [date, pv.y || 0, pv.u || 0, JSON.stringify(topPages), JSON.stringify(topSources), '[]']
+        [date, views, visitors, JSON.stringify(topPages), JSON.stringify(topSources), '[]']
       );
     }
 
