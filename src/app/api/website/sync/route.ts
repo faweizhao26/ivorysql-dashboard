@@ -8,7 +8,7 @@ const WEBSITE_DOMAIN = 'ivorysql.org';
 async function umamiFetch(endpoint: string) {
   const res = await fetch(`${UMAMI_API}${endpoint}`, {
     headers: {
-      Authorization: `Bearer ${UMAMI_TOKEN}`,
+      'x-umami-api-key': UMAMI_TOKEN!,
       'Content-Type': 'application/json',
     },
   });
