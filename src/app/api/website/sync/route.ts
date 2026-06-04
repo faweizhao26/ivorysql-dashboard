@@ -7,13 +7,19 @@ const WEBSITE_ID = 'd0465d4e-0252-45bf-a99b-b12fe2ae0732';
 
 async function umamiFetch(endpoint: string) {
   const url = `${UMAMI_API}${endpoint}`;
+  // Try both auth methods
   const res = await fetch(url, {
     headers: {
-      'x-umami-api-key': UMAMI_TOKEN!,
+      'Authorization': `Bearer ${UMAMI_TOKEN}`,
       'Accept': 'application/json',
     },
   });
   if (!res.ok) {
+    // Try query param auth as fallback
+    const res2 = await fetch(`${url}?token=${UMAMI_TOKEN}`, {
+      headers: { 'Accept': 'application/json' },
+    });
+    if (res2.ok) return res2.json();
     const text = await res.text();
     throw new Error(`Umami API error: ${res.status} - ${text.substring(0, 150)}`);
   }
