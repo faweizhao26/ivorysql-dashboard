@@ -2,24 +2,18 @@ import { NextResponse } from 'next/server';
 import { getWebsiteStatsForDate, getToday } from '@/lib/db';
 
 const UMAMI_TOKEN = process.env.UMAMI_TOKEN;
-const UMAMI_API = 'https://cloud.umami.is';
+const UMAMI_API = 'https://api.umami.is/v1';
 const WEBSITE_ID = 'd0465d4e-0252-45bf-a99b-b12fe2ae0732';
 
 async function umamiFetch(endpoint: string) {
   const url = `${UMAMI_API}${endpoint}`;
-  // Try both auth methods
   const res = await fetch(url, {
     headers: {
-      'Authorization': `Bearer ${UMAMI_TOKEN}`,
+      'x-umami-api-key': UMAMI_TOKEN!,
       'Accept': 'application/json',
     },
   });
   if (!res.ok) {
-    // Try query param auth as fallback
-    const res2 = await fetch(`${url}?token=${UMAMI_TOKEN}`, {
-      headers: { 'Accept': 'application/json' },
-    });
-    if (res2.ok) return res2.json();
     const text = await res.text();
     throw new Error(`Umami API error: ${res.status} - ${text.substring(0, 150)}`);
   }
@@ -46,13 +40,12 @@ export async function GET() {
 
     // Fetch daily pageviews
     const pageviews = await umamiFetch(
-      `/api/websites/${WEBSITE_ID}/pageviews?startAt=${startStr}&endAt=${endStr}&unit=day`
+      `/websites/${WEBSITE_ID}/pageviews?startAt=${startStr}&endAt=${endStr}&unit=day`
     );
 
-    // Get top pages, sources
     const [metrics, sources] = await Promise.all([
-      umamiFetch(`/api/websites/${WEBSITE_ID}/metrics?startAt=${startStr}&endAt=${endStr}&type=url`).catch(() => ({ data: [] })),
-      umamiFetch(`/api/websites/${WEBSITE_ID}/metrics?startAt=${startStr}&endAt=${endStr}&type=referrer`).catch(() => ({ data: [] })),
+      umamiFetch(`/websites/${WEBSITE_ID}/metrics?startAt=${startStr}&endAt=${endStr}&type=url`).catch(() => ({ data: [] })),
+      umamiFetch(`/websites/${WEBSITE_ID}/metrics?startAt=${startStr}&endAt=${endStr}&type=referrer`).catch(() => ({ data: [] })),
     ]);
 
     const topPages = (metrics.data || []).slice(0, 10).map((m: any) => m.x);
