@@ -2,17 +2,24 @@ import { NextResponse } from 'next/server';
 import { getWebsiteStatsForDate, getToday } from '@/lib/db';
 
 const UMAMI_TOKEN = process.env.UMAMI_TOKEN;
-const UMAMI_API = 'https://cloud.umami.is/api';
+const UMAMI_API = 'https://cloud.umami.is';
 const WEBSITE_DOMAIN = 'ivorysql.org';
 
 async function umamiFetch(endpoint: string) {
-  const res = await fetch(`${UMAMI_API}${endpoint}`, {
+  const url = `${UMAMI_API}${endpoint}`;
+  console.log('Umami fetch:', url);
+  const res = await fetch(url, {
     headers: {
-      'x-umami-api-key': UMAMI_TOKEN!,
+      'Authorization': `Bearer ${UMAMI_TOKEN}`,
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
   });
-  if (!res.ok) throw new Error(`Umami API error: ${res.status}`);
+  if (!res.ok) {
+    const text = await res.text();
+    console.error('Umami error:', res.status, text.substring(0, 200));
+    throw new Error(`Umami API error: ${res.status} - ${text.substring(0, 100)}`);
+  }
   return res.json();
 }
 
@@ -23,7 +30,7 @@ export async function GET() {
 
   try {
     // Get website list
-    const websites = await umamiFetch('/websites');
+    const websites = await umamiFetch('/api/websites');
     const site = websites.data.find((w: any) => w.domain === WEBSITE_DOMAIN);
     if (!site) {
       return NextResponse.json({ error: `Website ${WEBSITE_DOMAIN} not found in Umami` }, { status: 404 });
@@ -36,7 +43,7 @@ export async function GET() {
 
     // Get stats
     const stats = await umamiFetch(
-      `/websites/${site.id}/stats?startAt=${startStr}&endAt=${Date.now()}`
+      `/api/websites/${site.id}/stats?startAt=${startStr}&endAt=${Date.now()}`
     );
 
     // Get pageview data from Umami and save to DB
@@ -48,13 +55,13 @@ export async function GET() {
 
     // Fetch daily pageviews for the last 90 days
     const pageviews = await umamiFetch(
-      `/websites/${site.id}/pageviews?startAt=${startStr}&endAt=${Date.now()}&unit=day`
+      `/api/websites/${site.id}/pageviews?startAt=${startStr}&endAt=${Date.now()}&unit=day`
     );
 
     // Get top pages, sources, keywords in parallel
     const [metrics, sources] = await Promise.all([
-      umamiFetch(`/websites/${site.id}/metrics?startAt=${startStr}&endAt=${Date.now()}&type=url`).catch(() => ({ data: [] })),
-      umamiFetch(`/websites/${site.id}/metrics?startAt=${startStr}&endAt=${Date.now()}&type=referrer`).catch(() => ({ data: [] })),
+      umamiFetch(`/api/websites/${site.id}/metrics?startAt=${startStr}&endAt=${Date.now()}&type=url`).catch(() => ({ data: [] })),
+      umamiFetch(`/api/websites/${site.id}/metrics?startAt=${startStr}&endAt=${Date.now()}&type=referrer`).catch(() => ({ data: [] })),
     ]);
 
     const topPages = (metrics.data || []).slice(0, 10).map((m: any) => m.x);
