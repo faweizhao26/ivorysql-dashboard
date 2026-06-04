@@ -7,17 +7,14 @@ const WEBSITE_DOMAIN = 'ivorysql.org';
 
 async function umamiFetch(endpoint: string) {
   const url = `${UMAMI_API}${endpoint}`;
-  console.log('Umami fetch:', url);
   const res = await fetch(url, {
     headers: {
-      'Authorization': `Bearer ${UMAMI_TOKEN}`,
-      'Content-Type': 'application/json',
+      'x-umami-api-key': UMAMI_TOKEN!,
       'Accept': 'application/json',
     },
   });
   if (!res.ok) {
     const text = await res.text();
-    console.error('Umami error:', res.status, text.substring(0, 200));
     throw new Error(`Umami API error: ${res.status} - ${text.substring(0, 100)}`);
   }
   return res.json();
