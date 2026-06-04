@@ -13,8 +13,7 @@ interface WebsiteData {
       pageviews: number;
       unique_visitors: number;
       top_pages: string[];
-      sources: { name: string; value: number }[];
-      keywords: string[];
+      sources: string[];
     } | null;
     history: Array<{
       date: string;
@@ -160,7 +159,7 @@ export default function WebsitePage() {
       </div>
 
       {latestWebsite && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
             <h3 className="text-lg font-semibold text-slate-100 mb-4">热门页面</h3>
             {latestWebsite.top_pages && latestWebsite.top_pages.length > 0 ? (
@@ -181,26 +180,11 @@ export default function WebsitePage() {
             <h3 className="text-lg font-semibold text-slate-100 mb-4">流量来源</h3>
             {latestWebsite.sources && latestWebsite.sources.length > 0 ? (
               <div className="space-y-2">
-                {latestWebsite.sources.slice(0, 10).map((source: { name: string; value: number }, index: number) => (
+                {latestWebsite.sources.slice(0, 10).map((source: string, index: number) => (
                   <div key={index} className="flex justify-between items-center text-sm">
-                    <span className="text-slate-400">{source.name}</span>
-                    <span className="font-medium text-slate-200">{source.value}%</span>
+                    <span className="text-slate-400">{source}</span>
+                    <span className="text-slate-500 ml-2">{index + 1}</span>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-slate-500">暂无数据</div>
-            )}
-          </div>
-
-          <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
-            <h3 className="text-lg font-semibold text-slate-100 mb-4">搜索关键词</h3>
-            {latestWebsite.keywords && latestWebsite.keywords.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {latestWebsite.keywords.slice(0, 20).map((keyword: string, index: number) => (
-                  <span key={index} className="px-3 py-1 bg-slate-900/50 text-slate-300 text-sm rounded-full">
-                    {keyword}
-                  </span>
                 ))}
               </div>
             ) : (
@@ -213,10 +197,10 @@ export default function WebsitePage() {
       <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
         <h3 className="text-lg font-semibold text-slate-100 mb-4">说明</h3>
         <div className="text-sm text-slate-400 space-y-2">
-          <p>• <strong className="text-slate-300">数据来源：</strong>Google Analytics API 自动获取</p>
-          <p>• <strong className="text-slate-300">更新频率：</strong>每日自动更新</p>
+          <p>• <strong className="text-slate-300">数据来源：</strong>Umami Analytics 自动获取</p>
+          <p>• <strong className="text-slate-300">更新频率：</strong>每天自动同步（UTC 01:00）</p>
           <p>• <strong className="text-slate-300">PV（Page Views）：</strong>页面浏览量</p>
-          <p>• <strong className="text-slate-300">UV（Unique Visitors）：</strong>独立访客数</p>
+          <p>• <strong className="text-slate-300">UV（Unique Visitors）：</strong>独立访客数（按 Session 统计）</p>
         </div>
       </div>
     </div>
