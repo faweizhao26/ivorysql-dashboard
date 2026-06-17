@@ -28,14 +28,14 @@ export default function NavLinks() {
           <Link
             key={item.href}
             href={item.href}
-            title={item.name}
-            className={`p-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 ${
+            className={`px-2 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
               isActive
                 ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
                 : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50'
             }`}
           >
             <NavIcon name={item.icon} className={isActive ? 'opacity-100' : 'opacity-60'} />
+            <span className="hidden xl:inline">{item.name}</span>
           </Link>
         );
       })}
