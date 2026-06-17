@@ -12,9 +12,6 @@ import {
   getLatestArticleStats,
   getArticleStatsForDate,
   getArticleStatsByDateRange,
-  getLatestWebsiteStats,
-  getWebsiteStatsByDateRange,
-  getWebsiteStatsForDate,
   getEventsByDateRange,
   getEventsForDate,
   getDownloadStatsHistory
@@ -42,7 +39,6 @@ export async function GET(request: Request) {
     let contributorData: any;
     let socialData: any[];
     let articleData: any[];
-    let websiteData: any;
     let events: any[];
 
     if (isSingleDay) {
@@ -51,7 +47,6 @@ export async function GET(request: Request) {
         contributorForDate,
         socialForDate,
         articleForDate,
-        websiteForDate,
         eventsForDate,
         githubLatest,
         contributorLatest,
@@ -62,7 +57,6 @@ export async function GET(request: Request) {
         getContributorStatsForDate(startDate),
         getSocialStatsForDate(startDate),
         getArticleStatsForDate(startDate),
-        getWebsiteStatsForDate(startDate),
         getEventsForDate(startDate),
         getLatestGitHubStats(),
         getLatestContributorStats(),
@@ -86,12 +80,6 @@ export async function GET(request: Request) {
       };
       socialData = socialForDate.length > 0 ? socialForDate : socialLatest;
       articleData = articleForDate.length > 0 ? articleForDate : articleLatest;
-      websiteData = {
-        latest: websiteForDate,
-        history: websiteForDate ? [websiteForDate] : [],
-        isArchive: true,
-        archiveDate: websiteForDate?.date || null
-      };
       events = eventsForDate;
     } else {
       const [
@@ -101,8 +89,6 @@ export async function GET(request: Request) {
         contributorHistory,
         socialStats,
         articleStats,
-        websiteLatest,
-        websiteHistory,
         eventsData
       ] = await Promise.all([
         getLatestGitHubStats(),
@@ -111,8 +97,6 @@ export async function GET(request: Request) {
         getContributorStatsByDateRange(startDate, endDate),
         getSocialStatsByDateRange(startDate, endDate),
         getArticleStatsByDateRange(startDate, endDate),
-        getLatestWebsiteStats(),
-        getWebsiteStatsByDateRange(startDate, endDate),
         getEventsByDateRange(startDate, endDate, 20)
       ]);
 
@@ -128,11 +112,6 @@ export async function GET(request: Request) {
       };
       socialData = socialStats;
       articleData = articleStats;
-      websiteData = {
-        latest: websiteLatest,
-        history: websiteHistory,
-        isArchive: false
-      };
       events = eventsData;
     }
 
@@ -145,7 +124,6 @@ export async function GET(request: Request) {
       contributors: contributorData,
       social: socialData,
       articles: articleData,
-      website: websiteData,
       events: events,
       downloads: downloadHistory || []
     };

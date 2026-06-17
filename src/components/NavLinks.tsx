@@ -9,7 +9,6 @@ const items = [
   { href: '/github', icon: 'github', name: 'GitHub' },
   { href: '/social', icon: 'social', name: '社媒' },
   { href: '/content', icon: 'content', name: '内容' },
-  { href: '/website', icon: 'website', name: '官网' },
   { href: '/downloads', icon: 'download', name: '下载' },
   { href: '/evangelist', icon: 'evangelist', name: '布道' },
   { href: '/events', icon: 'events', name: '活动' },

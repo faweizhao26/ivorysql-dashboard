@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-type DataCategory = 'social' | 'article' | 'website' | 'activity';
+type DataCategory = 'social' | 'article' | 'activity';
 type TabType = 'manual' | 'articles' | 'reminders' | 'events' | 'evangelist';
 
 interface DataEntry {
@@ -59,9 +59,6 @@ const platforms = {
     { value: 'toutiao', label: '头条号' },
     { value: 'ifclub', label: 'IFCLUB' },
   ],
-  website: [
-    { value: 'google_analytics', label: 'Google Analytics' },
-  ],
   activity: [
     { value: 'conference', label: '技术大会' },
     { value: 'meetup', label: '线下活动' },
@@ -86,10 +83,6 @@ const metricsByCategory = {
     { value: 'new_articles', label: '本月新增文章' },
     { value: 'likes', label: '点赞数' },
     { value: 'bookmarks', label: '收藏数' },
-  ],
-  website: [
-    { value: 'pageviews', label: '页面访问量 (PV)' },
-    { value: 'unique_visitors', label: '独立访客 (UV)' },
   ],
   activity: [
     { value: 'registrations', label: '报名人数' },
@@ -316,7 +309,6 @@ function ManualDataSection() {
               >
                 <option value="social">社交媒体</option>
                 <option value="article">内容平台</option>
-                <option value="website">官网数据</option>
                 <option value="activity">活动数据</option>
               </select>
             </div>

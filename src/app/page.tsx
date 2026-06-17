@@ -50,16 +50,6 @@ interface DashboardData {
     article_count: number;
     total_views: number;
   }>;
-  website: {
-    latest: {
-      pageviews: number;
-      unique_visitors: number;
-    } | null;
-    history: Array<{
-      date: string;
-      pageviews: number;
-    }>;
-  };
   events: Array<{
     date: string;
     source: string;
@@ -147,15 +137,12 @@ export default function HomePage() {
   const contributors = data?.contributors;
   const social = data?.social || [];
   const articles = data?.articles || [];
-  const website = data?.website;
   const events = data?.events || [];
 
   const githubHistory = github?.history || [];
   const contributorHistory = contributors?.history || [];
-  const websiteHistory = website?.history || [];
 
   const latestGitHub = github?.latest;
-  const latestWebsite = website?.latest;
   const displayDate = isSingleDay ? dateRange.start : null;
 
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
@@ -223,8 +210,7 @@ export default function HomePage() {
           <div className="animate-fade-in stagger-2"><ComparisonStatCard title="GitHub Forks" current={latestGitHub?.forks || 0} icon="🍴" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
           <div className="animate-fade-in stagger-3"><ComparisonStatCard title="公众号关注" current={socialData.wechat?.followers || 0} icon="💚" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
           <div className="animate-fade-in stagger-4"><ComparisonStatCard title="Twitter 粉丝" current={socialData.twitter?.followers || 0} icon="🐦" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
-          <div className="animate-fade-in stagger-5"><ComparisonStatCard title="官网 PV" current={latestWebsite?.pageviews || 0} icon="🌐" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
-          <div className="animate-fade-in stagger-6"><ComparisonStatCard title="贡献者数" current={contributors?.latest?.total_contributors || latestGitHub?.contributors || 0} icon="👥" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
+          <div className="animate-fade-in stagger-5"><ComparisonStatCard title="贡献者数" current={contributors?.latest?.total_contributors || latestGitHub?.contributors || 0} icon="👥" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
         </div>
       </div>
 
@@ -280,14 +266,6 @@ export default function HomePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {websiteHistory.length > 0 && (
-          <TrendChart
-            title={`官网访问量趋势 (${currentPeriod})`}
-            data={websiteHistory.map(h => ({ date: h.date, pageviews: h.pageviews }))}
-            dataKey="pageviews"
-            color="#F59E0B"
-          />
-        )}
         <ActivityTimeline events={events} title="最新动态" />
       </div>
     </div>
@@ -304,10 +282,6 @@ function exportDashboardData(data: DashboardData | null, period: string) {
 
   if (data.contributors.latest) {
     rows.push({ 指标: '贡献者统计', '历史贡献者总数': data.contributors.latest.total_contributors, '2026 前贡献者': data.contributors.latest.contributors_before_2026, '2026 累计新增': data.contributors.latest.cumulative_2026, '本月新增': data.contributors.latest.new_contributors_monthly, 时间段: period });
-  }
-
-  if (data.website.latest) {
-    rows.push({ 指标: '网站数据', PV: data.website.latest.pageviews, UV: data.website.latest.unique_visitors, 时间段: period });
   }
 
   data.social.forEach(s => {
@@ -328,10 +302,6 @@ function exportDashboardData(data: DashboardData | null, period: string) {
 
   if (data.contributors.history.length > 0) {
     rows.push(...data.contributors.history.map(h => ({ 指标: '贡献者历史', 日期: h.date, '2026 累计': h.cumulative_2026, '每日新增': h.new_contributors_daily, 时间段: period })));
-  }
-
-  if (data.website.history.length > 0) {
-    rows.push(...data.website.history.map(h => ({ 指标: '网站历史', 日期: h.date, PV: h.pageviews, 时间段: period })));
   }
 
   downloadCSV(rows, `ivorysql-dashboard-${period.replace(/[~ ]/g, '_')}`);
