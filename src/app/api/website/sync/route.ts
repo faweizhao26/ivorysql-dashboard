@@ -53,11 +53,11 @@ export async function GET() {
 
     // Save daily stats
     for (const pv of (pageviews.pageviews || [])) {
-      // Umami v1: { x: "2026-06-04T00:00:00Z", y: 12 }
-      const date = (pv.x || '').substring(0, 10);
+      // Umami v1: { t: "2026-06-04T00:00:00Z", y: 12 }
+      const date = (pv.t || '').substring(0, 10);
       if (!date) continue;
       const views = pv.y || 0;
-      const visitors = (pageviews.sessions || []).find((s: any) => (s.x || '').startsWith(date))?.y || 0;
+      const visitors = (pageviews.sessions || []).find((s: any) => (s.t || '').startsWith(date))?.y || 0;
       await pool.query(
         `INSERT INTO website_stats (date, pageviews, unique_visitors, top_pages, sources, keywords)
          VALUES ($1, $2, $3, $4, $5, $6)

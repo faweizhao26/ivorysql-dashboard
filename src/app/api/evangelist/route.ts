@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || '',
-  ssl: { rejectUnauthorized: false }
-});
+import { getDb } from '@/lib/db';
 
 export async function GET(request: Request) {
+  const pool = getDb();
   const { searchParams } = new URL(request.url);
   const participantId = searchParams.get('participant_id');
 
@@ -36,6 +32,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const pool = getDb();
     const body = await request.json();
 
     // Handle participant creation
@@ -64,6 +61,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const pool = getDb();
     const body = await request.json();
 
     // Update participant
@@ -91,6 +89,7 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const pool = getDb();
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
   const type = searchParams.get('type');

@@ -1425,7 +1425,8 @@ function EvangelistSection() {
   async function savePerson(e: React.FormEvent) {
     e.preventDefault();
     const m = editingPerson.id ? 'PUT' : 'POST';
-    await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingPerson), credentials: 'include' });
+    const res = await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingPerson), credentials: 'include' });
+    if (!res.ok) { const err = await res.json(); alert('保存失败: ' + (err.error || '未知错误')); return; }
     setEditingPerson(null); fetchParticipants();
   }
 
@@ -1435,7 +1436,8 @@ function EvangelistSection() {
     if (!editingCont.participant_id) { alert('请先选择成员'); return; }
     if (!editingCont.category || !editingCont.type) { alert('请选择类别和类型'); return; }
     const m = editingCont.id ? 'PUT' : 'POST';
-    await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingCont), credentials: 'include' });
+    const res = await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingCont), credentials: 'include' });
+    if (!res.ok) { const err = await res.json(); alert('保存失败: ' + (err.error || '未知错误')); return; }
     setEditingCont(null); fetchContributions(editingCont.participant_id); fetchParticipants();
   }
 

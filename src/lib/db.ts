@@ -165,6 +165,39 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_article_details_date ON article_details(date);
       CREATE INDEX IF NOT EXISTS idx_article_details_platform ON article_details(platform);
       CREATE INDEX IF NOT EXISTS idx_activity_events_date ON activity_events(event_date);
+
+      CREATE TABLE IF NOT EXISTS download_stats (
+        id SERIAL PRIMARY KEY,
+        date TEXT NOT NULL UNIQUE,
+        github_total INTEGER DEFAULT 0,
+        docker_total INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS evangelist_participants (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        avatar_url TEXT,
+        title TEXT,
+        bio TEXT,
+        joined_date TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS evangelist_contributions (
+        id SERIAL PRIMARY KEY,
+        participant_id INTEGER NOT NULL REFERENCES evangelist_participants(id) ON DELETE CASCADE,
+        category TEXT NOT NULL,
+        type TEXT NOT NULL,
+        title TEXT,
+        url TEXT,
+        points INTEGER DEFAULT 0,
+        date TEXT,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_evangelist_contrib_pid ON evangelist_contributions(participant_id);
     `);
     dbInitialized = true;
   } finally {
