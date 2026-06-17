@@ -20,7 +20,7 @@ export default function NavLinks() {
   const pathname = usePathname();
 
   return (
-    <div className="hidden md:flex items-center gap-1">
+    <div className="hidden md:flex items-center gap-0.5">
       {items.map((item) => {
         const isActive = pathname === item.href
           || (item.href !== '/' && pathname.startsWith(item.href));
@@ -28,14 +28,14 @@ export default function NavLinks() {
           <Link
             key={item.href}
             href={item.href}
-            className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 ${
+            title={item.name}
+            className={`p-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 ${
               isActive
                 ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
                 : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50'
             }`}
           >
             <NavIcon name={item.icon} className={isActive ? 'opacity-100' : 'opacity-60'} />
-            <span className="hidden lg:inline">{item.name}</span>
           </Link>
         );
       })}
