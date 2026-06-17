@@ -17,8 +17,6 @@ interface Participant {
 export default function EvangelistPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<Partial<Participant> | null>(null);
-  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
@@ -28,35 +26,6 @@ export default function EvangelistPage() {
       if (res.ok) setParticipants(await res.json());
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!editing) return;
-    const method = editing.id ? 'PUT' : 'POST';
-    const body = editing.id ? editing : { ...editing, id: undefined };
-    await fetch('/api/evangelist', {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    setShowModal(false); setEditing(null); fetchData();
-  }
-
-  function handleEdit(p: Participant) {
-    setEditing({ ...p, contribution_links: p.contribution_links || [] });
-    setShowModal(true);
-  }
-
-  function handleAdd() {
-    setEditing({ name: '', points: 0, title: '', avatar_url: '', joined_date: '', bio: '', contribution_links: [] });
-    setShowModal(true);
-  }
-
-  async function handleDelete(id: number) {
-    if (!confirm('确定删除？')) return;
-    await fetch(`/api/evangelist?id=${id}`, { method: 'DELETE' });
-    fetchData();
   }
 
   function handleExport() {
@@ -97,7 +66,6 @@ export default function EvangelistPage() {
           </div>
           <div className="flex items-center gap-3">
             <button onClick={handleExport} className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm transition-colors">导出 CSV</button>
-            <button onClick={handleAdd} className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-500 text-sm transition-colors">+ 添加成员</button>
           </div>
         </div>
       </div>
@@ -124,7 +92,6 @@ export default function EvangelistPage() {
               <th className="text-left py-3 px-4 font-medium text-slate-400">姓名</th>
               <th className="text-left py-3 px-4 font-medium text-slate-400 hidden md:table-cell">头衔</th>
               <th className="text-right py-3 px-4 font-medium text-slate-400 w-20">积分</th>
-              <th className="text-right py-3 px-4 font-medium text-slate-400 w-24">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -146,66 +113,11 @@ export default function EvangelistPage() {
                 </td>
                 <td className="py-3 px-4 text-slate-400 hidden md:table-cell">{p.title || '-'}</td>
                 <td className="py-3 px-4 text-right font-bold text-slate-200">{p.points}</td>
-                <td className="py-3 px-4 text-right">
-                  <button onClick={() => handleEdit(p)} className="text-indigo-400 hover:text-indigo-300 text-xs mr-2">编辑</button>
-                  <button onClick={() => handleDelete(p.id)} className="text-red-400 hover:text-red-300 text-xs">删除</button>
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {/* Edit Modal */}
-      {showModal && editing && (
-        <div className="fixed inset-0 bg-black/70 flex items-start justify-center z-50 pt-10 overflow-y-auto">
-          <div className="bg-slate-800 rounded-xl p-6 w-full max-w-xl border border-slate-700 mb-10">
-            <h3 className="text-xl font-semibold text-slate-100 mb-4">{editing.id ? '编辑成员' : '添加成员'}</h3>
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-slate-300 mb-1">姓名 *</label>
-                  <input required value={editing.name || ''} onChange={e => setEditing({ ...editing, name: e.target.value })} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200" />
-                </div>
-                <div>
-                  <label className="block text-sm text-slate-300 mb-1">头衔</label>
-                  <input value={editing.title || ''} onChange={e => setEditing({ ...editing, title: e.target.value })} placeholder="如：核心贡献者" className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm text-slate-300 mb-1">头像 URL</label>
-                  <input value={editing.avatar_url || ''} onChange={e => setEditing({ ...editing, avatar_url: e.target.value })} placeholder="https://..." className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200" />
-                </div>
-                <div>
-                  <label className="block text-sm text-slate-300 mb-1">积分</label>
-                  <input type="number" value={editing.points || 0} onChange={e => setEditing({ ...editing, points: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm text-slate-300 mb-1">个人简介</label>
-                <textarea value={editing.bio || ''} onChange={e => setEditing({ ...editing, bio: e.target.value })} rows={2} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200" />
-              </div>
-              <div>
-                <label className="block text-sm text-slate-300 mb-1">加入日期</label>
-                <input type="date" value={editing.joined_date || ''} onChange={e => setEditing({ ...editing, joined_date: e.target.value })} className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200" />
-              </div>
-              <div>
-                <label className="block text-sm text-slate-300 mb-1">贡献链接（每行一个）</label>
-                <textarea
-                  value={Array.isArray(editing.contribution_links) ? editing.contribution_links.join('\n') : ''}
-                  onChange={e => setEditing({ ...editing, contribution_links: e.target.value.split('\n').filter(l => l.trim()) })}
-                  rows={3} placeholder="https://..." className="w-full px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-slate-200"
-                />
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 text-slate-400 hover:bg-slate-700 rounded-lg">取消</button>
-                <button type="submit" className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-500">保存</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

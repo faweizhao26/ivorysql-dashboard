@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 type DataCategory = 'social' | 'article' | 'website' | 'activity';
-type TabType = 'manual' | 'articles' | 'reminders' | 'events';
+type TabType = 'manual' | 'articles' | 'reminders' | 'events' | 'evangelist';
 
 interface DataEntry {
   id?: number;
@@ -205,6 +205,16 @@ export default function AdminPage() {
             >
               活动管理
             </button>
+            <button
+              onClick={() => setActiveTab('evangelist')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 ${
+                activeTab === 'evangelist'
+                  ? 'border-indigo-500 text-indigo-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
+              }`}
+            >
+              布道者计划
+            </button>
           </nav>
         </div>
 
@@ -213,6 +223,7 @@ export default function AdminPage() {
           {activeTab === 'articles' && <ArticleSection onDataChange={fetchReminderStatus} />}
           {activeTab === 'reminders' && <ReminderSection onSettingsChange={fetchReminderStatus} />}
           {activeTab === 'events' && <EventsSection />}
+          {activeTab === 'evangelist' && <EvangelistSection />}
         </div>
       </div>
     </div>
@@ -1383,6 +1394,84 @@ function EventsSection() {
             </table>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function EvangelistSection() {
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [editing, setEditing] = useState<any>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => { fetchData(); }, []);
+
+  async function fetchData() {
+    try {
+      const res = await fetch('/api/evangelist', { credentials: 'include' });
+      if (res.ok) setParticipants(await res.json());
+    } catch (e) { console.error(e); }
+  }
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    const method = editing.id ? 'PUT' : 'POST';
+    await fetch('/api/evangelist', {
+      method, headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...editing, contribution_links: editing.contribution_links || [] })
+    });
+    setEditing(null); setMessage('保存成功'); setTimeout(() => setMessage(null), 2000); fetchData();
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm('确定删除？')) return;
+    await fetch(`/api/evangelist?id=${id}`, { method: 'DELETE' });
+    fetchData();
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+        <div className="flex justify-between mb-2">
+          <h2 className="text-lg font-semibold text-slate-100">{editing ? '编辑成员' : '添加成员'}</h2>
+          {editing && <button onClick={() => setEditing(null)} className="text-sm text-slate-400 hover:bg-slate-700 px-3 py-1 rounded-lg">取消</button>}
+        </div>
+        {message && <div className="mb-3 p-2 text-sm bg-green-500/20 text-green-400 rounded-lg">{message}</div>}
+        <form onSubmit={handleSave} className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm text-slate-300 mb-1">姓名 *</label>
+              <input required value={editing?.name || ''} onChange={e => setEditing({ ...editing, name: e.target.value })} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200" />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-300 mb-1">头衔</label>
+              <input value={editing?.title || ''} onChange={e => setEditing({ ...editing, title: e.target.value })} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200" />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-300 mb-1">积分</label>
+              <input type="number" value={editing?.points || 0} onChange={e => setEditing({ ...editing, points: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div><label className="block text-sm text-slate-300 mb-1">头像 URL</label><input value={editing?.avatar_url || ''} onChange={e => setEditing({ ...editing, avatar_url: e.target.value })} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200" /></div>
+            <div><label className="block text-sm text-slate-300 mb-1">加入日期</label><input type="date" value={editing?.joined_date || ''} onChange={e => setEditing({ ...editing, joined_date: e.target.value })} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200" /></div>
+          </div>
+          <div><label className="block text-sm text-slate-300 mb-1">贡献链接（每行一个）</label><textarea value={Array.isArray(editing?.contribution_links) ? editing.contribution_links.join('\n') : ''} onChange={e => setEditing({ ...editing, contribution_links: e.target.value.split('\n').filter((l: string) => l.trim()) })} rows={3} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200" /></div>
+          <div><button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500">{editing?.id ? '更新' : '添加'}</button>{!editing && <button type="button" onClick={() => setEditing({ name: '', points: 0 })} className="ml-2 px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-500">新增成员</button>}</div>
+        </form>
+      </div>
+      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">成员列表（{participants.length}人）</h2>
+        <table className="w-full text-sm"><thead><tr className="border-b border-slate-700"><th className="text-left py-2 px-3 text-slate-400">姓名</th><th className="text-left py-2 px-3 text-slate-400 hidden md:table-cell">头衔</th><th className="text-right py-2 px-3 text-slate-400">积分</th><th className="text-right py-2 px-3 text-slate-400">操作</th></tr></thead><tbody>
+          {participants.map((p: any) => (
+            <tr key={p.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+              <td className="py-2 px-3 text-slate-200">{p.name}</td>
+              <td className="py-2 px-3 text-slate-400 hidden md:table-cell">{p.title || '-'}</td>
+              <td className="py-2 px-3 text-right font-bold text-slate-200">{p.points}</td>
+              <td className="py-2 px-3 text-right"><button onClick={() => setEditing(p)} className="text-indigo-400 hover:text-indigo-300 text-sm mr-2">编辑</button><button onClick={() => handleDelete(p.id)} className="text-red-400 hover:text-red-300 text-sm">删除</button></td>
+            </tr>
+          ))}
+        </tbody></table>
       </div>
     </div>
   );
