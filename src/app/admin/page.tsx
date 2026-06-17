@@ -1521,7 +1521,7 @@ function EvangelistSection() {
           <thead><tr className="border-b border-slate-700">
             <th className="text-left py-2 px-2 text-slate-400">姓名</th>
             <th className="text-right py-2 px-2 text-slate-400 w-16">积分</th>
-            <th className="text-right py-2 px-2 text-slate-400 w-24">操作</th>
+            <th className="text-right py-2 px-2 text-slate-400 w-32">操作</th>
           </tr></thead>
           <tbody>
             {participants.map((p: any) => (
@@ -1533,7 +1533,7 @@ function EvangelistSection() {
                   </button>
                 </td>
                 <td className="py-2 px-2 text-right font-bold text-slate-200">{p.total_points || 0}</td>
-                <td className="py-2 px-2 text-right text-xs space-x-1">
+                <td className="py-2 px-2 text-right text-xs whitespace-nowrap space-x-0.5">
                   <button onClick={() => setEditingPerson(p)} className="text-indigo-400 hover:text-indigo-300 px-1.5 py-0.5 rounded hover:bg-indigo-500/10">编辑</button>
                   <button onClick={() => deletePerson(p.id)} className="text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-red-500/10">删除</button>
                   <button onClick={() => { setSelectedId(p.id); setEditingCont({ participant_id: p.id, category:'', type:'', title:'', url:'', points:0, date:'', notes:'' }); fetchContributions(p.id); }} className="text-amber-400 hover:text-amber-300 px-1.5 py-0.5 rounded hover:bg-amber-500/10">+贡献</button>
