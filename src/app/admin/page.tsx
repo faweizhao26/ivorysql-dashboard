@@ -1483,35 +1483,38 @@ function EvangelistSection() {
         {/* Contribution Form */}
         <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
           <div className="flex justify-between mb-2">
-            <h2 className="font-semibold text-slate-100">{editingCont ? (editingCont.id ? '编辑贡献' : '添加贡献') : '添加贡献'}</h2>
+            <h2 className="font-semibold text-slate-100">添加贡献记录</h2>
             {editingCont && <button onClick={() => setEditingCont(null)} className="text-sm text-slate-400 hover:bg-slate-700 px-3 py-1 rounded-lg">取消</button>}
           </div>
+          {!editingCont ? (
+            <p className="text-sm text-slate-500">点击下方成员列表右侧的 <span className="text-amber-400">+贡献</span> 按钮开始添加</p>
+          ) : (
           <form onSubmit={saveContribution} className="space-y-2">
+            <div className="text-xs text-slate-500 mb-2">为成员添加贡献记录</div>
             <div className="grid grid-cols-2 gap-2">
-              <select value={editingCont?.category || ''} onChange={e => setEditingCont({...editingCont, category: e.target.value, type: ''})}
+              <select value={editingCont.category || ''} onChange={e => setEditingCont({...editingCont, category: e.target.value, type: ''})}
                 className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm">
                 <option value="">选择类别</option>
                 {categories.map(c => <option key={c}>{c}</option>)}
               </select>
-              <select value={editingCont?.type || ''} onChange={e => setEditingCont({...editingCont, type: e.target.value})}
+              <select value={editingCont.type || ''} onChange={e => setEditingCont({...editingCont, type: e.target.value})}
                 className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" disabled={!editingCont?.category}>
                 <option value="">选择类型</option>
                 {(types[editingCont?.category] || []).map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <input placeholder="标题（可选）" value={editingCont?.title || ''} onChange={e => setEditingCont({...editingCont, title: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-              <input type="number" placeholder="积分" value={editingCont?.points || ''} onChange={e => setEditingCont({...editingCont, points: parseInt(e.target.value) || 0})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
+              <input placeholder="标题（可选）" value={editingCont.title || ''} onChange={e => setEditingCont({...editingCont, title: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
+              <input type="number" placeholder="积分" value={editingCont.points || ''} onChange={e => setEditingCont({...editingCont, points: parseInt(e.target.value) || 0})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <input placeholder="链接（可选）" value={editingCont?.url || ''} onChange={e => setEditingCont({...editingCont, url: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-              <input type="date" value={editingCont?.date || ''} onChange={e => setEditingCont({...editingCont, date: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
+              <input placeholder="链接（可选）" value={editingCont.url || ''} onChange={e => setEditingCont({...editingCont, url: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
+              <input type="date" value={editingCont.date || ''} onChange={e => setEditingCont({...editingCont, date: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
             </div>
-            <input placeholder="备注（可选）" value={editingCont?.notes || ''} onChange={e => setEditingCont({...editingCont, notes: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-            <div className="flex gap-2">
-              <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500">{editingCont?.id ? '更新贡献' : '添加贡献'}</button>
-            </div>
+            <input placeholder="备注（可选）" value={editingCont.notes || ''} onChange={e => setEditingCont({...editingCont, notes: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
+            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500">{editingCont.id ? '更新贡献' : '添加贡献'}</button>
           </form>
+          )}
         </div>
       </div>
 
