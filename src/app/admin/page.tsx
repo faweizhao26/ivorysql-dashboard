@@ -1425,24 +1425,22 @@ function EvangelistSection() {
   async function savePerson(e: React.FormEvent) {
     e.preventDefault();
     const m = editingPerson.id ? 'PUT' : 'POST';
-    await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingPerson) });
+    await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingPerson), credentials: 'include' });
     setEditingPerson(null); fetchParticipants();
   }
 
   async function saveContribution(e: React.FormEvent) {
     e.preventDefault();
     const m = editingCont.id ? 'PUT' : 'POST';
-    await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingCont) });
-    setEditingCont(null);
-    if (selectedId) fetchContributions(selectedId);
-    fetchParticipants();
+    await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingCont), credentials: 'include' });
+    setEditingCont(null); fetchContributions(editingCont.participant_id); fetchParticipants();
   }
 
   async function deletePerson(id: number) { if (!confirm('确定删除？')) return;
-    await fetch('/api/evangelist?id=' + id, { method: 'DELETE' }); fetchParticipants(); setSelectedId(null); }
+    await fetch('/api/evangelist?id=' + id, { method: 'DELETE', credentials: 'include' }); fetchParticipants(); setSelectedId(null); setContributions([]); }
 
   async function deleteContribution(id: number) { if (!confirm('确定删除？')) return;
-    await fetch('/api/evangelist?id=' + id + '&type=contribution', { method: 'DELETE' });
+    await fetch('/api/evangelist?id=' + id + '&type=contribution', { method: 'DELETE', credentials: 'include' });
     if (selectedId) fetchContributions(selectedId); fetchParticipants(); }
 
   const categories = ['内容创作', '活动参与', '社区贡献', '其他'];
