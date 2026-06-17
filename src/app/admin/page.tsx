@@ -1468,14 +1468,10 @@ function EvangelistSection() {
               <input required placeholder="姓名" value={editingPerson?.name || ''} onChange={e => setEditingPerson({...editingPerson, name: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
               <input placeholder="头衔" value={editingPerson?.title || ''} onChange={e => setEditingPerson({...editingPerson, title: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
             </div>
-            <input placeholder="头像 URL" value={editingPerson?.avatar_url || ''} onChange={e => setEditingPerson({...editingPerson, avatar_url: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-            <div className="grid grid-cols-2 gap-2">
-              <input placeholder="简介" value={editingPerson?.bio || ''} onChange={e => setEditingPerson({...editingPerson, bio: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-              <input type="date" placeholder="加入日期" value={editingPerson?.joined_date || ''} onChange={e => setEditingPerson({...editingPerson, joined_date: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-            </div>
+            <input placeholder="简介" value={editingPerson?.bio || ''} onChange={e => setEditingPerson({...editingPerson, bio: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
             <div className="flex gap-2">
               <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500">{editingPerson?.id ? '更新' : '添加'}</button>
-              {!editingPerson && <button type="button" onClick={() => setEditingPerson({name:'',title:'',avatar_url:'',bio:'',joined_date:''})} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-500">新增成员</button>}
+              {!editingPerson && <button type="button" onClick={() => setEditingPerson({name:'',title:'',bio:''})} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-500">新增成员</button>}
             </div>
           </form>
         </div>
@@ -1537,10 +1533,10 @@ function EvangelistSection() {
                   </button>
                 </td>
                 <td className="py-2 px-2 text-right font-bold text-slate-200">{p.total_points || 0}</td>
-                <td className="py-2 px-2 text-right">
-                  <button onClick={() => setEditingPerson(p)} className="text-indigo-400 hover:text-indigo-300 text-xs mr-2">编辑</button>
-                  <button onClick={() => deletePerson(p.id)} className="text-red-400 hover:text-red-300 text-xs mr-2">删除</button>
-                  <button onClick={() => { setSelectedId(p.id); setEditingCont({ participant_id: p.id, category:'', type:'', title:'', url:'', points:0, date:'', notes:'' }); fetchContributions(p.id); }} className="text-amber-400 hover:text-amber-300 text-xs">+贡献</button>
+                <td className="py-2 px-2 text-right text-xs space-x-1">
+                  <button onClick={() => setEditingPerson(p)} className="text-indigo-400 hover:text-indigo-300 px-1.5 py-0.5 rounded hover:bg-indigo-500/10">编辑</button>
+                  <button onClick={() => deletePerson(p.id)} className="text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-red-500/10">删除</button>
+                  <button onClick={() => { setSelectedId(p.id); setEditingCont({ participant_id: p.id, category:'', type:'', title:'', url:'', points:0, date:'', notes:'' }); fetchContributions(p.id); }} className="text-amber-400 hover:text-amber-300 px-1.5 py-0.5 rounded hover:bg-amber-500/10">+贡献</button>
                 </td>
               </tr>
             ))}
