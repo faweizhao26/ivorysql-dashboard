@@ -1431,6 +1431,7 @@ function EvangelistSection() {
 
   async function saveContribution(e: React.FormEvent) {
     e.preventDefault();
+    if (!editingCont?.category || !editingCont?.type) { alert('请选择类别和类型'); return; }
     const m = editingCont.id ? 'PUT' : 'POST';
     await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingCont), credentials: 'include' });
     setEditingCont(null); fetchContributions(editingCont.participant_id); fetchParticipants();
@@ -1485,12 +1486,12 @@ function EvangelistSection() {
           </div>
           <form onSubmit={saveContribution} className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <select required value={editingCont?.category || ''} onChange={e => setEditingCont({...editingCont, category: e.target.value, type: ''})}
+              <select value={editingCont?.category || ''} onChange={e => setEditingCont({...editingCont, category: e.target.value, type: ''})}
                 className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm">
                 <option value="">选择类别</option>
                 {categories.map(c => <option key={c}>{c}</option>)}
               </select>
-              <select required value={editingCont?.type || ''} onChange={e => setEditingCont({...editingCont, type: e.target.value})}
+              <select value={editingCont?.type || ''} onChange={e => setEditingCont({...editingCont, type: e.target.value})}
                 className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" disabled={!editingCont?.category}>
                 <option value="">选择类型</option>
                 {(types[editingCont?.category] || []).map(t => <option key={t}>{t}</option>)}
