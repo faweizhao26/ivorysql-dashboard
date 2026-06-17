@@ -1431,7 +1431,9 @@ function EvangelistSection() {
 
   async function saveContribution(e: React.FormEvent) {
     e.preventDefault();
-    if (!editingCont?.category || !editingCont?.type) { alert('请选择类别和类型'); return; }
+    if (!editingCont) return;
+    if (!editingCont.participant_id) { alert('请先选择成员'); return; }
+    if (!editingCont.category || !editingCont.type) { alert('请选择类别和类型'); return; }
     const m = editingCont.id ? 'PUT' : 'POST';
     await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingCont), credentials: 'include' });
     setEditingCont(null); fetchContributions(editingCont.participant_id); fetchParticipants();
@@ -1507,7 +1509,7 @@ function EvangelistSection() {
             </div>
             <input placeholder="备注（可选）" value={editingCont?.notes || ''} onChange={e => setEditingCont({...editingCont, notes: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
             <div className="flex gap-2">
-              <button type="submit" disabled={!editingCont?.id && !editingCont?.participant_id} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 disabled:opacity-50">{editingCont?.id ? '更新贡献' : '添加贡献'}</button>
+              <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500">{editingCont?.id ? '更新贡献' : '添加贡献'}</button>
             </div>
           </form>
         </div>
