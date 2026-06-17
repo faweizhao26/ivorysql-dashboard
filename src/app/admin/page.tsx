@@ -1482,7 +1482,7 @@ function EvangelistSection() {
         {/* Contribution Form */}
         <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
           <div className="flex justify-between mb-2">
-            <h2 className="font-semibold text-slate-100">{editingCont ? '编辑贡献' : (selectedId ? '添加贡献' : '先选择成员再添加贡献')}</h2>
+            <h2 className="font-semibold text-slate-100">{editingCont ? (editingCont.id ? '编辑贡献' : '添加贡献') : '添加贡献'}</h2>
             {editingCont && <button onClick={() => setEditingCont(null)} className="text-sm text-slate-400 hover:bg-slate-700 px-3 py-1 rounded-lg">取消</button>}
           </div>
           <form onSubmit={saveContribution} className="space-y-2">
@@ -1508,7 +1508,7 @@ function EvangelistSection() {
             </div>
             <input placeholder="备注（可选）" value={editingCont?.notes || ''} onChange={e => setEditingCont({...editingCont, notes: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
             <div className="flex gap-2">
-              <button type="submit" disabled={!selectedId && !editingCont?.id} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 disabled:opacity-50">{editingCont?.id ? '更新贡献' : '添加贡献'}</button>
+              <button type="submit" disabled={!editingCont?.id && !editingCont?.participant_id} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 disabled:opacity-50">{editingCont?.id ? '更新贡献' : '添加贡献'}</button>
             </div>
           </form>
         </div>
@@ -1536,7 +1536,7 @@ function EvangelistSection() {
                 <td className="py-2 px-2 text-right">
                   <button onClick={() => setEditingPerson(p)} className="text-indigo-400 hover:text-indigo-300 text-xs mr-2">编辑</button>
                   <button onClick={() => deletePerson(p.id)} className="text-red-400 hover:text-red-300 text-xs mr-2">删除</button>
-                  <button onClick={() => setEditingCont({ participant_id: p.id, category:'', type:'', title:'', url:'', points:0, date:'', notes:'' })} className="text-amber-400 hover:text-amber-300 text-xs">+贡献</button>
+                  <button onClick={() => { setSelectedId(p.id); setEditingCont({ participant_id: p.id, category:'', type:'', title:'', url:'', points:0, date:'', notes:'' }); fetchContributions(p.id); }} className="text-amber-400 hover:text-amber-300 text-xs">+贡献</button>
                 </td>
               </tr>
             ))}
