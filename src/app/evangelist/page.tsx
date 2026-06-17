@@ -8,11 +8,16 @@ interface Participant {
   name: string;
   avatar_url: string | null;
   title: string | null;
-  points: number;
-  contribution_links: any;
-  joined_date: string | null;
   bio: string | null;
+  joined_date: string | null;
+  total_points: number;
 }
+
+const levelBadge = (points: number) => points >= 300
+  ? { label: '高级布道者', color: 'bg-amber-500/20 text-amber-400 border border-amber-500/30' }
+  : points >= 100
+  ? { label: '社区布道者', color: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' }
+  : { label: '新星', color: 'bg-slate-500/20 text-slate-400 border border-slate-500/30' };
 
 export default function EvangelistPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -29,25 +34,23 @@ export default function EvangelistPage() {
   }
 
   function handleExport() {
-    const rows = participants.map(p => ({
-      排名: participants.indexOf(p) + 1,
+    const rows = participants.map((p, i) => ({
+      排名: i + 1,
       姓名: p.name,
       头衔: p.title || '',
-      积分: p.points,
+      积分: p.total_points,
+      等级: levelBadge(p.total_points).label,
       加入日期: p.joined_date || '',
-      个人简介: p.bio || '',
-      贡献链接: Array.isArray(p.contribution_links) ? p.contribution_links.join('; ') : '',
+      简介: p.bio || '',
     }));
-    downloadCSV(rows, 'ivorysql-evangelist-program');
+    downloadCSV(rows, 'ivorysql-evangelist-2026');
   }
 
   if (loading) {
     return <div className="space-y-6"><div className="card p-8 h-48 animate-pulse" /></div>;
   }
 
-  // Top 3
   const top3 = participants.slice(0, 3);
-  const rankColors = ['#f59e0b', '#94a3b8', '#d97706'];
 
   return (
     <div className="space-y-6">
@@ -60,13 +63,11 @@ export default function EvangelistPage() {
               </svg>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-100">布道者计划</h1>
-              <p className="text-slate-500 text-sm">IvorySQL Evangelist Program · 共 {participants.length} 人参与</p>
+              <h1 className="text-2xl font-bold text-slate-100">布道者计划 2026</h1>
+              <p className="text-slate-500 text-sm">共 {participants.length} 人参与 · {participants.filter(p => p.total_points >= 100).length} 位社区布道者 · {participants.filter(p => p.total_points >= 300).length} 位高级布道者</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={handleExport} className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm transition-colors">导出 CSV</button>
-          </div>
+          <button onClick={handleExport} className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm transition-colors">导出 CSV</button>
         </div>
       </div>
 
@@ -75,10 +76,13 @@ export default function EvangelistPage() {
         {top3.map((p, i) => (
           <div key={p.id} className="card p-6 text-center relative">
             <div className="absolute top-3 left-3 text-2xl">{['🥇', '🥈', '🥉'][i]}</div>
+            <div className="absolute top-3 right-3">
+              <span className={`text-xs px-2 py-0.5 rounded-full ${levelBadge(p.total_points).color}`}>{levelBadge(p.total_points).label}</span>
+            </div>
             {p.avatar_url && <img src={p.avatar_url} className="w-16 h-16 rounded-full mx-auto mb-3 object-cover" />}
             <div className="font-bold text-lg text-slate-200 mb-1">{p.name}</div>
             {p.title && <div className="text-slate-400 text-sm mb-2">{p.title}</div>}
-            <div className="text-3xl font-bold text-amber-400">{p.points} <span className="text-sm text-slate-500">分</span></div>
+            <div className="text-3xl font-bold text-amber-400">{p.total_points} <span className="text-sm text-slate-500">分</span></div>
           </div>
         ))}
       </div>
@@ -92,29 +96,33 @@ export default function EvangelistPage() {
               <th className="text-left py-3 px-4 font-medium text-slate-400">姓名</th>
               <th className="text-left py-3 px-4 font-medium text-slate-400 hidden md:table-cell">头衔</th>
               <th className="text-right py-3 px-4 font-medium text-slate-400 w-20">积分</th>
+              <th className="text-left py-3 px-4 font-medium text-slate-400 hidden md:table-cell">等级</th>
             </tr>
           </thead>
           <tbody>
-            {participants.map((p, i) => (
-              <tr key={p.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                <td className="py-3 px-4 text-slate-500 font-mono">{i + 1}</td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center gap-3">
-                    {p.avatar_url ? (
-                      <img src={p.avatar_url} className="w-8 h-8 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-slate-400 text-xs">{p.name[0]}</div>
-                    )}
-                    <div>
-                      <div className="font-medium text-slate-200">{p.name}</div>
-                      {p.bio && <div className="text-xs text-slate-500 max-w-xs truncate">{p.bio}</div>}
+            {participants.map((p, i) => {
+              const level = levelBadge(p.total_points);
+              return (
+                <tr key={p.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                  <td className="py-3 px-4 text-slate-500 font-mono">{i + 1}</td>
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      {p.avatar_url ? (
+                        <img src={p.avatar_url} className="w-8 h-8 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-slate-400 text-xs">{p.name[0]}</div>
+                      )}
+                      <span className="font-medium text-slate-200">{p.name}</span>
                     </div>
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-slate-400 hidden md:table-cell">{p.title || '-'}</td>
-                <td className="py-3 px-4 text-right font-bold text-slate-200">{p.points}</td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="py-3 px-4 text-slate-400 hidden md:table-cell">{p.title || '-'}</td>
+                  <td className="py-3 px-4 text-right font-bold text-slate-200">{p.total_points}</td>
+                  <td className="py-3 px-4 hidden md:table-cell">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${level.color}`}>{level.label}</span>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
