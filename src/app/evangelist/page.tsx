@@ -178,54 +178,33 @@ export default function EvangelistPage() {
                   {isExpanded && (
                     <tr key={`${p.id}-detail`}>
                       <td colSpan={5} className="p-0">
-                        <div className="bg-slate-800/80 border-l-2 border-l-indigo-500 mx-4 my-2 rounded-r-lg">
+                        <div className="mx-4 mb-3 rounded-lg bg-slate-900 border border-slate-600 overflow-hidden">
                           {loadingContributions ? (
-                            <div className="text-slate-400 text-center py-6 text-sm">加载中...</div>
+                            <div className="text-slate-400 text-center py-6">加载中...</div>
                           ) : memberContributions.length === 0 ? (
-                            <div className="text-slate-500 text-center py-6 text-sm">暂无贡献记录</div>
+                            <div className="text-slate-500 text-center py-6">暂无贡献记录</div>
                           ) : (
                             <div>
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className="border-b border-slate-700/70">
-                                    <th className="text-left py-3 px-4 font-medium text-slate-300">日期</th>
-                                    <th className="text-left py-3 px-4 font-medium text-slate-300">类别</th>
-                                    <th className="text-left py-3 px-4 font-medium text-slate-300">类型</th>
-                                    <th className="text-left py-3 px-4 font-medium text-slate-300">内容</th>
-                                    <th className="text-right py-3 px-4 font-medium text-slate-300 w-20">积分</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {memberContributions.map((c, ci) => (
-                                    <tr key={c.id} className={`${ci % 2 === 0 ? 'bg-slate-900/30' : ''} border-b border-slate-700/30`}>
-                                      <td className="py-2.5 px-4 text-slate-300 whitespace-nowrap">{c.date || '-'}</td>
-                                      <td className="py-2.5 px-4">
-                                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium border ${categoryColors[c.category] || categoryColors['其他']}`}>
-                                          {c.category}
-                                        </span>
-                                      </td>
-                                      <td className="py-2.5 px-4 text-slate-200">{c.type}</td>
-                                      <td className="py-2.5 px-4 text-slate-200 max-w-xs truncate">
-                                        {c.url ? (
-                                          <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 hover:underline">
-                                            {c.title || c.url}
-                                          </a>
-                                        ) : (c.title || '-')}
-                                      </td>
-                                      <td className="py-2.5 px-4 text-right">
-                                        <span className="font-semibold text-amber-400">+{c.points}</span>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                              <div className="flex justify-between items-center px-4 py-3 border-t border-slate-700/50 bg-slate-900/40 rounded-br-lg">
-                                <span className="text-sm text-slate-400">
-                                  共 <span className="text-slate-200 font-medium">{memberContributions.length}</span> 条贡献
-                                </span>
-                                <span className="text-sm text-slate-200 font-semibold">
-                                  合计 <span className="text-amber-400 text-lg ml-1">{contribTotal}</span> <span className="text-slate-500 text-xs">分</span>
-                                </span>
+                              {memberContributions.map((c) => (
+                                <div key={c.id} className="flex items-center gap-4 px-5 py-3 border-b border-slate-700/50 last:border-b-0 hover:bg-slate-800/30 transition-colors">
+                                  <span className="text-xs text-slate-500 w-20 shrink-0">{c.date || '—'}</span>
+                                  <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-medium border ${categoryColors[c.category] || categoryColors['其他']}`}>
+                                    {c.category}
+                                  </span>
+                                  <span className="text-sm text-slate-300 shrink-0 w-40 truncate" title={c.type}>{c.type}</span>
+                                  <span className="text-sm text-slate-200 flex-1 min-w-0 truncate">
+                                    {c.url ? (
+                                      <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 hover:underline">
+                                        {c.title || c.url}
+                                      </a>
+                                    ) : (c.title || '—')}
+                                  </span>
+                                  <span className="shrink-0 text-sm font-semibold text-amber-400 w-16 text-right">+{c.points}</span>
+                                </div>
+                              ))}
+                              <div className="flex justify-between items-center px-5 py-3 bg-slate-800/60 border-t border-slate-600">
+                                <span className="text-sm text-slate-400">共 <span className="text-slate-200 font-medium">{memberContributions.length}</span> 条</span>
+                                <span className="text-sm text-slate-200">合计 <span className="text-amber-400 font-bold text-base ml-1">{contribTotal}</span> 分</span>
                               </div>
                             </div>
                           )}
