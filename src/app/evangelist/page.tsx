@@ -32,10 +32,10 @@ const levelBadge = (points: number) => points >= 300
   : { label: '新星', color: 'bg-slate-500/20 text-slate-400 border border-slate-500/30' };
 
 const categoryColors: Record<string, string> = {
-  '内容创作': 'bg-blue-500/20 text-blue-300',
-  '活动参与': 'bg-green-500/20 text-green-300',
-  '社区贡献': 'bg-purple-500/20 text-purple-300',
-  '其他': 'bg-slate-500/20 text-slate-300',
+  '内容创作': 'bg-blue-500/15 text-blue-300 border-blue-500/40',
+  '活动参与': 'bg-green-500/15 text-green-300 border-green-500/40',
+  '社区贡献': 'bg-purple-500/15 text-purple-300 border-purple-500/40',
+  '其他': 'bg-slate-500/15 text-slate-300 border-slate-500/40',
 };
 
 export default function EvangelistPage() {
@@ -145,12 +145,13 @@ export default function EvangelistPage() {
               const level = levelBadge(p.total_points);
               const isExpanded = expandedId === p.id;
               const memberContributions = contributions[p.id] || [];
+              const contribTotal = memberContributions.reduce((s, c) => s + (c.points || 0), 0);
               return (
                 <>
                   <tr
                     key={p.id}
                     onClick={() => toggleExpand(p.id)}
-                    className={`border-b border-slate-700/50 hover:bg-slate-700/30 cursor-pointer transition-colors ${isExpanded ? 'bg-indigo-500/10' : ''}`}
+                    className={`border-b border-slate-700/50 hover:bg-slate-700/30 cursor-pointer transition-colors ${isExpanded ? 'bg-indigo-500/10 border-l-2 border-l-indigo-500' : ''}`}
                   >
                     <td className="py-3 px-4 text-slate-500 font-mono">{i + 1}</td>
                     <td className="py-3 px-4">
@@ -162,7 +163,9 @@ export default function EvangelistPage() {
                         )}
                         <span className="font-medium text-slate-200">
                           {p.name}
-                          <span className="ml-2 text-xs text-slate-500">{isExpanded ? '▲ 收起' : '▼ 展开'}</span>
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full transition-colors ${isExpanded ? 'bg-indigo-500/20 text-indigo-300' : 'text-slate-500'}`}>
+                          {isExpanded ? '▲ 收起' : '▼ 明细'}
                         </span>
                       </div>
                     </td>
@@ -173,51 +176,60 @@ export default function EvangelistPage() {
                     </td>
                   </tr>
                   {isExpanded && (
-                    <tr key={`${p.id}-detail`} className="border-b border-slate-700/50 bg-slate-800/30">
-                      <td colSpan={5} className="py-4 px-4">
-                        {loadingContributions ? (
-                          <div className="text-slate-500 text-center py-4">加载中...</div>
-                        ) : memberContributions.length === 0 ? (
-                          <div className="text-slate-500 text-center py-4">暂无贡献记录</div>
-                        ) : (
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-xs">
-                              <thead>
-                                <tr className="border-b border-slate-700">
-                                  <th className="text-left py-2 px-3 font-medium text-slate-500">日期</th>
-                                  <th className="text-left py-2 px-3 font-medium text-slate-500">类别</th>
-                                  <th className="text-left py-2 px-3 font-medium text-slate-500">类型</th>
-                                  <th className="text-left py-2 px-3 font-medium text-slate-500">内容</th>
-                                  <th className="text-right py-2 px-3 font-medium text-slate-500 w-16">积分</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {memberContributions.map((c) => (
-                                  <tr key={c.id} className="border-b border-slate-700/30">
-                                    <td className="py-2 px-3 text-slate-400 whitespace-nowrap">{c.date || '-'}</td>
-                                    <td className="py-2 px-3">
-                                      <span className={`px-1.5 py-0.5 rounded text-xs ${categoryColors[c.category] || categoryColors['其他']}`}>
-                                        {c.category}
-                                      </span>
-                                    </td>
-                                    <td className="py-2 px-3 text-slate-300">{c.type}</td>
-                                    <td className="py-2 px-3 text-slate-200 max-w-xs truncate">
-                                      {c.url ? (
-                                        <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:underline">
-                                          {c.title || c.url}
-                                        </a>
-                                      ) : (c.title || '-')}
-                                    </td>
-                                    <td className="py-2 px-3 text-right font-bold text-amber-400">+{c.points}</td>
+                    <tr key={`${p.id}-detail`}>
+                      <td colSpan={5} className="p-0">
+                        <div className="bg-slate-800/80 border-l-2 border-l-indigo-500 mx-4 my-2 rounded-r-lg">
+                          {loadingContributions ? (
+                            <div className="text-slate-400 text-center py-6 text-sm">加载中...</div>
+                          ) : memberContributions.length === 0 ? (
+                            <div className="text-slate-500 text-center py-6 text-sm">暂无贡献记录</div>
+                          ) : (
+                            <div>
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-slate-700/70">
+                                    <th className="text-left py-3 px-4 font-medium text-slate-300">日期</th>
+                                    <th className="text-left py-3 px-4 font-medium text-slate-300">类别</th>
+                                    <th className="text-left py-3 px-4 font-medium text-slate-300">类型</th>
+                                    <th className="text-left py-3 px-4 font-medium text-slate-300">内容</th>
+                                    <th className="text-right py-3 px-4 font-medium text-slate-300 w-20">积分</th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                            <div className="text-right text-xs text-slate-500 mt-2">
-                              共 {memberContributions.length} 条记录 · 合计 {memberContributions.reduce((s, c) => s + (c.points || 0), 0)} 分
+                                </thead>
+                                <tbody>
+                                  {memberContributions.map((c, ci) => (
+                                    <tr key={c.id} className={`${ci % 2 === 0 ? 'bg-slate-900/30' : ''} border-b border-slate-700/30`}>
+                                      <td className="py-2.5 px-4 text-slate-300 whitespace-nowrap">{c.date || '-'}</td>
+                                      <td className="py-2.5 px-4">
+                                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium border ${categoryColors[c.category] || categoryColors['其他']}`}>
+                                          {c.category}
+                                        </span>
+                                      </td>
+                                      <td className="py-2.5 px-4 text-slate-200">{c.type}</td>
+                                      <td className="py-2.5 px-4 text-slate-200 max-w-xs truncate">
+                                        {c.url ? (
+                                          <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-indigo-400 hover:text-indigo-300 hover:underline">
+                                            {c.title || c.url}
+                                          </a>
+                                        ) : (c.title || '-')}
+                                      </td>
+                                      <td className="py-2.5 px-4 text-right">
+                                        <span className="font-semibold text-amber-400">+{c.points}</span>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                              <div className="flex justify-between items-center px-4 py-3 border-t border-slate-700/50 bg-slate-900/40 rounded-br-lg">
+                                <span className="text-sm text-slate-400">
+                                  共 <span className="text-slate-200 font-medium">{memberContributions.length}</span> 条贡献
+                                </span>
+                                <span className="text-sm text-slate-200 font-semibold">
+                                  合计 <span className="text-amber-400 text-lg ml-1">{contribTotal}</span> <span className="text-slate-500 text-xs">分</span>
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )}
