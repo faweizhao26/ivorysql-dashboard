@@ -1448,6 +1448,18 @@ function EvangelistSection() {
     '其他': ['宣传活动(5)', '转载公告(10)', '转发公告(5)'],
   };
 
+  // Ensure current value is in options
+  function getCategoryOptions() {
+    const opts = [...categories];
+    if (editingCont?.category && !opts.includes(editingCont.category)) opts.push(editingCont.category);
+    return opts;
+  }
+  function getTypeOptions() {
+    const opts = [...(types[editingCont?.category] || [])];
+    if (editingCont?.type && !opts.includes(editingCont.type)) opts.push(editingCont.type);
+    return opts;
+  }
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1482,15 +1494,15 @@ function EvangelistSection() {
           <form onSubmit={saveContribution} className="space-y-2">
             <div className="text-xs text-slate-500 mb-2">为成员添加贡献记录</div>
             <div className="grid grid-cols-2 gap-2">
-              <select value={editingCont.category || ''} onChange={e => setEditingCont({...editingCont, category: e.target.value, type: ''})}
+              <select value={editingCont.category || ''} onChange={e => setEditingCont({...editingCont, category: e.target.value, type: editingCont?.id ? editingCont.type : ''})}
                 className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm">
                 <option value="">选择类别</option>
-                {categories.map(c => <option key={c}>{c}</option>)}
+                {getCategoryOptions().map(c => <option key={c}>{c}</option>)}
               </select>
               <select value={editingCont.type || ''} onChange={e => setEditingCont({...editingCont, type: e.target.value})}
                 className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" disabled={!editingCont?.category}>
                 <option value="">选择类型</option>
-                {(types[editingCont?.category] || []).map(t => <option key={t}>{t}</option>)}
+                {getTypeOptions().map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">
