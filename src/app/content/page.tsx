@@ -1,8 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { StatCard, calculateChange } from '@/components/StatCard';
-import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { PlatformIcon } from '@/components/PlatformIcon';
 import { downloadCSV } from '@/lib/csv-utils';
 
@@ -47,8 +45,6 @@ const contentPlatforms = [
   { key: 'ctoutiao', name: '51CTO' },
   { key: 'itpub', name: 'ITPUB' },
   { key: 'toutiao', name: '头条号' },
-  { key: 'ifclub', name: 'IFCLUB' },
-  { key: 'zhihu', name: '知乎' },
   { key: 'cnblogs', name: '博客园' },
 ];
 
@@ -81,26 +77,9 @@ export default function ContentPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const params = new URLSearchParams({
-          start: dateRange.start,
-          end: dateRange.end
-        });
-        const [contentRes, statsArticlesRes, allArticlesRes] = await Promise.all([
-          fetch(`/api/content?${params}`, { credentials: 'include' }),
-          fetch(`/api/articles?start=${dateRange.start}&end=${dateRange.end}`, { credentials: 'include' }),
-          fetch(`/api/articles?start=2020-01-01&end=2099-12-31`, { credentials: 'include' })
-        ]);
-        
-        if (contentRes.ok) {
-          const json = await contentRes.json();
-          setData(json);
-        }
-        if (statsArticlesRes.ok) {
-          const json = await statsArticlesRes.json();
-          setArticleDetails(json);
-        }
-        if (allArticlesRes.ok) {
-          const json = await allArticlesRes.json();
+        const res = await fetch(`/api/articles?start=2020-01-01&end=2099-12-31`, { credentials: 'include' });
+        if (res.ok) {
+          const json = await res.json();
           setAllArticleDetails(json);
         }
       } catch (err) {
@@ -110,7 +89,7 @@ export default function ContentPage() {
       }
     }
     fetchData();
-  }, [dateRange]);
+  }, []);
 
   async function handleSaveEdit(e: React.FormEvent) {
     e.preventDefault();
@@ -173,8 +152,6 @@ export default function ContentPage() {
     );
   }
 
-  const articleDataList = data?.articles || [];
-  const statsArticleDetails = articleDetails?.articles || {};
   const allArticlesForTable = allArticleDetails?.articles || {};
 
   const articleData = allArticlePlatforms.reduce((acc, { key }) => {
@@ -226,65 +203,22 @@ export default function ContentPage() {
           <span className="text-2xl">📝</span>
           <h1 className="text-2xl font-bold text-slate-100">技术内容平台</h1>
         </div>
-        <div className="flex items-center gap-3">
-          {displayDate && (
-            <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
-              {displayDate}
-            </span>
-          )}
-          <button
-            onClick={() => exportContentData(data, statsArticleDetails, currentPeriod)}
-            className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
-          >
-            导出 CSV
-          </button>
-        </div>
-      </div>
-
-      <TimeRangeSelector onRangeChange={(range) => {
-        setDateRange({ start: range.start, end: range.end, isSingleDay: range.isSingleDay });
-        setComparison(range.comparison);
-      }} />
-
-      <div className="text-sm text-slate-400">
-        当前时间段: <span className="font-medium text-slate-200">{currentPeriod}</span>
-      </div>
-
-      <div>
-        <h2 className="text-lg font-semibold text-slate-100 mb-4">汇总数据</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <StatCard
-            title="文章总数"
-            value={totals.articles}
-            icon="📄"
-          />
-          <StatCard
-            title="总阅读量"
-            value={totals.views}
-            icon="👁️"
-          />
-          <StatCard
-            title="总粉丝数"
-            value={totals.followers}
-            icon="👥"
-          />
-        </div>
+        <button
+          onClick={() => exportContentData(allArticlesForTable)}
+          className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
+        >
+          导出全部 CSV
+        </button>
       </div>
 
       <div>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">平台详情</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {allArticlePlatforms.map(({ key, name }) => {
-            const current = articleData[key];
-            const articles = statsArticleDetails[key] || [];
-            const platformArticleCount = articles.length;
-            const platformTotalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
-            const platformAvgViews = platformArticleCount > 0 ? Math.round(platformTotalViews / platformArticleCount) : 0;
-            const platformLikes = articles.reduce((sum, a) => sum + (a.likes || 0), 0);
-            const platformComments = articles.reduce((sum, a) => sum + (a.comments || 0), 0);
             const allTimeArticles = allArticlesForTable[key] || [];
-            const allTimeTotalViews = allTimeArticles.reduce((sum: number, a: any) => sum + (a.views || 0), 0);
-            const hasData = allTimeArticles.length > 0 || current?.followers;
+            const platformArticleCount = allTimeArticles.length;
+            const platformTotalViews = allTimeArticles.reduce((sum: number, a: any) => sum + (a.views || 0), 0);
+            const hasData = platformArticleCount > 0;
 
             if (!hasData) {
               return (
@@ -313,34 +247,12 @@ export default function ContentPage() {
                   </button>
                 </div>
                 <div className="mb-3 p-2 rounded-lg bg-slate-900/50 text-center">
-                  <div className="text-xs text-slate-400">总阅读量（全部）</div>
-                  <div className="text-lg font-bold text-slate-200">{allTimeTotalViews.toLocaleString()}</div>
+                  <div className="text-xs text-slate-400">文章数</div>
+                  <div className="text-lg font-bold text-slate-200">{platformArticleCount.toLocaleString()}</div>
                 </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">文章数（当前时段）</span>
-                    <span className="font-medium text-slate-200">{platformArticleCount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">阅读量（当前时段）</span>
-                    <span className="font-medium text-slate-200">{platformTotalViews.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">篇均阅读</span>
-                    <span className="font-medium text-slate-200">{platformAvgViews.toLocaleString()}</span>
-                  </div>
-                  {platformLikes > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">获赞</span>
-                      <span className="font-medium text-slate-200">{platformLikes.toLocaleString()}</span>
-                    </div>
-                  )}
-                  {platformComments > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">评论</span>
-                      <span className="font-medium text-slate-200">{platformComments.toLocaleString()}</span>
-                    </div>
-                  )}
+                <div className="mb-3 p-2 rounded-lg bg-slate-900/50 text-center">
+                  <div className="text-xs text-slate-400">总阅读量</div>
+                  <div className="text-lg font-bold text-slate-200">{platformTotalViews.toLocaleString()}</div>
                 </div>
               </div>
             );
@@ -586,43 +498,21 @@ function exportPlatformArticles(key: string, name: string, articles: any[]) {
   downloadCSV(rows, `ivorysql-${key}-${name}`);
 }
 
-function exportContentData(data: ContentData | null, articleDetails: Record<string, ArticleDetail[]>, period: string) {
-  if (!data) return;
+function exportContentData(allArticles: Record<string, ArticleDetail[]>) {
   const rows: Record<string, any>[] = [];
-
-  data.articles.forEach(a => {
-    rows.push({
-      指标: '平台汇总',
-      平台: a.platform,
-      文章总数: a.article_count,
-      总阅读量: a.total_views,
-      篇均阅读: a.avg_views,
-      粉丝: a.followers,
-      点赞: a.likes,
-      收藏: a.bookmarks,
-      评论: a.comments,
-      日期: a.date,
-      时间段: period,
-    });
-  });
-
-  if (articleDetails) {
-    Object.entries(articleDetails).forEach(([platform, articles]) => {
-      articles.forEach(a => {
-        rows.push({
-          指标: '文章详情',
-          平台: platform,
-          日期: a.date,
-          标题: a.article_title,
-          链接: a.article_url || '',
-          阅读: a.views,
-          点赞: a.likes,
-          评论: a.comments,
-          时间段: period,
-        });
+  Object.entries(allArticles).forEach(([platform, articles]) => {
+    articles.forEach(a => {
+      rows.push({
+        平台: platform,
+        日期: a.date,
+        标题: a.article_title,
+        链接: a.article_url || '',
+        阅读: a.views,
+        分类: a.content_category || '',
+        来源: a.content_source || '',
       });
     });
-  }
-
-  downloadCSV(rows, `ivorysql-content-${period.replace(/[~ ]/g, '_')}`);
+  });
+  if (rows.length === 0) return;
+  downloadCSV(rows, 'ivorysql-content-all');
 }
