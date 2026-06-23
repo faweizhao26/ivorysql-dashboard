@@ -23,6 +23,8 @@ interface ArticleEntry {
   views: number;
   likes: number;
   comments: number;
+  content_category?: string;
+  content_source?: string;
 }
 
 interface ReminderSetting {
