@@ -80,7 +80,7 @@ export default function ContentPage() {
         const articlesRes = await fetch(`/api/articles`, { credentials: 'include' });
         if (articlesRes.ok) {
           const json = await articlesRes.json();
-          setArticleDetails(json);
+          setAllArticleDetails(json);
         }
       }
     } catch (err) {
@@ -98,7 +98,7 @@ export default function ContentPage() {
         const articlesRes = await fetch(`/api/articles`, { credentials: 'include' });
         if (articlesRes.ok) {
           const json = await articlesRes.json();
-          setArticleDetails(json);
+          setAllArticleDetails(json);
         }
       }
     } catch (err) {
