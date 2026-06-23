@@ -42,24 +42,33 @@ export default function SocialPage() {
   });
   const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
   const [data, setData] = useState<SocialData | null>(null);
+  const [articleStats, setArticleStats] = useState<Record<string, { count: number; views: number }>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const params = new URLSearchParams({
-          start: dateRange.start,
-          end: dateRange.end
-        });
-        const res = await fetch(`/api/social?${params}`, { credentials: 'include' });
-        if (!res.ok) throw new Error('Failed to fetch data');
-        const json = await res.json();
-        setData(json);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+        const params = new URLSearchParams({ start: dateRange.start, end: dateRange.end });
+        const [socialRes, articlesRes] = await Promise.all([
+          fetch(`/api/social?${params}`, { credentials: 'include' }),
+          fetch('/api/articles?start=2020-01-01&end=2099-12-31', { credentials: 'include' })
+        ]);
+        if (socialRes.ok) setData(await socialRes.json());
+        if (articlesRes.ok) {
+          const json = await articlesRes.json();
+          const stats: Record<string, { count: number; views: number }> = {};
+          const allPlatforms = json.articles || {};
+          for (const [platform, articles] of Object.entries(allPlatforms)) {
+            const list = articles as any[];
+            stats[platform] = {
+              count: list.length,
+              views: list.reduce((sum: number, a: any) => sum + (a.views || 0), 0)
+            };
+          }
+          setArticleStats(stats);
+        }
+      } catch (err) { console.error(err); }
+      finally { setLoading(false); }
     }
     fetchData();
   }, [dateRange]);
@@ -86,14 +95,10 @@ export default function SocialPage() {
   }
 
   const socialDataList = data?.social || [];
-
   const platformData = socialPlatforms.reduce((acc, { key }) => {
     const platformItems = socialDataList.filter(s => s.platform === key);
     const latest = platformItems[platformItems.length - 1];
-    acc[key] = {
-      current: latest,
-      history: platformItems
-    };
+    acc[key] = { current: latest, history: platformItems };
     return acc;
   }, {} as Record<string, { current: any; history: any[] }>);
 
@@ -136,34 +141,23 @@ export default function SocialPage() {
         setComparison(range.comparison);
       }} />
 
-      <div className="text-sm text-slate-500">
-        {currentPeriod}
-      </div>
+      <div className="text-sm text-slate-500">{currentPeriod}</div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {socialPlatforms.map(({ key, name, accent, description }, index) => {
           const platform = platformData[key];
           const current = platform?.current;
           const followers = current?.followers || current?.subscribers || 0;
-          const posts = current?.posts || 0;
-          const views = current?.views || current?.video_views || 0;
+          const artStats = articleStats[key];
+          const posts = artStats?.count || current?.posts || 0;
+          const views = artStats?.views || current?.views || current?.video_views || 0;
 
           return (
-            <div
-              key={key}
-              className="card p-8 relative overflow-hidden group"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <div
-                className="absolute top-0 right-0 w-32 h-32 opacity-5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:opacity-10 transition-opacity"
-                style={{ backgroundColor: accent }}
-              />
+            <div key={key} className="card p-8 relative overflow-hidden group" style={{ animationDelay: `${index * 0.1}s` }}>
+              <div className="absolute top-0 right-0 w-32 h-32 opacity-5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:opacity-10 transition-opacity" style={{ backgroundColor: accent }} />
               <div className="relative">
                 <div className="flex items-center gap-4 mb-6">
-                  <div
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                    style={{ backgroundColor: `${accent}15` }}
-                  >
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${accent}15` }}>
                     <PlatformIcon platform={key} size={28} />
                   </div>
                   <div>
@@ -172,14 +166,9 @@ export default function SocialPage() {
                   </div>
                 </div>
 
-                <div
-                  className="mb-4 p-4 rounded-xl"
-                  style={{ backgroundColor: `${accent}08`, border: `1px solid ${accent}15` }}
-                >
+                <div className="mb-4 p-4 rounded-xl" style={{ backgroundColor: `${accent}08`, border: `1px solid ${accent}15` }}>
                   <div className="text-slate-400 text-xs font-medium mb-1">粉丝 / 订阅者</div>
-                  <div className="text-3xl font-bold text-slate-100">
-                    {followers.toLocaleString()}
-                  </div>
+                  <div className="text-3xl font-bold text-slate-100">{followers.toLocaleString()}</div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -206,17 +195,9 @@ export default function SocialPage() {
 function exportSocialData(data: SocialData['social'], period: string) {
   if (!data || data.length === 0) return;
   const rows = data.map(s => ({
-    平台: s.platform,
-    日期: s.date,
-    粉丝: s.followers,
-    订阅者: s.subscribers,
-    帖子: s.posts,
-    阅读: s.views,
-    视频播放: s.video_views,
-    点赞: s.likes,
-    分享: s.shares,
-    评论: s.comments,
-    时间段: period,
+    平台: s.platform, 日期: s.date, 粉丝: s.followers, 订阅者: s.subscribers,
+    帖子: s.posts, 阅读: s.views, 视频播放: s.video_views,
+    点赞: s.likes, 分享: s.shares, 评论: s.comments, 时间段: period,
   }));
   downloadCSV(rows, `ivorysql-social-${period.replace(/[~ ]/g, '_')}`);
 }
