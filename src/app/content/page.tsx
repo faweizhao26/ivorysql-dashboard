@@ -4,21 +4,6 @@ import { useEffect, useState } from 'react';
 import { PlatformIcon } from '@/components/PlatformIcon';
 import { downloadCSV } from '@/lib/csv-utils';
 
-interface ContentData {
-  articles: Array<{
-    date: string;
-    platform: string;
-    article_count: number;
-    total_views: number;
-    avg_views: number;
-    likes: number;
-    bookmarks: number;
-    comments: number;
-    followers: number;
-    new_articles: number;
-  }>;
-}
-
 interface ArticleDetail {
   id?: number;
   date: string;
@@ -54,25 +39,12 @@ const allArticlePlatforms = [
 ];
 
 export default function ContentPage() {
-  const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return {
-      start: today,
-      end: today,
-      isSingleDay: true
-    };
-  });
-  const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
-  const [data, setData] = useState<ContentData | null>(null);
-  const [articleDetails, setArticleDetails] = useState<ArticlesResponse | null>(null);
   const [allArticleDetails, setAllArticleDetails] = useState<ArticlesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingArticle, setEditingArticle] = useState<ArticleDetail | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [articlePages, setArticlePages] = useState<Record<string, number>>({});
   const ARTICLES_PER_PAGE = 5;
-
-  const isSingleDay = dateRange.start === dateRange.end;
 
   useEffect(() => {
     async function fetchData() {
@@ -153,48 +125,6 @@ export default function ContentPage() {
   }
 
   const allArticlesForTable = allArticleDetails?.articles || {};
-
-  const articleData = allArticlePlatforms.reduce((acc, { key }) => {
-    const platformItems = articleDataList.filter(s => s.platform === key);
-    const latest = platformItems[platformItems.length - 1];
-    acc[key] = latest;
-    return acc;
-  }, {} as Record<string, any>);
-
-  const platformDetailsFromArticles = allArticlePlatforms.reduce((acc, { key }) => {
-    const articles = statsArticleDetails[key] || [];
-    if (articles.length > 0) {
-      const totalViews = articles.reduce((sum, a) => sum + (a.views || 0), 0);
-      const totalLikes = articles.reduce((sum, a) => sum + (a.likes || 0), 0);
-      const totalComments = articles.reduce((sum, a) => sum + (a.comments || 0), 0);
-      const avgViews = Math.round(totalViews / articles.length);
-      acc[key] = {
-        platform: key,
-        article_count: articles.length,
-        total_views: totalViews,
-        avg_views: avgViews,
-        likes: totalLikes,
-        comments: totalComments
-      };
-    }
-    return acc;
-  }, {} as Record<string, any>);
-
-  const totals = allArticlePlatforms.reduce((acc, { key }) => {
-    const articles = statsArticleDetails[key] || [];
-    if (articles.length > 0) {
-      acc.articles += articles.length;
-      acc.views += articles.reduce((sum, a) => sum + (a.views || 0), 0);
-    }
-    const current = articleData[key];
-    if (current) {
-      acc.followers += current.followers || 0;
-    }
-    return acc;
-  }, { articles: 0, views: 0, followers: 0 });
-
-  const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
-  const displayDate = isSingleDay ? dateRange.start : null;
 
   return (
     <div className="space-y-6">
