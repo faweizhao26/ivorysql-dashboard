@@ -808,6 +808,8 @@ export async function updateArticleDetails(id: number, article: Partial<ArticleD
   if (article.views !== undefined) { fields.push('views = $' + (fields.length + 1)); values.push(article.views); }
   if (article.likes !== undefined) { fields.push('likes = $' + (fields.length + 1)); values.push(article.likes); }
   if (article.comments !== undefined) { fields.push('comments = $' + (fields.length + 1)); values.push(article.comments); }
+  if (article.content_category !== undefined) { fields.push('content_category = $' + (fields.length + 1)); values.push(article.content_category); }
+  if (article.content_source !== undefined) { fields.push('content_source = $' + (fields.length + 1)); values.push(article.content_source); }
   
   if (fields.length === 0) return;
   

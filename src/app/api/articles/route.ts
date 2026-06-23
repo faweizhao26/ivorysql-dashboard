@@ -111,7 +111,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, date, platform, article_title, article_url, views, likes, comments } = body;
+    const { id, date, platform, article_title, article_url, views, likes, comments, content_category, content_source } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Missing article id' }, { status: 400 });
@@ -129,7 +129,9 @@ export async function PUT(request: Request) {
       article_url,
       views,
       likes,
-      comments
+      comments,
+      content_category,
+      content_source
     });
 
     await recalculateArticleStatsForDate(platform, date);
