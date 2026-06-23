@@ -731,8 +731,8 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                     <th className="text-left py-2 px-3 font-medium text-slate-400">日期</th>
                     <th className="text-left py-2 px-3 font-medium text-slate-400">标题</th>
                     <th className="text-right py-2 px-3 font-medium text-slate-400">阅读</th>
-                    <th className="text-right py-2 px-3 font-medium text-slate-400">点赞</th>
-                    <th className="text-right py-2 px-3 font-medium text-slate-400">评论</th>
+                    <th className="text-left py-2 px-3 font-medium text-slate-400">分类</th>
+                    <th className="text-left py-2 px-3 font-medium text-slate-400">来源</th>
                     <th className="text-left py-2 px-3 font-medium text-slate-400">操作</th>
                   </tr>
                 </thead>
@@ -758,8 +758,8 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                         )}
                       </td>
                       <td className="py-2 px-3 text-right font-medium">{article.views.toLocaleString()}</td>
-                      <td className="py-2 px-3 text-right">{article.likes.toLocaleString()}</td>
-                      <td className="py-2 px-3 text-right">{article.comments.toLocaleString()}</td>
+                      <td className="py-2 px-3 text-slate-400 text-xs">{article.content_category || '-'}</td>
+                      <td className="py-2 px-3 text-slate-400 text-xs">{article.content_source || '-'}</td>
                       <td className="py-2 px-3">
                         <button
                           onClick={() => handleEdit(article)}
