@@ -149,8 +149,9 @@ export default function SocialPage() {
           const current = platform?.current;
           const followers = current?.followers || current?.subscribers || 0;
           const artStats = articleStats[key];
-          const posts = artStats?.count || current?.posts || 0;
-          const views = artStats?.views || current?.views || current?.video_views || 0;
+          const hasArticleData = artStats && artStats.count > 0;
+          const posts = hasArticleData ? artStats.count : (current?.posts || 0);
+          const views = hasArticleData ? artStats.views : (current?.views || current?.video_views || 0);
 
           return (
             <div key={key} className="card p-8 relative overflow-hidden group" style={{ animationDelay: `${index * 0.1}s` }}>
