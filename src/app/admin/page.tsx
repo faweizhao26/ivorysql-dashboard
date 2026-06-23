@@ -429,6 +429,8 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
   const [views, setViews] = useState('');
   const [likes, setLikes] = useState('');
   const [comments, setComments] = useState('');
+  const [contentCategory, setContentCategory] = useState('');
+  const [contentSource, setContentSource] = useState('');
   const [articles, setArticles] = useState<ArticleEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -472,7 +474,9 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
             article_url: articleUrl,
             views: parseInt(views) || 0,
             likes: parseInt(likes) || 0,
-            comments: parseInt(comments) || 0
+            comments: parseInt(comments) || 0,
+            content_category: contentCategory || null,
+            content_source: contentSource || null
           })
         });
         if (!res.ok) throw new Error('Failed to update');
@@ -488,7 +492,9 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
             article_url: articleUrl,
             views: parseInt(views) || 0,
             likes: parseInt(likes) || 0,
-            comments: parseInt(comments) || 0
+            comments: parseInt(comments) || 0,
+            content_category: contentCategory || null,
+            content_source: contentSource || null
           })
         });
         if (!res.ok) throw new Error('Failed to save');
@@ -511,6 +517,8 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
     setViews('');
     setLikes('');
     setComments('');
+    setContentCategory('');
+    setContentSource('');
     setDate(new Date().toISOString().split('T')[0]);
     setIsEditing(false);
     setEditingArticle(null);
@@ -525,6 +533,8 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
     setViews(article.views.toString());
     setLikes(article.likes.toString());
     setComments(article.comments.toString());
+    setContentCategory(article.content_category || '');
+    setContentSource(article.content_source || '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -665,6 +675,41 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                 placeholder="评论数"
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">内容分类</label>
+              <select value={contentCategory} onChange={(e) => setContentCategory(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">-- 不设置 --</option>
+                <option>PG 技术日志</option>
+                <option>社区活动相关</option>
+                <option>社区新闻动态</option>
+                <option>发版公告</option>
+                <option>IvorySQL 技术文章-研发供稿</option>
+                <option>IvorySQL 技术文章-来自社区</option>
+                <option>PG 技术文章-非翻译</option>
+                <option>PG 技术文章-翻译</option>
+                <option>HOW 2026 演讲整理</option>
+                <option>HOW 2025 演讲整理</option>
+                <option>节日祝福</option>
+                <option>其他</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">内容来源</label>
+              <select value={contentSource} onChange={(e) => setContentSource(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">-- 不设置 --</option>
+                <option>研发供稿</option>
+                <option>活动演讲</option>
+                <option>PGnexus 邮件</option>
+                <option>社区</option>
+                <option>PGWeekly</option>
+                <option>其他</option>
+              </select>
             </div>
           </div>
 
