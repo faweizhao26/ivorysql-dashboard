@@ -197,7 +197,7 @@ export default function WebsitePage() {
       <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
         <h3 className="text-lg font-semibold text-slate-100 mb-4">说明</h3>
         <div className="text-sm text-slate-400 space-y-2">
-          <p>• <strong className="text-slate-300">数据来源：</strong>Umami Analytics 自动获取</p>
+          <p>• <strong className="text-slate-300">数据来源：</strong>手动录入</p>
           <p>• <strong className="text-slate-300">更新频率：</strong>每天自动同步（UTC 01:00）</p>
           <p>• <strong className="text-slate-300">PV（Page Views）：</strong>页面浏览量</p>
           <p>• <strong className="text-slate-300">UV（Unique Visitors）：</strong>独立访客数（按 Session 统计）</p>
