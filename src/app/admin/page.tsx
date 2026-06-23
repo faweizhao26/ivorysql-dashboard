@@ -1598,7 +1598,7 @@ function EvangelistSection() {
                   </td>
                   <td className="py-2 px-2 text-right font-bold text-slate-200">{c.points}</td>
                   <td className="py-2 px-2 text-right">
-                    <button onClick={() => setEditingCont(c)} className="text-indigo-400 text-xs mr-1">编辑</button>
+                    <button onClick={() => { setSelectedId(c.participant_id); setEditingCont(c); }} className="text-indigo-400 text-xs mr-1">编辑</button>
                     <button onClick={() => deleteContribution(c.id)} className="text-red-400 text-xs">删</button>
                   </td>
                 </tr>
