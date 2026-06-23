@@ -656,30 +656,6 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">点赞数</label>
-              <input
-                type="number"
-                value={likes}
-                onChange={(e) => setLikes(e.target.value)}
-                placeholder="点赞数"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">评论数</label>
-              <input
-                type="number"
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                placeholder="评论数"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">内容分类</label>
               <select value={contentCategory} onChange={(e) => setContentCategory(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
@@ -698,6 +674,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                 <option>其他</option>
               </select>
             </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">内容来源</label>
               <select value={contentSource} onChange={(e) => setContentSource(e.target.value)}
