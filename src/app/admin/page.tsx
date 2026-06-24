@@ -1509,7 +1509,7 @@ function EvangelistSection() {
         {/* Contribution Form */}
         <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
           <div className="flex justify-between mb-2">
-            <h2 className="font-semibold text-slate-100">添加贡献记录</h2>
+            <h2 className="font-semibold text-slate-100">{editingCont ? (editingCont.id ? '编辑贡献记录' : '添加贡献记录') : '添加贡献记录'}</h2>
             {editingCont && <button onClick={() => setEditingCont(null)} className="text-sm text-slate-400 hover:bg-slate-700 px-3 py-1 rounded-lg">取消</button>}
           </div>
           {!editingCont ? (
