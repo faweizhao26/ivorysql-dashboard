@@ -60,9 +60,10 @@ export async function GET(request: Request) {
 
     const platforms = await getAllArticleDetailsPlatforms();
     const allData: Record<string, any[]> = {};
+    const maxDays = 3650; // 10 years - get all data
 
     for (const p of platforms) {
-      const data = await getArticleDetailsByPlatform(p, 365);
+      const data = await getArticleDetailsByPlatform(p, maxDays);
       const filtered = data.filter((d: any) => d.date >= startDate && d.date <= endDate);
       if (filtered.length > 0) {
         allData[p] = filtered;
