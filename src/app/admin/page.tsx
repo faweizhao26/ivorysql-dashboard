@@ -1490,20 +1490,24 @@ function EvangelistSection() {
         {/* Person Form */}
         <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
           <div className="flex justify-between mb-2">
-            <h2 className="font-semibold text-slate-100">{editingPerson ? '编辑成员' : '添加成员'}</h2>
-            {editingPerson && <button onClick={() => setEditingPerson(null)} className="text-sm text-slate-400 hover:bg-slate-700 px-3 py-1 rounded-lg">取消</button>}
+            <h2 className="font-semibold text-slate-100">{editingPerson ? (editingPerson.id ? '编辑成员' : '新建成员') : '成员管理'}</h2>
+            <div className="flex gap-2">
+              {editingPerson && <button onClick={() => setEditingPerson(null)} className="text-sm text-slate-400 hover:bg-slate-700 px-3 py-1 rounded-lg">取消</button>}
+              {!editingPerson && <button type="button" onClick={() => setEditingPerson({name:'',title:'',bio:''})} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-500">+ 新增成员</button>}
+            </div>
           </div>
+          {!editingPerson ? (
+            <p className="text-sm text-slate-500">点击「+ 新增成员」按钮开始添加</p>
+          ) : (
           <form onSubmit={savePerson} className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <input required placeholder="姓名" value={editingPerson?.name || ''} onChange={e => setEditingPerson({...editingPerson, name: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
               <input placeholder="头衔" value={editingPerson?.title || ''} onChange={e => setEditingPerson({...editingPerson, title: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
             </div>
             <input placeholder="简介" value={editingPerson?.bio || ''} onChange={e => setEditingPerson({...editingPerson, bio: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-            <div className="flex gap-2">
-              <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500">{editingPerson?.id ? '更新' : '添加'}</button>
-              {!editingPerson && <button type="button" onClick={() => setEditingPerson({name:'',title:'',bio:''})} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-500">新增成员</button>}
-            </div>
+            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500">{editingPerson?.id ? '更新' : '添加'}</button>
           </form>
+          )}
         </div>
 
         {/* Contribution Form */}
