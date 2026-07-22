@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useEffectEvent } from 'react';
 
 type PresetRange = 'today' | '7d' | '30d' | '90d' | '180d' | '365d' | 'custom';
 
@@ -108,11 +108,12 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
   const [customEnd, setCustomEnd] = useState('');
   const [comparisonEnabled, setComparisonEnabled] = useState(false);
   const [comparisonMode, setComparisonMode] = useState<Comparison['mode']>('previous');
+  const notifyInitialRange = useEffectEvent(onRangeChange);
 
   useEffect(() => {
     const range = getDateRange('today');
-    onRangeChange({ ...range });
-  }, [onRangeChange]);
+    notifyInitialRange({ ...range });
+  }, []);
 
   const handlePresetChange = (newPreset: PresetRange) => {
     setPreset(newPreset);
