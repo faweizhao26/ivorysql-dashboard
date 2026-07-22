@@ -178,5 +178,36 @@ export async function POST() {
 }
 
 export async function GET() {
-  return POST();
+  // Lightweight cron sync: only update stars/forks from main repo
+  if (!GITHUB_TOKEN) {
+    return NextResponse.json({ error: 'GitHub token not configured' }, { status: 500 });
+  }
+  try {
+    const [owner, repo] = GITHUB_REPO.split('/');
+    const repoRes = await fetchGitHubApi(`/repos/${owner}/${repo}`);
+    const today = new Date().toISOString().split('T')[0];
+
+    const { saveGitHubStats } = await import('@/lib/db');
+    await saveGitHubStats({
+      date: today,
+      stars: repoRes.stargazers_count || 0,
+      forks: repoRes.forks_count || 0,
+      watchers: repoRes.watchers_count || 0,
+      subscribers: repoRes.subscribers_count || 0,
+      open_issues: repoRes.open_issues_count || 0,
+      open_prs: 0,
+      contributors: 0,
+      releases_count: 0
+    });
+
+    return NextResponse.json({
+      success: true,
+      stars: repoRes.stargazers_count,
+      forks: repoRes.forks_count,
+      mode: 'lightweight'
+    });
+  } catch (error: any) {
+    console.error('GitHub cron sync error:', error);
+    return NextResponse.json({ error: 'Failed to sync' }, { status: 500 });
+  }
 }
