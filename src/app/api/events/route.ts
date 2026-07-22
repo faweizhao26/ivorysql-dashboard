@@ -1,19 +1,33 @@
 import { NextResponse } from 'next/server';
 import { 
   getActivityEvents, 
+  getActivityEventsByDateRange,
   getAllActivityEvents, 
   saveActivityEvent, 
   updateActivityEvent, 
-  deleteActivityEvent,
-  getActivityEventById
+  deleteActivityEvent
 } from '@/lib/db';
+
+export function getEventRangeParams(searchParams: URLSearchParams) {
+  const start = searchParams.get('start');
+  const end = searchParams.get('end');
+
+  if (start && end) {
+    return { mode: 'range' as const, start, end };
+  }
+
+  const days = parseInt(searchParams.get('days') || '365', 10);
+  return { mode: 'days' as const, days };
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const days = parseInt(searchParams.get('days') || '365', 10);
+  const range = getEventRangeParams(searchParams);
 
   try {
-    const events = days > 0 ? await getActivityEvents(days) : await getAllActivityEvents();
+    const events = range.mode === 'range'
+      ? await getActivityEventsByDateRange(range.start, range.end)
+      : range.days > 0 ? await getActivityEvents(range.days) : await getAllActivityEvents();
     return NextResponse.json({ events });
   } catch (error) {
     console.error('Error fetching activity events:', error);

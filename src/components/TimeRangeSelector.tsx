@@ -97,6 +97,11 @@ function getComparisonRange(range: DateRange, mode: Comparison['mode']): DateRan
   return null;
 }
 
+export function createCustomDateRange(start: string, end: string): DateRange | null {
+  if (!start || !end) return null;
+  return { start, end, isSingleDay: start === end };
+}
+
 export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
   const [preset, setPreset] = useState<PresetRange>('today');
   const [customStart, setCustomStart] = useState('');
@@ -107,7 +112,7 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
   useEffect(() => {
     const range = getDateRange('today');
     onRangeChange({ ...range });
-  }, []);
+  }, [onRangeChange]);
 
   const handlePresetChange = (newPreset: PresetRange) => {
     setPreset(newPreset);
@@ -124,10 +129,9 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
     onRangeChange({ ...range, comparison });
   };
 
-  const handleCustomDateChange = () => {
-    if (customStart && customEnd) {
-      const isSingle = customStart === customEnd;
-      const range = { start: customStart, end: customEnd, isSingleDay: isSingle };
+  const handleCustomDateChange = (nextStart: string, nextEnd: string) => {
+    const range = createCustomDateRange(nextStart, nextEnd);
+    if (range) {
       const comparison = comparisonEnabled 
         ? { enabled: true, mode: comparisonMode, customRange: getComparisonRange(range, comparisonMode) ?? undefined }
         : undefined;
@@ -192,8 +196,9 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
               type="date"
               value={customStart}
               onChange={(e) => {
-                setCustomStart(e.target.value);
-                setTimeout(handleCustomDateChange, 0);
+                const nextStart = e.target.value;
+                setCustomStart(nextStart);
+                handleCustomDateChange(nextStart, customEnd);
               }}
               className="px-3 py-1 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
@@ -202,8 +207,9 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
               type="date"
               value={customEnd}
               onChange={(e) => {
-                setCustomEnd(e.target.value);
-                setTimeout(handleCustomDateChange, 0);
+                const nextEnd = e.target.value;
+                setCustomEnd(nextEnd);
+                handleCustomDateChange(customStart, nextEnd);
               }}
               className="px-3 py-1 bg-slate-900 border border-slate-600 rounded-lg text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />

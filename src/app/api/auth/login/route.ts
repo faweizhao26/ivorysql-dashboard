@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { createAccessToken, getAccessTokenSecret } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -12,9 +13,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     }
 
+    const secret = getAccessTokenSecret(accessPassword, adminPassword);
+
     if (password === adminPassword) {
       const cookieStore = await cookies();
-      cookieStore.set('access_level', 'admin', {
+      cookieStore.set('access_level', await createAccessToken('admin', secret), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -25,7 +28,7 @@ export async function POST(request: Request) {
 
     if (password === accessPassword) {
       const cookieStore = await cookies();
-      cookieStore.set('access_level', 'viewer', {
+      cookieStore.set('access_level', await createAccessToken('viewer', secret), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',

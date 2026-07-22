@@ -1,9 +1,21 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { getAccessTokenSecret, readAccessToken } from '@/lib/auth';
 
 const STATIC_PATTERN = /\.(js|css|png|ico|svg|woff2?|map|json|txt)$/;
 
-export function middleware(request: NextRequest) {
+function isCronRequest(request: NextRequest, pathname: string): boolean {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) return false;
+  if (!/^\/api\/(github|itpub|csdn|cnblogs|juejin|modb)\/sync/.test(pathname)) return false;
+  if (request.method !== 'GET') return false;
+
+  const authHeader = request.headers.get('authorization');
+  const secretHeader = request.headers.get('x-cron-secret');
+  return authHeader === `Bearer ${cronSecret}` || secretHeader === cronSecret;
+}
+
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || STATIC_PATTERN.test(pathname)) {
@@ -14,8 +26,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Vercel cron jobs have no auth cookie, allow them through
-  if (request.headers.get('x-vercel-cron') === '1') {
+  if (isCronRequest(request, pathname)) {
     return NextResponse.next();
   }
 
@@ -23,17 +34,24 @@ export function middleware(request: NextRequest) {
   const adminPassword = process.env.ADMIN_PASSWORD;
 
   if (!accessPassword || !adminPassword) {
-    console.error('WARNING: ACCESS_PASSWORD or ADMIN_PASSWORD not set. Auth disabled.');
-    return NextResponse.next();
+    console.error('WARNING: ACCESS_PASSWORD or ADMIN_PASSWORD not set. Auth enabled but unavailable.');
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'Server auth not configured' }, { status: 503 });
+    }
+    return NextResponse.redirect(new URL('/auth?error=server_not_configured', request.url));
   }
 
   const accessCookie = request.cookies.get('access_level');
+  const accessLevel = await readAccessToken(
+    accessCookie?.value,
+    getAccessTokenSecret(accessPassword, adminPassword)
+  );
 
-  if (accessCookie && accessCookie.value === 'admin') {
+  if (accessLevel === 'admin') {
     return NextResponse.next();
   }
 
-  if (accessCookie && accessCookie.value === 'viewer') {
+  if (accessLevel === 'viewer') {
     if (pathname.startsWith('/admin')) {
       return NextResponse.redirect(new URL('/auth?error=admin_required', request.url));
     }

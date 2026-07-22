@@ -3,9 +3,42 @@
 import { useEffect, useState } from 'react';
 import { TrendChart } from '@/components/Charts';
 
+interface DownloadHistoryRow {
+  date: string;
+  github_total: number;
+  docker_total: number;
+}
+
+interface DownloadRelease {
+  tag: string;
+  date?: string;
+  total: number;
+  assets?: Array<{ name: string; downloads: number }>;
+}
+
+interface DockerRepo {
+  name: string;
+  pulls: number;
+}
+
+interface DownloadStats {
+  github: {
+    total: number;
+    releases: DownloadRelease[];
+  };
+  docker: {
+    total: number;
+    repos: DockerRepo[];
+  };
+}
+
+interface DashboardDownloadsResponse {
+  downloads?: DownloadHistoryRow[];
+}
+
 export default function DownloadsPage() {
-  const [downloads, setDownloads] = useState<any>(null);
-  const [history, setHistory] = useState<any[]>([]);
+  const [downloads, setDownloads] = useState<DownloadStats | null>(null);
+  const [history, setHistory] = useState<DownloadHistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,9 +48,9 @@ export default function DownloadsPage() {
           fetch('/api/downloads', { credentials: 'include' }),
           fetch('/api/dashboard?start=2025-01-01&end=2099-12-31&days=730', { credentials: 'include' }),
         ]);
-        if (liveRes.ok) setDownloads(await liveRes.json());
+        if (liveRes.ok) setDownloads(await liveRes.json() as DownloadStats);
         if (histRes.ok) {
-          const d = await histRes.json();
+          const d = await histRes.json() as DashboardDownloadsResponse;
           setHistory(d.downloads || []);
         }
       } catch (e) { console.error(e); }
@@ -32,6 +65,8 @@ export default function DownloadsPage() {
 
   const gh = downloads?.github;
   const dk = downloads?.docker;
+  const dockerRepos = dk?.repos ?? [];
+  const githubReleases = gh?.releases ?? [];
 
   return (
     <div className="space-y-6">
@@ -44,7 +79,7 @@ export default function DownloadsPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-100">下载统计</h1>
-            <p className="text-slate-500 text-sm">GitHub Release + Docker Hub + 国内镜像</p>
+            <p className="text-slate-500 text-sm">GitHub Release + Docker Hub</p>
           </div>
         </div>
       </div>
@@ -85,7 +120,7 @@ export default function DownloadsPage() {
       <div>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">Docker 镜像明细</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {dk?.repos?.map((r: any) => (
+          {dockerRepos.map((r) => (
             <div key={r.name} className="card p-4 flex justify-between items-center">
               <span className="text-sm text-slate-300">{r.name}</span>
               <span className="font-bold text-slate-200">{r.pulls.toLocaleString()}</span>
@@ -95,11 +130,11 @@ export default function DownloadsPage() {
       </div>
 
       {/* GitHub Releases Detail */}
-      {gh?.releases?.length > 0 && (
+      {githubReleases.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-slate-100 mb-4">Release 版本下载</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {gh.releases.slice(0, 15).map((r: any) => (
+            {githubReleases.slice(0, 15).map((r) => (
               <div key={r.tag} className="card p-4">
                 <div className="text-sm font-bold text-slate-200 mb-1">{r.tag}</div>
                 <div className="text-xs text-slate-500 mb-2">{r.date}</div>

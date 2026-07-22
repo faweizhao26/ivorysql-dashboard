@@ -9,8 +9,37 @@ import {
   updateReminderLastUpdated,
   updateArticleDetails,
   recalculateArticleStatsForDate,
-  getArticleDetailsById
+  getArticleDetailsById,
+  ArticleDetails
 } from '@/lib/db';
+
+function readString(input: Record<string, unknown>, key: string): string | undefined {
+  const value = input[key];
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function readNumber(input: Record<string, unknown>, key: string): number {
+  const value = input[key];
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') return Number(value) || 0;
+  return 0;
+}
+
+export function parseArticleDetailsInput(body: unknown): ArticleDetails {
+  const input = body && typeof body === 'object' ? body as Record<string, unknown> : {};
+
+  return {
+    date: readString(input, 'date') || '',
+    platform: readString(input, 'platform') || '',
+    article_title: readString(input, 'article_title') || '',
+    article_url: readString(input, 'article_url'),
+    views: readNumber(input, 'views'),
+    likes: readNumber(input, 'likes'),
+    comments: readNumber(input, 'comments'),
+    content_category: readString(input, 'content_category'),
+    content_source: readString(input, 'content_source')
+  };
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -54,17 +83,17 @@ export async function GET(request: Request) {
         });
       }
       const data = await getArticleDetailsByPlatform(platform, 365);
-      const filtered = data.filter((d: any) => d.date >= startDate && d.date <= endDate);
+      const filtered = data.filter((d) => d.date >= startDate && d.date <= endDate);
       return NextResponse.json({ platform, data: filtered });
     }
 
     const platforms = await getAllArticleDetailsPlatforms();
-    const allData: Record<string, any[]> = {};
+    const allData: Record<string, ArticleDetails[]> = {};
     const maxDays = 3650; // 10 years - get all data
 
     for (const p of platforms) {
       const data = await getArticleDetailsByPlatform(p, maxDays);
-      const filtered = data.filter((d: any) => d.date >= startDate && d.date <= endDate);
+      const filtered = data.filter((d) => d.date >= startDate && d.date <= endDate);
       if (filtered.length > 0) {
         allData[p] = filtered;
       }
@@ -83,21 +112,14 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { date, platform, article_title, article_url, views, likes, comments } = body;
+    const article = parseArticleDetailsInput(body);
+    const { date, platform, article_title } = article;
 
     if (!date || !platform || !article_title) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    await saveArticleDetails({
-      date,
-      platform,
-      article_title,
-      article_url,
-      views: views || 0,
-      likes: likes || 0,
-      comments: comments || 0
-    });
+    await saveArticleDetails(article);
 
     await recalculateArticleStatsForDate(platform, date);
     await updateReminderLastUpdated(platform);

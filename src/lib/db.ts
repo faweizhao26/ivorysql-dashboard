@@ -1,16 +1,28 @@
-import { Pool, PoolClient } from 'pg';
+import { Pool } from 'pg';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || '',
-  ssl: { rejectUnauthorized: false }
-});
+let pool: Pool | null = null;
 
 let dbInitialized = false;
+
+function getPool() {
+  if (!pool) {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL || '',
+      ssl: { rejectUnauthorized: false }
+    });
+  }
+  return pool;
+}
+
+async function query(text: string, values?: unknown[]) {
+  await initDb();
+  return getPool().query(text, values);
+}
 
 async function initDb() {
   if (dbInitialized) return;
   
-  const client = await pool.connect();
+  const client = await getPool().connect();
   try {
     await client.query(`
       CREATE TABLE IF NOT EXISTS github_stats (
@@ -205,10 +217,8 @@ async function initDb() {
   }
 }
 
-initDb().catch(console.error);
-
 export function getDb() {
-  return pool;
+  return getPool();
 }
 
 export function getToday(): string {
@@ -304,6 +314,12 @@ export interface ArticleDetails {
   published_date?: string;
 }
 
+export interface DownloadStatsHistory {
+  date: string;
+  github_total: number;
+  docker_total: number;
+}
+
 export interface ReminderSettings {
   id?: number;
   platform: string;
@@ -315,7 +331,7 @@ export interface ReminderSettings {
 }
 
 export async function saveGitHubStats(stats: GitHubStats): Promise<void> {
-  await pool.query(`
+  await query(`
     INSERT INTO github_stats 
     (date, stars, forks, watchers, subscribers, open_issues, open_prs, contributors, releases_count)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -333,7 +349,7 @@ export async function saveGitHubStats(stats: GitHubStats): Promise<void> {
 }
 
 export async function saveContributorStats(stats: ContributorStatsData): Promise<void> {
-  await pool.query(`
+  await query(`
     INSERT INTO contributor_stats 
     (date, total_contributors, contributors_before_2026, new_contributors_daily, 
      new_contributors_weekly, new_contributors_monthly, new_contributors_quarterly, cumulative_2026)
@@ -352,7 +368,7 @@ export async function saveContributorStats(stats: ContributorStatsData): Promise
 }
 
 export async function saveSocialStats(stats: SocialStats): Promise<void> {
-  await pool.query(`
+  await query(`
     INSERT INTO social_stats 
     (date, platform, followers, posts, views, likes, shares, comments, subscribers, video_views)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -370,7 +386,7 @@ export async function saveSocialStats(stats: SocialStats): Promise<void> {
 }
 
 export async function saveArticleStats(stats: ArticleStats): Promise<void> {
-  await pool.query(`
+  await query(`
     INSERT INTO article_stats 
     (date, platform, article_count, total_views, avg_views, likes, bookmarks, comments, followers, new_articles)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -388,7 +404,7 @@ export async function saveArticleStats(stats: ArticleStats): Promise<void> {
 }
 
 export async function saveWebsiteStats(stats: WebsiteStats): Promise<void> {
-  await pool.query(`
+  await query(`
     INSERT INTO website_stats 
     (date, pageviews, unique_visitors, top_pages, sources, keywords)
     VALUES ($1, $2, $3, $4, $5, $6)
@@ -403,7 +419,7 @@ export async function saveWebsiteStats(stats: WebsiteStats): Promise<void> {
 }
 
 export async function saveCommunityEvent(event: CommunityEvent): Promise<void> {
-  await pool.query(`
+  await query(`
     INSERT INTO community_events 
     (date, source, title, description, url, event_type)
     VALUES ($1, $2, $3, $4, $5, $6)
@@ -411,21 +427,21 @@ export async function saveCommunityEvent(event: CommunityEvent): Promise<void> {
 }
 
 export async function saveManualData(data: ManualData): Promise<void> {
-  await pool.query(`
+  await query(`
     INSERT INTO manual_data (date, category, metric, value, notes)
     VALUES ($1, $2, $3, $4, $5)
   `, [data.date, data.category, data.metric, data.value, data.notes || null]);
 }
 
 export async function getLatestGitHubStats(): Promise<GitHubStats | null> {
-  const result = await pool.query('SELECT * FROM github_stats ORDER BY date DESC LIMIT 1');
+  const result = await query('SELECT * FROM github_stats ORDER BY date DESC LIMIT 1');
   return result.rows[0] || null;
 }
 
 export async function getGitHubStatsHistory(days: number = 30): Promise<GitHubStats[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM github_stats WHERE date >= $1 ORDER BY date ASC',
     [since.toISOString().split('T')[0]]
   );
@@ -433,14 +449,14 @@ export async function getGitHubStatsHistory(days: number = 30): Promise<GitHubSt
 }
 
 export async function getLatestContributorStats(): Promise<ContributorStatsData | null> {
-  const result = await pool.query('SELECT * FROM contributor_stats ORDER BY date DESC LIMIT 1');
+  const result = await query('SELECT * FROM contributor_stats ORDER BY date DESC LIMIT 1');
   return result.rows[0] || null;
 }
 
 export async function getContributorStatsHistory(days: number = 365): Promise<ContributorStatsData[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM contributor_stats WHERE date >= $1 ORDER BY date ASC',
     [since.toISOString().split('T')[0]]
   );
@@ -450,7 +466,7 @@ export async function getContributorStatsHistory(days: number = 365): Promise<Co
 export async function getSocialStatsByPlatform(platform: string, days: number = 30): Promise<SocialStats[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM social_stats WHERE platform = $1 AND date >= $2 ORDER BY date ASC',
     [platform, since.toISOString().split('T')[0]]
   );
@@ -458,7 +474,7 @@ export async function getSocialStatsByPlatform(platform: string, days: number = 
 }
 
 export async function getLatestSocialStats(): Promise<SocialStats[]> {
-  const result = await pool.query(`
+  const result = await query(`
     SELECT DISTINCT ON (platform) platform, s.*
     FROM social_stats s
     ORDER BY platform, date DESC
@@ -467,14 +483,14 @@ export async function getLatestSocialStats(): Promise<SocialStats[]> {
 }
 
 export async function getAllSocialPlatforms(): Promise<string[]> {
-  const result = await pool.query('SELECT DISTINCT platform FROM social_stats');
+  const result = await query('SELECT DISTINCT platform FROM social_stats');
   return result.rows.map(r => r.platform);
 }
 
 export async function getArticleStatsByPlatform(platform: string, days: number = 30): Promise<ArticleStats[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM article_stats WHERE platform = $1 AND date >= $2 ORDER BY date ASC',
     [platform, since.toISOString().split('T')[0]]
   );
@@ -482,7 +498,7 @@ export async function getArticleStatsByPlatform(platform: string, days: number =
 }
 
 export async function getLatestArticleStats(): Promise<ArticleStats[]> {
-  const result = await pool.query(`
+  const result = await query(`
     SELECT DISTINCT ON (platform) platform, a.*
     FROM article_stats a
     ORDER BY platform, date DESC
@@ -491,14 +507,14 @@ export async function getLatestArticleStats(): Promise<ArticleStats[]> {
 }
 
 export async function getAllArticlePlatforms(): Promise<string[]> {
-  const result = await pool.query('SELECT DISTINCT platform FROM article_stats');
+  const result = await query('SELECT DISTINCT platform FROM article_stats');
   return result.rows.map(r => r.platform);
 }
 
 export async function getWebsiteStatsHistory(days: number = 30): Promise<WebsiteStats[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM website_stats WHERE date >= $1 ORDER BY date ASC',
     [since.toISOString().split('T')[0]]
   );
@@ -511,7 +527,7 @@ export async function getWebsiteStatsHistory(days: number = 30): Promise<Website
 }
 
 export async function getLatestWebsiteStats(): Promise<WebsiteStats | null> {
-  const result = await pool.query('SELECT * FROM website_stats ORDER BY date DESC LIMIT 1');
+  const result = await query('SELECT * FROM website_stats ORDER BY date DESC LIMIT 1');
   if (!result.rows[0]) return null;
   const row = result.rows[0];
   return {
@@ -525,7 +541,7 @@ export async function getLatestWebsiteStats(): Promise<WebsiteStats | null> {
 export async function getRecentEvents(days: number = 7, limit: number = 20): Promise<CommunityEvent[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM community_events WHERE date >= $1 ORDER BY date DESC LIMIT $2',
     [since.toISOString().split('T')[0], limit]
   );
@@ -536,13 +552,13 @@ export async function getManualData(category?: string, days: number = 90): Promi
   const since = new Date();
   since.setDate(since.getDate() - days);
   if (category) {
-    const result = await pool.query(
+    const result = await query(
       'SELECT * FROM manual_data WHERE category = $1 AND date >= $2 ORDER BY date DESC',
       [category, since.toISOString().split('T')[0]]
     );
     return result.rows;
   }
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM manual_data WHERE date >= $1 ORDER BY date DESC',
     [since.toISOString().split('T')[0]]
   );
@@ -550,7 +566,7 @@ export async function getManualData(category?: string, days: number = 90): Promi
 }
 
 export async function getGitHubStatsByDateRange(startDate: string, endDate: string): Promise<GitHubStats[]> {
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM github_stats WHERE date >= $1 AND date <= $2 ORDER BY date ASC',
     [startDate, endDate]
   );
@@ -558,12 +574,12 @@ export async function getGitHubStatsByDateRange(startDate: string, endDate: stri
 }
 
 export async function getGitHubStatsForDate(date: string): Promise<GitHubStats | null> {
-  const result = await pool.query('SELECT * FROM github_stats WHERE date = $1', [date]);
+  const result = await query('SELECT * FROM github_stats WHERE date = $1', [date]);
   return result.rows[0] || null;
 }
 
 export async function getContributorStatsByDateRange(startDate: string, endDate: string): Promise<ContributorStatsData[]> {
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM contributor_stats WHERE date >= $1 AND date <= $2 ORDER BY date ASC',
     [startDate, endDate]
   );
@@ -571,19 +587,19 @@ export async function getContributorStatsByDateRange(startDate: string, endDate:
 }
 
 export async function getContributorStatsForDate(date: string): Promise<ContributorStatsData | null> {
-  const result = await pool.query('SELECT * FROM contributor_stats WHERE date = $1', [date]);
+  const result = await query('SELECT * FROM contributor_stats WHERE date = $1', [date]);
   return result.rows[0] || null;
 }
 
 export async function getSocialStatsByDateRange(startDate: string, endDate: string, platform?: string): Promise<SocialStats[]> {
   if (platform) {
-    const result = await pool.query(
+    const result = await query(
       'SELECT * FROM social_stats WHERE date >= $1 AND date <= $2 AND platform = $3 ORDER BY date ASC',
       [startDate, endDate, platform]
     );
     return result.rows;
   }
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM social_stats WHERE date >= $1 AND date <= $2 ORDER BY date ASC',
     [startDate, endDate]
   );
@@ -591,19 +607,19 @@ export async function getSocialStatsByDateRange(startDate: string, endDate: stri
 }
 
 export async function getSocialStatsForDate(date: string): Promise<SocialStats[]> {
-  const result = await pool.query('SELECT * FROM social_stats WHERE date = $1', [date]);
+  const result = await query('SELECT * FROM social_stats WHERE date = $1', [date]);
   return result.rows;
 }
 
 export async function getArticleStatsByDateRange(startDate: string, endDate: string, platform?: string): Promise<ArticleStats[]> {
   if (platform) {
-    const result = await pool.query(
+    const result = await query(
       'SELECT * FROM article_stats WHERE date >= $1 AND date <= $2 AND platform = $3 ORDER BY date ASC',
       [startDate, endDate, platform]
     );
     return result.rows;
   }
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM article_stats WHERE date >= $1 AND date <= $2 ORDER BY date ASC',
     [startDate, endDate]
   );
@@ -611,12 +627,12 @@ export async function getArticleStatsByDateRange(startDate: string, endDate: str
 }
 
 export async function getArticleStatsForDate(date: string): Promise<ArticleStats[]> {
-  const result = await pool.query('SELECT * FROM article_stats WHERE date = $1', [date]);
+  const result = await query('SELECT * FROM article_stats WHERE date = $1', [date]);
   return result.rows;
 }
 
 export async function getWebsiteStatsByDateRange(startDate: string, endDate: string): Promise<WebsiteStats[]> {
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM website_stats WHERE date >= $1 AND date <= $2 ORDER BY date ASC',
     [startDate, endDate]
   );
@@ -629,7 +645,7 @@ export async function getWebsiteStatsByDateRange(startDate: string, endDate: str
 }
 
 export async function getWebsiteStatsForDate(date: string): Promise<WebsiteStats | null> {
-  const result = await pool.query('SELECT * FROM website_stats WHERE date = $1', [date]);
+  const result = await query('SELECT * FROM website_stats WHERE date = $1', [date]);
   if (!result.rows[0]) return null;
   const row = result.rows[0];
   return {
@@ -641,7 +657,7 @@ export async function getWebsiteStatsForDate(date: string): Promise<WebsiteStats
 }
 
 export async function getEventsByDateRange(startDate: string, endDate: string, limit: number = 50): Promise<CommunityEvent[]> {
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM community_events WHERE date >= $1 AND date <= $2 ORDER BY date DESC LIMIT $3',
     [startDate, endDate, limit]
   );
@@ -649,7 +665,7 @@ export async function getEventsByDateRange(startDate: string, endDate: string, l
 }
 
 export async function getEventsForDate(date: string): Promise<CommunityEvent[]> {
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM community_events WHERE date = $1 ORDER BY date DESC',
     [date]
   );
@@ -657,7 +673,7 @@ export async function getEventsForDate(date: string): Promise<CommunityEvent[]> 
 }
 
 export async function saveArticleDetails(article: ArticleDetails): Promise<void> {
-  await pool.query(`
+  await query(`
     INSERT INTO article_details 
     (date, platform, article_title, article_url, views, likes, comments, content_category, content_source, published_date)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -674,20 +690,20 @@ export async function saveArticleDetails(article: ArticleDetails): Promise<void>
 }
 
 export async function deleteArticleDetailsByDate(platform: string, date: string): Promise<void> {
-  await pool.query('DELETE FROM article_details WHERE platform = $1 AND date = $2', [platform, date]);
+  await query('DELETE FROM article_details WHERE platform = $1 AND date = $2', [platform, date]);
 }
 
 export async function saveDownloadStats(date: string, githubTotal: number, dockerTotal: number): Promise<void> {
-  await pool.query(
+  await query(
     'INSERT INTO download_stats (date, github_total, docker_total) VALUES ($1, $2, $3) ON CONFLICT (date) DO UPDATE SET github_total = $2, docker_total = $3',
     [date, githubTotal, dockerTotal]
   );
 }
 
-export async function getDownloadStatsHistory(days: number = 90): Promise<any[]> {
+export async function getDownloadStatsHistory(days: number = 90): Promise<DownloadStatsHistory[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM download_stats WHERE date >= $1 ORDER BY date ASC',
     [since.toISOString().split('T')[0]]
   );
@@ -697,7 +713,7 @@ export async function getDownloadStatsHistory(days: number = 90): Promise<any[]>
 export async function getArticleDetailsByPlatform(platform: string, days: number = 30): Promise<ArticleDetails[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM article_details WHERE platform = $1 AND date >= $2 ORDER BY date DESC, views DESC',
     [platform, since.toISOString().split('T')[0]]
   );
@@ -705,7 +721,7 @@ export async function getArticleDetailsByPlatform(platform: string, days: number
 }
 
 export async function getArticleDetailsForDate(date: string): Promise<ArticleDetails[]> {
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM article_details WHERE date = $1 ORDER BY views DESC',
     [date]
   );
@@ -713,7 +729,7 @@ export async function getArticleDetailsForDate(date: string): Promise<ArticleDet
 }
 
 export async function getLatestArticleDetails(platform: string): Promise<ArticleDetails[]> {
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM article_details WHERE platform = $1 AND date = (SELECT MAX(date) FROM article_details WHERE platform = $1) ORDER BY views DESC',
     [platform]
   );
@@ -721,25 +737,25 @@ export async function getLatestArticleDetails(platform: string): Promise<Article
 }
 
 export async function deleteArticleDetails(id: number): Promise<void> {
-  const article = await pool.query('SELECT platform, date FROM article_details WHERE id = $1', [id]);
-  await pool.query('DELETE FROM article_details WHERE id = $1', [id]);
+  const article = await query('SELECT platform, date FROM article_details WHERE id = $1', [id]);
+  await query('DELETE FROM article_details WHERE id = $1', [id]);
   if (article.rows[0]) {
     await recalculateArticleStatsForDate(article.rows[0].platform, article.rows[0].date);
   }
 }
 
 export async function getArticleDetailsById(id: number): Promise<ArticleDetails | null> {
-  const result = await pool.query('SELECT * FROM article_details WHERE id = $1', [id]);
+  const result = await query('SELECT * FROM article_details WHERE id = $1', [id]);
   return result.rows[0] || null;
 }
 
 export async function getAllArticleDetailsPlatforms(): Promise<string[]> {
-  const result = await pool.query('SELECT DISTINCT platform FROM article_details');
+  const result = await query('SELECT DISTINCT platform FROM article_details');
   return result.rows.map(r => r.platform);
 }
 
 export async function saveReminderSettings(settings: ReminderSettings): Promise<void> {
-  await pool.query(`
+  await query(`
     INSERT INTO reminder_settings 
     (platform, update_frequency_days, reminder_enabled, webhook_url, last_data_updated, updated_at)
     VALUES ($1, $2, $3, $4, COALESCE($5, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)
@@ -755,15 +771,15 @@ export async function saveReminderSettings(settings: ReminderSettings): Promise<
 
 export async function getReminderSettings(platform?: string): Promise<ReminderSettings | ReminderSettings[] | null> {
   if (platform) {
-    const result = await pool.query('SELECT * FROM reminder_settings WHERE platform = $1', [platform]);
+    const result = await query('SELECT * FROM reminder_settings WHERE platform = $1', [platform]);
     return result.rows[0] || null;
   }
-  const result = await pool.query('SELECT * FROM reminder_settings');
+  const result = await query('SELECT * FROM reminder_settings');
   return result.rows;
 }
 
 export async function updateReminderLastSent(platform: string): Promise<void> {
-  await pool.query(`
+  await query(`
     UPDATE reminder_settings 
     SET last_reminder_sent = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
     WHERE platform = $1
@@ -771,7 +787,7 @@ export async function updateReminderLastSent(platform: string): Promise<void> {
 }
 
 export async function updateReminderLastUpdated(platform: string): Promise<void> {
-  await pool.query(`
+  await query(`
     UPDATE reminder_settings 
     SET last_data_updated = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
     WHERE platform = $1
@@ -779,7 +795,7 @@ export async function updateReminderLastUpdated(platform: string): Promise<void>
 }
 
 export async function getStalePlatforms(): Promise<{ platform: string; daysSinceUpdate: number; updateFrequency: number }[]> {
-  const result = await pool.query('SELECT * FROM reminder_settings WHERE reminder_enabled = 1');
+  const result = await query('SELECT * FROM reminder_settings WHERE reminder_enabled = 1');
   const today = new Date();
   
   return result.rows.map(s => {
@@ -794,12 +810,12 @@ export async function getStalePlatforms(): Promise<{ platform: string; daysSince
 }
 
 export async function logReminderSent(platform: string, status: string): Promise<void> {
-  await pool.query('INSERT INTO reminder_log (platform, status) VALUES ($1, $2)', [platform, status]);
+  await query('INSERT INTO reminder_log (platform, status) VALUES ($1, $2)', [platform, status]);
 }
 
 export async function updateArticleDetails(id: number, article: Partial<ArticleDetails>): Promise<void> {
   const fields: string[] = [];
-  const values: any[] = [];
+  const values: unknown[] = [];
   
   if (article.date !== undefined) { fields.push('date = $' + (fields.length + 1)); values.push(article.date); }
   if (article.platform !== undefined) { fields.push('platform = $' + (fields.length + 1)); values.push(article.platform); }
@@ -814,17 +830,17 @@ export async function updateArticleDetails(id: number, article: Partial<ArticleD
   if (fields.length === 0) return;
   
   values.push(id);
-  await pool.query(`UPDATE article_details SET ${fields.join(', ')} WHERE id = $${values.length}`, values);
+  await query(`UPDATE article_details SET ${fields.join(', ')} WHERE id = $${values.length}`, values);
 }
 
 export async function recalculateArticleStatsForDate(platform: string, date: string): Promise<void> {
-  const articles = await pool.query(
+  const articles = await query(
     'SELECT * FROM article_details WHERE platform = $1 AND date = $2',
     [platform, date]
   );
   
   if (articles.rows.length === 0) {
-    await pool.query('DELETE FROM article_stats WHERE platform = $1 AND date = $2', [platform, date]);
+    await query('DELETE FROM article_stats WHERE platform = $1 AND date = $2', [platform, date]);
     return;
   }
   
@@ -834,7 +850,7 @@ export async function recalculateArticleStatsForDate(platform: string, date: str
   const article_count = articles.rows.length;
   const avg_views = Math.round(total_views / article_count);
   
-  await pool.query(`
+  await query(`
     INSERT INTO article_stats 
     (date, platform, article_count, total_views, avg_views, likes, bookmarks, comments, followers, new_articles)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -860,17 +876,17 @@ export interface ActivityEvent {
   participants: number;
   registrations: number;
   online_viewers: number;
-  collected_data: string;
+  collected_data: string | Record<string, unknown>;
   description?: string;
   url?: string;
 }
 
 export interface ActivityEventParsed extends Omit<ActivityEvent, 'collected_data'> {
-  collected_data: Record<string, any>;
+  collected_data: Record<string, unknown>;
 }
 
 export async function saveActivityEvent(event: ActivityEvent): Promise<void> {
-  await pool.query(`
+  await query(`
     INSERT INTO activity_events 
     (event_name, event_date, event_type, location, venue, participants, registrations, online_viewers, collected_data, description, url)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -891,7 +907,7 @@ export async function saveActivityEvent(event: ActivityEvent): Promise<void> {
 
 export async function updateActivityEvent(id: number, event: Partial<ActivityEvent>): Promise<void> {
   const fields: string[] = [];
-  const values: any[] = [];
+  const values: unknown[] = [];
   
   if (event.event_name !== undefined) { fields.push('event_name = $' + (fields.length + 1)); values.push(event.event_name); }
   if (event.event_date !== undefined) { fields.push('event_date = $' + (fields.length + 1)); values.push(event.event_date); }
@@ -909,17 +925,17 @@ export async function updateActivityEvent(id: number, event: Partial<ActivityEve
   
   fields.push('updated_at = CURRENT_TIMESTAMP');
   values.push(id);
-  await pool.query(`UPDATE activity_events SET ${fields.join(', ')} WHERE id = $${values.length}`, values);
+  await query(`UPDATE activity_events SET ${fields.join(', ')} WHERE id = $${values.length}`, values);
 }
 
 export async function deleteActivityEvent(id: number): Promise<void> {
-  await pool.query('DELETE FROM activity_events WHERE id = $1', [id]);
+  await query('DELETE FROM activity_events WHERE id = $1', [id]);
 }
 
 export async function getActivityEvents(days: number = 365): Promise<ActivityEventParsed[]> {
   const since = new Date();
   since.setDate(since.getDate() - days);
-  const result = await pool.query(
+  const result = await query(
     'SELECT * FROM activity_events WHERE event_date >= $1 ORDER BY event_date DESC',
     [since.toISOString().split('T')[0]]
   );
@@ -929,8 +945,19 @@ export async function getActivityEvents(days: number = 365): Promise<ActivityEve
   }));
 }
 
+export async function getActivityEventsByDateRange(startDate: string, endDate: string): Promise<ActivityEventParsed[]> {
+  const result = await query(
+    'SELECT * FROM activity_events WHERE event_date >= $1 AND event_date <= $2 ORDER BY event_date DESC',
+    [startDate, endDate]
+  );
+  return result.rows.map(row => ({
+    ...row,
+    collected_data: JSON.parse(row.collected_data || '{}')
+  }));
+}
+
 export async function getAllActivityEvents(): Promise<ActivityEventParsed[]> {
-  const result = await pool.query('SELECT * FROM activity_events ORDER BY event_date DESC');
+  const result = await query('SELECT * FROM activity_events ORDER BY event_date DESC');
   return result.rows.map(row => ({
     ...row,
     collected_data: JSON.parse(row.collected_data || '{}')
@@ -938,7 +965,7 @@ export async function getAllActivityEvents(): Promise<ActivityEventParsed[]> {
 }
 
 export async function getActivityEventById(id: number): Promise<ActivityEventParsed | null> {
-  const result = await pool.query('SELECT * FROM activity_events WHERE id = $1', [id]);
+  const result = await query('SELECT * FROM activity_events WHERE id = $1', [id]);
   if (!result.rows[0]) return null;
   const row = result.rows[0];
   return {

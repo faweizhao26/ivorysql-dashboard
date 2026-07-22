@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { StatCard } from '@/components/StatCard';
 import { TimeRangeSelector, DateRange } from '@/components/TimeRangeSelector';
 import { downloadCSV } from '@/lib/csv-utils';
@@ -15,7 +15,7 @@ interface ActivityEvent {
   participants: number;
   registrations: number;
   online_viewers: number;
-  collected_data: Record<string, any>;
+  collected_data: Record<string, unknown>;
   description?: string;
   url?: string;
 }
@@ -64,13 +64,14 @@ export default function EventsPage() {
   const [showModal, setShowModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  async function fetchData() {
+  const fetchData = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await fetch('/api/events', { credentials: 'include' });
+      const params = new URLSearchParams({
+        start: dateRange.start,
+        end: dateRange.end
+      });
+      const res = await fetch(`/api/events?${params}`, { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setEvents(data.events || []);
@@ -80,7 +81,15 @@ export default function EventsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [dateRange]);
+
+  const handleRangeChange = useCallback((range: DateRange) => {
+    setDateRange({ start: range.start, end: range.end, isSingleDay: range.isSingleDay });
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   function handleEdit(event: ActivityEvent) {
     setEditingEvent({ ...event });
@@ -167,9 +176,7 @@ export default function EventsPage() {
         </div>
       </div>
 
-      <TimeRangeSelector onRangeChange={(range) => {
-        setDateRange({ start: range.start, end: range.end, isSingleDay: range.isSingleDay });
-      }} />
+      <TimeRangeSelector onRangeChange={handleRangeChange} />
 
       <div className="text-sm text-slate-400">
         当前时间段: <span className="font-medium text-slate-200">{currentPeriod}</span>
