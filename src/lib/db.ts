@@ -2,13 +2,17 @@ import { Pool } from 'pg';
 
 let pool: Pool | null = null;
 
-let dbInitialized = false;
+let dbInitialization: Promise<void> | null = null;
 
 function getPool() {
   if (!pool) {
     pool = new Pool({
       connectionString: process.env.DATABASE_URL || '',
-      ssl: { rejectUnauthorized: false }
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 10_000,
+      allowExitOnIdle: true
     });
   }
   return pool;
@@ -20,8 +24,16 @@ async function query(text: string, values?: unknown[]) {
 }
 
 async function initDb() {
-  if (dbInitialized) return;
-  
+  if (!dbInitialization) {
+    dbInitialization = initializeDb().catch((error) => {
+      dbInitialization = null;
+      throw error;
+    });
+  }
+  return dbInitialization;
+}
+
+async function initializeDb() {
   const client = await getPool().connect();
   try {
     await client.query(`
@@ -211,7 +223,6 @@ async function initDb() {
 
       CREATE INDEX IF NOT EXISTS idx_evangelist_contrib_pid ON evangelist_contributions(participant_id);
     `);
-    dbInitialized = true;
   } finally {
     client.release();
   }
