@@ -16,7 +16,12 @@ export function getEventRangeParams(searchParams: URLSearchParams) {
     return { mode: 'range' as const, start, end };
   }
 
-  const days = parseInt(searchParams.get('days') || '365', 10);
+  const daysParam = searchParams.get('days');
+  if (!daysParam) {
+    return { mode: 'all' as const };
+  }
+
+  const days = parseInt(daysParam, 10);
   return { mode: 'days' as const, days };
 }
 
@@ -27,7 +32,9 @@ export async function GET(request: Request) {
   try {
     const events = range.mode === 'range'
       ? await getActivityEventsByDateRange(range.start, range.end)
-      : range.days > 0 ? await getActivityEvents(range.days) : await getAllActivityEvents();
+      : range.mode === 'days' && range.days > 0
+        ? await getActivityEvents(range.days)
+        : await getAllActivityEvents();
     return NextResponse.json({ events });
   } catch (error) {
     console.error('Error fetching activity events:', error);

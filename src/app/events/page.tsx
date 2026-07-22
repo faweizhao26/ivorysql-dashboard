@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { StatCard } from '@/components/StatCard';
-import { TimeRangeSelector, DateRange } from '@/components/TimeRangeSelector';
 import { downloadCSV } from '@/lib/csv-utils';
 
 interface ActivityEvent {
@@ -49,14 +48,6 @@ const emptyEvent: ActivityEvent = {
 };
 
 export default function EventsPage() {
-  const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const today = new Date().toISOString().split('T')[0];
-    return {
-      start: today,
-      end: today,
-      isSingleDay: true
-    };
-  });
   const [events, setEvents] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingEvent, setEditingEvent] = useState<ActivityEvent | null>(null);
@@ -67,11 +58,7 @@ export default function EventsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        start: dateRange.start,
-        end: dateRange.end
-      });
-      const res = await fetch(`/api/events?${params}`, { credentials: 'include' });
+      const res = await fetch('/api/events', { credentials: 'include' });
       if (res.ok) {
         const data = await res.json();
         setEvents(data.events || []);
@@ -81,10 +68,6 @@ export default function EventsPage() {
     } finally {
       setLoading(false);
     }
-  }, [dateRange]);
-
-  const handleRangeChange = useCallback((range: DateRange) => {
-    setDateRange({ start: range.start, end: range.end, isSingleDay: range.isSingleDay });
   }, []);
 
   useEffect(() => {
@@ -151,8 +134,6 @@ export default function EventsPage() {
   const upcomingEvents = events.filter(e => e.event_date >= today);
   const pastEvents = events.filter(e => e.event_date < today);
 
-  const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -162,7 +143,7 @@ export default function EventsPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={() => exportEventsData(events, currentPeriod)}
+            onClick={() => exportEventsData(events)}
             className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
           >
             导出 CSV
@@ -174,12 +155,6 @@ export default function EventsPage() {
             + 新增活动
           </button>
         </div>
-      </div>
-
-      <TimeRangeSelector onRangeChange={handleRangeChange} />
-
-      <div className="text-sm text-slate-400">
-        当前时间段: <span className="font-medium text-slate-200">{currentPeriod}</span>
       </div>
 
       <div>
@@ -505,7 +480,7 @@ function EventCard({ event, isUpcoming = false, onEdit, onDelete }: {
   );
 }
 
-function exportEventsData(events: ActivityEvent[], period: string) {
+function exportEventsData(events: ActivityEvent[]) {
   if (!events || events.length === 0) return;
   const rows = events.map(e => ({
     名称: e.event_name,
@@ -518,7 +493,6 @@ function exportEventsData(events: ActivityEvent[], period: string) {
     线上观看: e.online_viewers,
     描述: e.description || '',
     链接: e.url || '',
-    时间段: period,
   }));
-  downloadCSV(rows, `ivorysql-events-${period.replace(/[~ ]/g, '_')}`);
+  downloadCSV(rows, 'ivorysql-events-all');
 }
