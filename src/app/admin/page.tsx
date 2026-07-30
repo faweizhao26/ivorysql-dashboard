@@ -1415,6 +1415,13 @@ function EventsSection() {
   );
 }
 
+export const evangelistContributionTypes: Record<string, string[]> = {
+  '内容创作': ['官方首发深度文章—IvorySQL(30)', '官方首发深度文章—纯PG(15)', '官方发布技术视频(20)', '视频课程—完整≥5期(100+)', '内容被公众号转载(10)'],
+  '活动参与': ['IvorySQL 直播演讲(40)', '主办线下演讲/Workshop(60)', '高校活动分享(40)', '外部活动分享(30)', '组织线下Meetup(30)', '策划和组织直播活动(40)', 'HOW 2026 演讲(30)'],
+  '社区贡献': ['提交Issue/改进建议(5)', 'Bug提交(15)', '贡献代码/文档PR(25)', '贡献迁移案例/用户故事(40)'],
+  '其他': ['宣传社区活动(5/次·上限30)', '转载官方动态(10/篇·上限30)', '转发官方动态(3/次·上限21)', '其他'],
+};
+
 function EvangelistSection() {
   const [participants, setParticipants] = useState<any[]>([]);
   const [editingPerson, setEditingPerson] = useState<any>(null);
@@ -1465,12 +1472,6 @@ function EvangelistSection() {
     if (selectedId) fetchContributions(selectedId); fetchParticipants(); }
 
   const categories = ['内容创作', '活动参与', '社区贡献', '其他'];
-  const types: Record<string, string[]> = {
-    '内容创作': ['官方首发深度文章—IvorySQL(30)', '官方首发深度文章—纯PG(15)', '官方发布技术视频(20)', '视频课程—完整≥5期(100+)', '内容被公众号转载(10)'],
-    '活动参与': ['IvorySQL 直播演讲(40)', '主办线下演讲/Workshop(60)', '高校活动分享(40)', '外部活动分享(30)', '组织线下Meetup(30)', '策划和组织直播活动(40)', 'HOW 2026 演讲(30)'],
-    '社区贡献': ['提交Issue/改进建议(5)', 'Bug提交(15)', '贡献代码/文档PR(25)', '贡献迁移案例/用户故事(40)'],
-    '其他': ['宣传社区活动(5/次·上限30)', '转载官方动态(10/篇·上限30)', '转发官方动态(3/次·上限21)'],
-  };
 
   // Ensure current value is in options
   function getCategoryOptions() {
@@ -1479,7 +1480,7 @@ function EvangelistSection() {
     return opts;
   }
   function getTypeOptions() {
-    const opts = [...(types[editingCont?.category] || [])];
+    const opts = [...(evangelistContributionTypes[editingCont?.category] || [])];
     if (editingCont?.type && !opts.includes(editingCont.type)) opts.push(editingCont.type);
     return opts;
   }
