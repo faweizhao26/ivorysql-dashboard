@@ -1431,6 +1431,32 @@ function EvangelistSection() {
 
   useEffect(() => { fetchParticipants(); }, []);
 
+  const isContributionDrawerOpen = editingCont !== null;
+  const activeParticipantName = participants.find(
+    participant => participant.id === editingCont?.participant_id
+  )?.name || '未选择成员';
+
+  function closeContributionDrawer() {
+    setEditingCont(null);
+  }
+
+  useEffect(() => {
+    if (!isContributionDrawerOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setEditingCont(null);
+    };
+
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isContributionDrawerOpen]);
+
   async function fetchParticipants() {
     const res = await fetch('/api/evangelist', { credentials: 'include' });
     if (res.ok) setParticipants(await res.json());
@@ -1461,7 +1487,11 @@ function EvangelistSection() {
     const m = editingCont.id ? 'PUT' : 'POST';
     const res = await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingCont), credentials: 'include' });
     if (!res.ok) { const err = await res.json(); alert('保存失败: ' + (err.error || '未知错误')); return; }
-    setEditingCont(null); fetchContributions(editingCont.participant_id); fetchParticipants();
+    await Promise.all([
+      fetchContributions(editingCont.participant_id),
+      fetchParticipants(),
+    ]);
+    closeContributionDrawer();
   }
 
   async function deletePerson(id: number) { if (!confirm('确定删除？')) return;
@@ -1487,66 +1517,27 @@ function EvangelistSection() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Person Form */}
-        <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
-          <div className="flex justify-between mb-2">
-            <h2 className="font-semibold text-slate-100">{editingPerson ? (editingPerson.id ? '编辑成员' : '新建成员') : '成员管理'}</h2>
-            <div className="flex gap-2">
-              {editingPerson && <button onClick={() => setEditingPerson(null)} className="text-sm text-slate-400 hover:bg-slate-700 px-3 py-1 rounded-lg">取消</button>}
-              {!editingPerson && <button type="button" onClick={() => setEditingPerson({name:'',title:'',bio:''})} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-500">+ 新增成员</button>}
-            </div>
+      {/* Person Form */}
+      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+        <div className="flex justify-between mb-2">
+          <h2 className="font-semibold text-slate-100">{editingPerson ? (editingPerson.id ? '编辑成员' : '新建成员') : '成员管理'}</h2>
+          <div className="flex gap-2">
+            {editingPerson && <button onClick={() => setEditingPerson(null)} className="text-sm text-slate-400 hover:bg-slate-700 px-3 py-1 rounded-lg">取消</button>}
+            {!editingPerson && <button type="button" onClick={() => setEditingPerson({name:'',title:'',bio:''})} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-500">+ 新增成员</button>}
           </div>
-          {!editingPerson ? (
-            <p className="text-sm text-slate-500">点击「+ 新增成员」按钮开始添加</p>
-          ) : (
-          <form onSubmit={savePerson} className="space-y-2">
-            <div className="grid grid-cols-2 gap-2">
-              <input required placeholder="姓名" value={editingPerson?.name || ''} onChange={e => setEditingPerson({...editingPerson, name: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-              <input placeholder="头衔" value={editingPerson?.title || ''} onChange={e => setEditingPerson({...editingPerson, title: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-            </div>
-            <input placeholder="简介" value={editingPerson?.bio || ''} onChange={e => setEditingPerson({...editingPerson, bio: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500">{editingPerson?.id ? '更新' : '添加'}</button>
-          </form>
-          )}
         </div>
-
-        {/* Contribution Form */}
-        <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
-          <div className="flex justify-between mb-2">
-            <h2 className="font-semibold text-slate-100">{editingCont ? (editingCont.id ? '编辑贡献记录' : '添加贡献记录') : '添加贡献记录'}</h2>
-            {editingCont && <button onClick={() => setEditingCont(null)} className="text-sm text-slate-400 hover:bg-slate-700 px-3 py-1 rounded-lg">取消</button>}
+        {!editingPerson ? (
+          <p className="text-sm text-slate-500">点击「+ 新增成员」按钮开始添加</p>
+        ) : (
+        <form onSubmit={savePerson} className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input required placeholder="姓名" value={editingPerson?.name || ''} onChange={e => setEditingPerson({...editingPerson, name: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
+            <input placeholder="头衔" value={editingPerson?.title || ''} onChange={e => setEditingPerson({...editingPerson, title: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
           </div>
-          {!editingCont ? (
-            <p className="text-sm text-slate-500">点击下方成员列表右侧的 <span className="text-amber-400">+贡献</span> 按钮开始添加</p>
-          ) : (
-          <form onSubmit={saveContribution} className="space-y-2">
-            <div className="text-xs text-slate-500 mb-2">为成员添加贡献记录</div>
-            <div className="grid grid-cols-2 gap-2">
-              <select value={editingCont.category || ''} onChange={e => setEditingCont({...editingCont, category: e.target.value, type: editingCont?.id ? editingCont.type : ''})}
-                className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm">
-                <option value="">选择类别</option>
-                {getCategoryOptions().map(c => <option key={c}>{c}</option>)}
-              </select>
-              <select value={editingCont.type || ''} onChange={e => setEditingCont({...editingCont, type: e.target.value})}
-                className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" disabled={!editingCont?.category}>
-                <option value="">选择类型</option>
-                {getTypeOptions().map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <input placeholder="标题（可选）" value={editingCont.title || ''} onChange={e => setEditingCont({...editingCont, title: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-              <input type="number" placeholder="积分" value={editingCont.points || ''} onChange={e => setEditingCont({...editingCont, points: parseInt(e.target.value) || 0})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <input placeholder="链接（可选）" value={editingCont.url || ''} onChange={e => setEditingCont({...editingCont, url: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-              <input type="date" value={editingCont.date || ''} onChange={e => setEditingCont({...editingCont, date: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-            </div>
-            <input placeholder="备注（可选）" value={editingCont.notes || ''} onChange={e => setEditingCont({...editingCont, notes: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-            <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500">{editingCont.id ? '更新贡献' : '添加贡献'}</button>
-          </form>
-          )}
-        </div>
+          <input placeholder="简介" value={editingPerson?.bio || ''} onChange={e => setEditingPerson({...editingPerson, bio: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
+          <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500">{editingPerson?.id ? '更新' : '添加'}</button>
+        </form>
+        )}
       </div>
 
       {/* Members List */}
@@ -1610,6 +1601,142 @@ function EvangelistSection() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {editingCont && (
+        <div className="fixed inset-0 z-50">
+          <button
+            type="button"
+            aria-label="关闭贡献编辑"
+            onClick={closeContributionDrawer}
+            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="contribution-drawer-title"
+            data-contribution-drawer
+            className="absolute inset-y-0 right-0 z-10 flex w-full max-w-[560px] flex-col border-l border-slate-700 bg-slate-900 shadow-2xl"
+          >
+            <header className="flex shrink-0 items-start justify-between border-b border-slate-700 px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <h2 id="contribution-drawer-title" className="text-lg font-semibold text-slate-100">
+                  {editingCont.id ? '编辑贡献' : '添加贡献'}
+                </h2>
+                <p className="mt-1 truncate text-sm text-slate-400">当前成员：{activeParticipantName}</p>
+              </div>
+              <button
+                type="button"
+                aria-label="关闭"
+                title="关闭"
+                onClick={closeContributionDrawer}
+                className="ml-4 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-2xl leading-none text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-100"
+              >
+                ×
+              </button>
+            </header>
+
+            <form onSubmit={saveContribution} className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="space-y-1.5 text-sm text-slate-300">
+                    <span>贡献类别</span>
+                    <select
+                      required
+                      autoFocus
+                      value={editingCont.category || ''}
+                      onChange={e => setEditingCont({...editingCont, category: e.target.value, type: editingCont.id ? editingCont.type : ''})}
+                      className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
+                    >
+                      <option value="">选择类别</option>
+                      {getCategoryOptions().map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </label>
+                  <label className="space-y-1.5 text-sm text-slate-300">
+                    <span>贡献类型</span>
+                    <select
+                      required
+                      value={editingCont.type || ''}
+                      onChange={e => setEditingCont({...editingCont, type: e.target.value})}
+                      className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={!editingCont.category}
+                    >
+                      <option value="">选择类型</option>
+                      {getTypeOptions().map(t => <option key={t}>{t}</option>)}
+                    </select>
+                  </label>
+                </div>
+
+                <label className="block space-y-1.5 text-sm text-slate-300">
+                  <span>标题 <span className="text-slate-500">（可选）</span></span>
+                  <input
+                    value={editingCont.title || ''}
+                    onChange={e => setEditingCont({...editingCont, title: e.target.value})}
+                    className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
+                  />
+                </label>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <label className="space-y-1.5 text-sm text-slate-300">
+                    <span>积分</span>
+                    <input
+                      type="number"
+                      value={editingCont.points || ''}
+                      onChange={e => setEditingCont({...editingCont, points: parseInt(e.target.value) || 0})}
+                      className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
+                    />
+                  </label>
+                  <label className="space-y-1.5 text-sm text-slate-300">
+                    <span>日期</span>
+                    <input
+                      type="date"
+                      value={editingCont.date || ''}
+                      onChange={e => setEditingCont({...editingCont, date: e.target.value})}
+                      className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
+                    />
+                  </label>
+                </div>
+
+                <label className="block space-y-1.5 text-sm text-slate-300">
+                  <span>链接 <span className="text-slate-500">（可选）</span></span>
+                  <input
+                    type="url"
+                    placeholder="https://"
+                    value={editingCont.url || ''}
+                    onChange={e => setEditingCont({...editingCont, url: e.target.value})}
+                    className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
+                  />
+                </label>
+
+                <label className="block space-y-1.5 text-sm text-slate-300">
+                  <span>备注 <span className="text-slate-500">（可选）</span></span>
+                  <textarea
+                    rows={4}
+                    value={editingCont.notes || ''}
+                    onChange={e => setEditingCont({...editingCont, notes: e.target.value})}
+                    className="w-full resize-y rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
+                  />
+                </label>
+              </div>
+
+              <footer className="flex shrink-0 justify-end gap-3 border-t border-slate-700 bg-slate-900 px-5 py-4 sm:px-6">
+                <button
+                  type="button"
+                  onClick={closeContributionDrawer}
+                  className="rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
+                >
+                  {editingCont.id ? '更新贡献' : '添加贡献'}
+                </button>
+              </footer>
+            </form>
+          </section>
         </div>
       )}
     </div>
