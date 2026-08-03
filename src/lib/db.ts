@@ -108,9 +108,17 @@ async function initializeDb() {
         content_category TEXT,
         content_source TEXT,
         published_date TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(date, platform, article_title)
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE article_details DROP CONSTRAINT IF EXISTS unique_article;
+      ALTER TABLE article_details DROP CONSTRAINT IF EXISTS article_details_date_platform_article_title_key;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_article_details_platform_url_unique
+        ON article_details(platform, article_url)
+        WHERE article_url IS NOT NULL AND article_url <> '';
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_article_details_fallback_unique
+        ON article_details(date, platform, article_title)
+        WHERE article_url IS NULL OR article_url = '';
 
       CREATE TABLE IF NOT EXISTS website_stats (
         id SERIAL PRIMARY KEY,
@@ -684,11 +692,17 @@ export async function getEventsForDate(date: string): Promise<CommunityEvent[]> 
 }
 
 export async function saveArticleDetails(article: ArticleDetails): Promise<void> {
+  const conflictTarget = article.article_url
+    ? `(platform, article_url) WHERE article_url IS NOT NULL AND article_url <> ''`
+    : `(date, platform, article_title) WHERE article_url IS NULL OR article_url = ''`;
+
   await query(`
     INSERT INTO article_details 
     (date, platform, article_title, article_url, views, likes, comments, content_category, content_source, published_date)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    ON CONFLICT (date, platform, article_title) DO UPDATE SET
+    ON CONFLICT ${conflictTarget} DO UPDATE SET
+      date = EXCLUDED.date,
+      article_title = EXCLUDED.article_title,
       article_url = EXCLUDED.article_url,
       views = EXCLUDED.views,
       likes = EXCLUDED.likes,

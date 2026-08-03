@@ -109,7 +109,9 @@ function main() {
     lines.push(
       `INSERT INTO article_details (date, platform, article_title, article_url, views, likes, comments, content_category, content_source, published_date)` +
       ` VALUES ('${a.date}', '${PLATFORM}', '${title}', '${url}', ${a.views}, 0, 0, '${cat}', '${src}', '${a.date}')` +
-      ` ON CONFLICT (date, platform, article_title) DO UPDATE SET` +
+      ` ON CONFLICT (platform, article_url) WHERE article_url IS NOT NULL AND article_url <> '' DO UPDATE SET` +
+      ` date = EXCLUDED.date,` +
+      ` article_title = EXCLUDED.article_title,` +
       ` article_url = EXCLUDED.article_url,` +
       ` views = EXCLUDED.views,` +
       ` content_category = EXCLUDED.content_category,` +
