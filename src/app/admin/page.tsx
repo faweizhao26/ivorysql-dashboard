@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type DataCategory = 'social' | 'article' | 'activity';
 type TabType = 'manual' | 'articles' | 'reminders' | 'events' | 'evangelist';
@@ -1422,12 +1422,75 @@ export const evangelistContributionTypes: Record<string, string[]> = {
   '其他': ['宣传社区活动(5/次·上限30)', '转载官方动态(10/篇·上限30)', '转发官方动态(3/次·上限21)', '其他'],
 };
 
+export const evangelistContributionLimits: Record<string, number> = {
+  '宣传社区活动(5/次·上限30)': 30,
+  '转载官方动态(10/篇·上限30)': 30,
+  '转发官方动态(3/次·上限21)': 21,
+};
+
+interface ContributionLimitRecord {
+  id?: number;
+  type?: string;
+  points?: number;
+  date?: string | null;
+}
+
+interface ContributionLimitStatus {
+  currentPoints: number;
+  draftPoints: number;
+  projectedPoints: number;
+  limit: number;
+  exceededBy: number;
+}
+
+interface EvangelistContributionRecord extends ContributionLimitRecord {
+  participant_id: number;
+  category?: string;
+  title?: string;
+  url?: string;
+  notes?: string;
+}
+
+export function calculateEvangelistContributionLimit(
+  contributions: ContributionLimitRecord[],
+  draft: ContributionLimitRecord,
+  year = 2026
+): ContributionLimitStatus | null {
+  const limit = draft.type ? evangelistContributionLimits[draft.type] : undefined;
+  const yearPrefix = `${year}-`;
+
+  if (!limit || (draft.date && !draft.date.startsWith(yearPrefix))) return null;
+
+  const currentPoints = contributions.reduce((total, contribution) => {
+    const isCurrentRecord = draft.id !== undefined && contribution.id === draft.id;
+    const isSameType = contribution.type === draft.type;
+    const isInPlanYear = !contribution.date || contribution.date.startsWith(yearPrefix);
+    return isCurrentRecord || !isSameType || !isInPlanYear
+      ? total
+      : total + (Number(contribution.points) || 0);
+  }, 0);
+  const draftPoints = Number(draft.points) || 0;
+  const projectedPoints = currentPoints + draftPoints;
+
+  return {
+    currentPoints,
+    draftPoints,
+    projectedPoints,
+    limit,
+    exceededBy: Math.max(0, projectedPoints - limit),
+  };
+}
+
 function EvangelistSection() {
   const [participants, setParticipants] = useState<any[]>([]);
   const [editingPerson, setEditingPerson] = useState<any>(null);
   const [editingCont, setEditingCont] = useState<any>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [contributions, setContributions] = useState<any[]>([]);
+  const [contributionParticipantId, setContributionParticipantId] = useState<number | null>(null);
+  const [loadingContributions, setLoadingContributions] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<'form' | 'history'>('form');
+  const contributionRequestRef = useRef(0);
 
   useEffect(() => { fetchParticipants(); }, []);
 
@@ -1435,9 +1498,13 @@ function EvangelistSection() {
   const activeParticipantName = participants.find(
     participant => participant.id === editingCont?.participant_id
   )?.name || '未选择成员';
+  const limitStatus = editingCont
+    ? calculateEvangelistContributionLimit(contributions, editingCont)
+    : null;
 
   function closeContributionDrawer() {
     setEditingCont(null);
+    setDrawerTab('form');
   }
 
   useEffect(() => {
@@ -1463,11 +1530,47 @@ function EvangelistSection() {
   }
 
   async function fetchContributions(pid: number) {
+    const requestId = ++contributionRequestRef.current;
     setSelectedId(pid);
-    const res = await fetch('/api/evangelist?participant_id=' + pid, { credentials: 'include' });
-    if (res.ok) {
-      const data = await res.json();
-      setContributions(data.contributions || []);
+    setContributionParticipantId(pid);
+    setContributions([]);
+    setLoadingContributions(true);
+
+    try {
+      const res = await fetch('/api/evangelist?participant_id=' + pid, { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        if (requestId === contributionRequestRef.current) {
+          setContributions(data.contributions || []);
+        }
+      }
+    } finally {
+      if (requestId === contributionRequestRef.current) {
+        setLoadingContributions(false);
+      }
+    }
+  }
+
+  function clearContributionSelection() {
+    contributionRequestRef.current += 1;
+    setSelectedId(null);
+    setContributionParticipantId(null);
+    setContributions([]);
+    setLoadingContributions(false);
+  }
+
+  function openNewContribution(participantId: number) {
+    setDrawerTab('form');
+    setEditingCont({ participant_id: participantId, category:'', type:'', title:'', url:'', points:0, date:'', notes:'' });
+    void fetchContributions(participantId);
+  }
+
+  function openExistingContribution(contribution: EvangelistContributionRecord) {
+    setSelectedId(contribution.participant_id);
+    setDrawerTab('form');
+    setEditingCont(contribution);
+    if (contributionParticipantId !== contribution.participant_id) {
+      void fetchContributions(contribution.participant_id);
     }
   }
 
@@ -1495,7 +1598,7 @@ function EvangelistSection() {
   }
 
   async function deletePerson(id: number) { if (!confirm('确定删除？')) return;
-    await fetch('/api/evangelist?id=' + id, { method: 'DELETE', credentials: 'include' }); fetchParticipants(); setSelectedId(null); setContributions([]); }
+    await fetch('/api/evangelist?id=' + id, { method: 'DELETE', credentials: 'include' }); fetchParticipants(); clearContributionSelection(); }
 
   async function deleteContribution(id: number) { if (!confirm('确定删除？')) return;
     await fetch('/api/evangelist?id=' + id + '&type=contribution', { method: 'DELETE', credentials: 'include' });
@@ -1553,7 +1656,7 @@ function EvangelistSection() {
             {participants.map((p: any) => (
               <tr key={p.id} className={`border-b border-slate-700/50 ${selectedId === p.id ? 'bg-indigo-500/10' : 'hover:bg-slate-700/30'}`}>
                 <td className="py-2 px-2">
-                  <button onClick={() => { if (selectedId === p.id) { setSelectedId(null); setContributions([]); } else fetchContributions(p.id); }} className="text-slate-200 hover:text-indigo-400 text-left">
+                  <button onClick={() => { if (selectedId === p.id) { clearContributionSelection(); } else void fetchContributions(p.id); }} className="text-slate-200 hover:text-indigo-400 text-left">
                     {p.name}
                     {selectedId === p.id && <span className="ml-2 text-xs text-indigo-400">▼</span>}
                   </button>
@@ -1562,7 +1665,7 @@ function EvangelistSection() {
                 <td className="py-2 px-2 text-right text-xs whitespace-nowrap space-x-0.5">
                   <button onClick={() => setEditingPerson(p)} className="text-indigo-400 hover:text-indigo-300 px-1.5 py-0.5 rounded hover:bg-indigo-500/10">编辑</button>
                   <button onClick={() => deletePerson(p.id)} className="text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-red-500/10">删除</button>
-                  <button onClick={() => { setSelectedId(p.id); setEditingCont({ participant_id: p.id, category:'', type:'', title:'', url:'', points:0, date:'', notes:'' }); fetchContributions(p.id); }} className="text-amber-400 hover:text-amber-300 px-1.5 py-0.5 rounded hover:bg-amber-500/10">+贡献</button>
+                  <button onClick={() => openNewContribution(p.id)} className="text-amber-400 hover:text-amber-300 px-1.5 py-0.5 rounded hover:bg-amber-500/10">+贡献</button>
                 </td>
               </tr>
             ))}
@@ -1594,7 +1697,7 @@ function EvangelistSection() {
                   </td>
                   <td className="py-2 px-2 text-right font-bold text-slate-200">{c.points}</td>
                   <td className="py-2 px-2 text-right">
-                    <button onClick={() => { setSelectedId(c.participant_id); setEditingCont(c); }} className="text-indigo-400 text-xs mr-1">编辑</button>
+                    <button onClick={() => openExistingContribution(c)} className="text-indigo-400 text-xs mr-1">编辑</button>
                     <button onClick={() => deleteContribution(c.id)} className="text-red-400 text-xs">删</button>
                   </td>
                 </tr>
@@ -1617,7 +1720,7 @@ function EvangelistSection() {
             aria-modal="true"
             aria-labelledby="contribution-drawer-title"
             data-contribution-drawer
-            className="absolute inset-y-0 right-0 z-10 flex w-full max-w-[560px] flex-col border-l border-slate-700 bg-slate-900 shadow-2xl"
+            className="absolute inset-y-0 right-0 z-10 flex w-full max-w-[960px] flex-col border-l border-slate-700 bg-slate-900 shadow-2xl"
           >
             <header className="flex shrink-0 items-start justify-between border-b border-slate-700 px-5 py-4 sm:px-6">
               <div className="min-w-0">
@@ -1637,105 +1740,176 @@ function EvangelistSection() {
               </button>
             </header>
 
-            <form onSubmit={saveContribution} className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <label className="space-y-1.5 text-sm text-slate-300">
-                    <span>贡献类别</span>
-                    <select
-                      required
-                      autoFocus
-                      value={editingCont.category || ''}
-                      onChange={e => setEditingCont({...editingCont, category: e.target.value, type: editingCont.id ? editingCont.type : ''})}
-                      className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
-                    >
-                      <option value="">选择类别</option>
-                      {getCategoryOptions().map(c => <option key={c}>{c}</option>)}
-                    </select>
-                  </label>
-                  <label className="space-y-1.5 text-sm text-slate-300">
-                    <span>贡献类型</span>
-                    <select
-                      required
-                      value={editingCont.type || ''}
-                      onChange={e => setEditingCont({...editingCont, type: e.target.value})}
-                      className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
-                      disabled={!editingCont.category}
-                    >
-                      <option value="">选择类型</option>
-                      {getTypeOptions().map(t => <option key={t}>{t}</option>)}
-                    </select>
-                  </label>
+            <div className="grid shrink-0 grid-cols-2 border-b border-slate-700 p-1 md:hidden" role="tablist" aria-label="贡献编辑视图">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={drawerTab === 'form'}
+                onClick={() => setDrawerTab('form')}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${drawerTab === 'form' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
+              >
+                新增贡献
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={drawerTab === 'history'}
+                onClick={() => setDrawerTab('history')}
+                className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${drawerTab === 'history' ? 'bg-indigo-600 text-white' : 'text-slate-400'}`}
+              >
+                已有贡献（{contributions.length}）
+              </button>
+            </div>
+
+            <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.15fr)]">
+              <aside
+                data-contribution-history
+                className={`${drawerTab === 'history' ? 'flex' : 'hidden'} min-h-0 flex-col md:flex md:border-r md:border-slate-700`}
+              >
+                <div className="flex shrink-0 items-center justify-between border-b border-slate-700/80 px-5 py-3">
+                  <h3 className="font-medium text-slate-200">已有贡献</h3>
+                  <span className="text-xs text-slate-500">{contributions.length} 条</span>
                 </div>
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+                  {loadingContributions ? (
+                    <div className="py-10 text-center text-sm text-slate-500">正在加载该成员的贡献...</div>
+                  ) : contributions.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-slate-500">该成员暂无贡献记录</div>
+                  ) : contributions.map((contribution) => {
+                    const isSameType = Boolean(editingCont.type) && contribution.type === editingCont.type;
+                    const isCurrentRecord = contribution.id === editingCont.id;
+                    return (
+                      <article
+                        key={contribution.id}
+                        data-contribution-history-item
+                        className={`rounded-lg border p-3 transition-colors ${isCurrentRecord ? 'border-amber-500/70 bg-amber-500/10' : isSameType ? 'border-indigo-500/60 bg-indigo-500/10' : 'border-slate-700 bg-slate-800/50'}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-xs text-slate-500">{contribution.date || '日期未填写'} · {contribution.category}</div>
+                            <div className="mt-1 text-sm font-medium text-slate-200">{contribution.type}</div>
+                          </div>
+                          <span className="shrink-0 text-sm font-semibold text-amber-400">+{contribution.points || 0}</span>
+                        </div>
+                        {contribution.title && <div className="mt-2 break-words text-sm text-slate-300">{contribution.title}</div>}
+                        {contribution.notes && <div className="mt-2 break-words border-t border-slate-700/70 pt-2 text-xs text-slate-500">备注：{contribution.notes}</div>}
+                        {isCurrentRecord && <div className="mt-2 text-xs font-medium text-amber-400">当前正在编辑</div>}
+                      </article>
+                    );
+                  })}
+                </div>
+              </aside>
 
-                <label className="block space-y-1.5 text-sm text-slate-300">
-                  <span>标题 <span className="text-slate-500">（可选）</span></span>
-                  <input
-                    value={editingCont.title || ''}
-                    onChange={e => setEditingCont({...editingCont, title: e.target.value})}
-                    className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
-                  />
-                </label>
+              <form
+                data-contribution-form
+                onSubmit={saveContribution}
+                className={`${drawerTab === 'form' ? 'flex' : 'hidden'} min-h-0 flex-col md:flex`}
+              >
+                <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <label className="space-y-1.5 text-sm text-slate-300">
+                      <span>贡献类别</span>
+                      <select
+                        required
+                        autoFocus
+                        value={editingCont.category || ''}
+                        onChange={e => setEditingCont({...editingCont, category: e.target.value, type: editingCont.id ? editingCont.type : ''})}
+                        className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
+                      >
+                        <option value="">选择类别</option>
+                        {getCategoryOptions().map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </label>
+                    <label className="space-y-1.5 text-sm text-slate-300">
+                      <span>贡献类型</span>
+                      <select
+                        required
+                        value={editingCont.type || ''}
+                        onChange={e => setEditingCont({...editingCont, type: e.target.value})}
+                        className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={!editingCont.category}
+                      >
+                        <option value="">选择类型</option>
+                        {getTypeOptions().map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </label>
+                  </div>
 
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <label className="space-y-1.5 text-sm text-slate-300">
-                    <span>积分</span>
+                  <label className="block space-y-1.5 text-sm text-slate-300">
+                    <span>标题 <span className="text-slate-500">（可选）</span></span>
                     <input
-                      type="number"
-                      value={editingCont.points || ''}
-                      onChange={e => setEditingCont({...editingCont, points: parseInt(e.target.value) || 0})}
+                      value={editingCont.title || ''}
+                      onChange={e => setEditingCont({...editingCont, title: e.target.value})}
                       className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
                     />
                   </label>
-                  <label className="space-y-1.5 text-sm text-slate-300">
-                    <span>日期</span>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <label className="space-y-1.5 text-sm text-slate-300">
+                      <span>积分</span>
+                      <input
+                        type="number"
+                        value={editingCont.points || ''}
+                        onChange={e => setEditingCont({...editingCont, points: parseInt(e.target.value) || 0})}
+                        className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
+                      />
+                    </label>
+                    <label className="space-y-1.5 text-sm text-slate-300">
+                      <span>日期</span>
+                      <input
+                        type="date"
+                        value={editingCont.date || ''}
+                        onChange={e => setEditingCont({...editingCont, date: e.target.value})}
+                        className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
+                      />
+                    </label>
+                  </div>
+
+                  {limitStatus && limitStatus.exceededBy > 0 && (
+                    <div data-contribution-limit-warning role="status" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-300">
+                      当前已计 {limitStatus.currentPoints} 分，本次 {limitStatus.draftPoints} 分，年度上限 {limitStatus.limit} 分，保存后将超出 {limitStatus.exceededBy} 分。
+                    </div>
+                  )}
+
+                  <label className="block space-y-1.5 text-sm text-slate-300">
+                    <span>链接 <span className="text-slate-500">（可选）</span></span>
                     <input
-                      type="date"
-                      value={editingCont.date || ''}
-                      onChange={e => setEditingCont({...editingCont, date: e.target.value})}
+                      type="url"
+                      placeholder="https://"
+                      value={editingCont.url || ''}
+                      onChange={e => setEditingCont({...editingCont, url: e.target.value})}
                       className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
+                    />
+                  </label>
+
+                  <label className="block space-y-1.5 text-sm text-slate-300">
+                    <span>备注 <span className="text-slate-500">（可选）</span></span>
+                    <textarea
+                      rows={4}
+                      value={editingCont.notes || ''}
+                      onChange={e => setEditingCont({...editingCont, notes: e.target.value})}
+                      className="w-full resize-y rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
                     />
                   </label>
                 </div>
 
-                <label className="block space-y-1.5 text-sm text-slate-300">
-                  <span>链接 <span className="text-slate-500">（可选）</span></span>
-                  <input
-                    type="url"
-                    placeholder="https://"
-                    value={editingCont.url || ''}
-                    onChange={e => setEditingCont({...editingCont, url: e.target.value})}
-                    className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
-                  />
-                </label>
-
-                <label className="block space-y-1.5 text-sm text-slate-300">
-                  <span>备注 <span className="text-slate-500">（可选）</span></span>
-                  <textarea
-                    rows={4}
-                    value={editingCont.notes || ''}
-                    onChange={e => setEditingCont({...editingCont, notes: e.target.value})}
-                    className="w-full resize-y rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
-                  />
-                </label>
-              </div>
-
-              <footer className="flex shrink-0 justify-end gap-3 border-t border-slate-700 bg-slate-900 px-5 py-4 sm:px-6">
-                <button
-                  type="button"
-                  onClick={closeContributionDrawer}
-                  className="rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800"
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
-                >
-                  {editingCont.id ? '更新贡献' : '添加贡献'}
-                </button>
-              </footer>
-            </form>
+                <footer className="flex shrink-0 justify-end gap-3 border-t border-slate-700 bg-slate-900 px-5 py-4 sm:px-6">
+                  <button
+                    type="button"
+                    onClick={closeContributionDrawer}
+                    className="rounded-lg border border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
+                  >
+                    {editingCont.id ? '更新贡献' : '添加贡献'}
+                  </button>
+                </footer>
+              </form>
+            </div>
           </section>
         </div>
       )}
