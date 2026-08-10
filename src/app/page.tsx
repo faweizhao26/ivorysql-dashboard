@@ -83,6 +83,7 @@ const contentPlatforms: Record<string, { name: string }> = {
   itpub: { name: 'ITPUB' },
   toutiao: { name: '头条号' },
   ifclub: { name: 'IFCLUB' },
+  zhihu: { name: '知乎' },
 };
 
 export default function HomePage() {

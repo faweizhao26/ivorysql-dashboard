@@ -31,6 +31,7 @@ const contentPlatforms = [
   { key: 'itpub', name: 'ITPUB' },
   { key: 'toutiao', name: '头条号' },
   { key: 'cnblogs', name: '博客园' },
+  { key: 'zhihu', name: '知乎' },
 ];
 
 const allArticlePlatforms = [
