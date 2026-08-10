@@ -67,6 +67,10 @@ async function initializeDb() {
         main_repo_unique_creators INTEGER,
         main_repo_issue_count INTEGER,
         main_repo_pr_count INTEGER,
+        main_repo_merged_pr_count INTEGER,
+        main_repo_unmerged_pr_count INTEGER,
+        main_repo_merged_pr_creators INTEGER,
+        main_repo_unmerged_pr_creators INTEGER,
         main_repo_top_contributors JSONB,
         main_repo_activity_since TEXT,
         main_repo_code_contributors INTEGER,
@@ -79,6 +83,10 @@ async function initializeDb() {
       ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_unique_creators INTEGER;
       ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_issue_count INTEGER;
       ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_pr_count INTEGER;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_merged_pr_count INTEGER;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_unmerged_pr_count INTEGER;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_merged_pr_creators INTEGER;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_unmerged_pr_creators INTEGER;
       ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_top_contributors JSONB;
       ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_activity_since TEXT;
       ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_code_contributors INTEGER;
@@ -290,6 +298,10 @@ export interface ContributorStatsData {
   main_repo_unique_creators?: number;
   main_repo_issue_count?: number;
   main_repo_pr_count?: number;
+  main_repo_merged_pr_count?: number;
+  main_repo_unmerged_pr_count?: number;
+  main_repo_merged_pr_creators?: number;
+  main_repo_unmerged_pr_creators?: number;
   main_repo_top_contributors?: MainRepoContributor[];
   main_repo_activity_since?: string;
   main_repo_code_contributors?: number;
@@ -423,6 +435,10 @@ export async function saveMainRepoContributorStats(
     unique_creators: number;
     issue_count: number;
     pr_count: number;
+    merged_pr_count: number;
+    unmerged_pr_count: number;
+    merged_pr_creators: number;
+    unmerged_pr_creators: number;
     top_contributors: MainRepoContributor[];
     code_contributors?: number;
     monthly_activity?: MainRepoMonthlyActivity[];
@@ -432,21 +448,28 @@ export async function saveMainRepoContributorStats(
   await query(`
     INSERT INTO contributor_stats
     (date, main_repo_issue_creators, main_repo_pr_creators, main_repo_unique_creators,
-     main_repo_issue_count, main_repo_pr_count, main_repo_top_contributors, main_repo_activity_since,
+     main_repo_issue_count, main_repo_pr_count, main_repo_merged_pr_count, main_repo_unmerged_pr_count,
+     main_repo_merged_pr_creators, main_repo_unmerged_pr_creators, main_repo_top_contributors, main_repo_activity_since,
      main_repo_code_contributors, main_repo_monthly_activity)
-    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10::jsonb)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14::jsonb)
     ON CONFLICT (date) DO UPDATE SET
       main_repo_issue_creators = EXCLUDED.main_repo_issue_creators,
       main_repo_pr_creators = EXCLUDED.main_repo_pr_creators,
       main_repo_unique_creators = EXCLUDED.main_repo_unique_creators,
       main_repo_issue_count = EXCLUDED.main_repo_issue_count,
       main_repo_pr_count = EXCLUDED.main_repo_pr_count,
+      main_repo_merged_pr_count = EXCLUDED.main_repo_merged_pr_count,
+      main_repo_unmerged_pr_count = EXCLUDED.main_repo_unmerged_pr_count,
+      main_repo_merged_pr_creators = EXCLUDED.main_repo_merged_pr_creators,
+      main_repo_unmerged_pr_creators = EXCLUDED.main_repo_unmerged_pr_creators,
       main_repo_top_contributors = EXCLUDED.main_repo_top_contributors,
       main_repo_activity_since = EXCLUDED.main_repo_activity_since,
       main_repo_code_contributors = EXCLUDED.main_repo_code_contributors,
       main_repo_monthly_activity = EXCLUDED.main_repo_monthly_activity
   `, [date, stats.issue_creators, stats.pr_creators, stats.unique_creators,
-      stats.issue_count, stats.pr_count, JSON.stringify(stats.top_contributors), since,
+      stats.issue_count, stats.pr_count, stats.merged_pr_count, stats.unmerged_pr_count,
+      stats.merged_pr_creators, stats.unmerged_pr_creators,
+      JSON.stringify(stats.top_contributors), since,
       stats.code_contributors ?? null,
       JSON.stringify(stats.monthly_activity ?? [])]);
 }

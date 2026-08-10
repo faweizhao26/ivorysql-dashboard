@@ -39,6 +39,10 @@ interface GitHubPageData {
       main_repo_unique_creators?: number;
       main_repo_issue_count?: number;
       main_repo_pr_count?: number;
+      main_repo_merged_pr_count?: number;
+      main_repo_unmerged_pr_count?: number;
+      main_repo_merged_pr_creators?: number;
+      main_repo_unmerged_pr_creators?: number;
       main_repo_activity_since?: string;
       main_repo_code_contributors?: number;
       main_repo_monthly_activity?: Array<{
@@ -47,11 +51,15 @@ interface GitHubPageData {
         new_contributor_count: number;
         issue_count: number;
         pr_count: number;
+        merged_pr_count: number;
+        unmerged_pr_count: number;
         new_contributors: string[];
         contributors: Array<{
           login: string;
           issue_count: number;
           pr_count: number;
+          merged_pr_count: number;
+          unmerged_pr_count: number;
           total: number;
         }>;
         contributions: Array<{
@@ -59,6 +67,7 @@ interface GitHubPageData {
           type: 'issue' | 'pr';
           author: string;
           created_at: string;
+          status: 'open' | 'closed' | 'merged';
           title?: string;
           url?: string;
         }>;
@@ -67,6 +76,8 @@ interface GitHubPageData {
         login: string;
         issue_count: number;
         pr_count: number;
+        merged_pr_count: number;
+        unmerged_pr_count: number;
         total: number;
       }>;
     } | null;
@@ -200,6 +211,8 @@ export default function GitHubPage() {
       new_contributor_count: 0,
       issue_count: 0,
       pr_count: 0,
+      merged_pr_count: 0,
+      unmerged_pr_count: 0,
       new_contributors: [],
       contributors: [],
       contributions: [],
@@ -209,6 +222,8 @@ export default function GitHubPage() {
   const annualNewContributors = storedMonthlyActivity.reduce((sum, month) => sum + month.new_contributor_count, 0);
   const annualIssues = storedMonthlyActivity.reduce((sum, month) => sum + month.issue_count, 0);
   const annualPrs = storedMonthlyActivity.reduce((sum, month) => sum + month.pr_count, 0);
+  const annualMergedPrs = storedMonthlyActivity.reduce((sum, month) => sum + month.merged_pr_count, 0);
+  const annualUnmergedPrs = storedMonthlyActivity.reduce((sum, month) => sum + month.unmerged_pr_count, 0);
   const prevGitHub = githubHistory.length > 1 ? githubHistory[githubHistory.length - 2] : null;
 
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
@@ -296,10 +311,10 @@ export default function GitHubPage() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-slate-100 mb-4">主仓库代码贡献者</h2>
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">主仓库主分支代码贡献者</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <StatCard
-            title="代码贡献者"
+            title="主分支代码贡献者"
             value={latestContributors?.main_repo_code_contributors ?? latestGitHub?.contributors ?? 0}
             icon="👥"
           />
@@ -308,14 +323,17 @@ export default function GitHubPage() {
 
       <div>
         <div className="flex items-baseline gap-3 mb-4">
-          <h2 className="text-lg font-semibold text-slate-100">主仓库 Issue / PR 贡献者</h2>
+          <h2 className="text-lg font-semibold text-slate-100">社区 Issue / PR 参与者</h2>
           <span className="text-xs text-slate-400">
-            {latestContributors?.main_repo_activity_since || '待同步'} 至今 · 仅统计创建者
+            {latestContributors?.main_repo_activity_since || '待同步'} 至今 · 创建 Issue/PR 即计入参与
           </span>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <p className="text-xs text-slate-500 mb-4">
+          PR 是否合并不影响社区参与统计；已合并 PR 单独计入有效代码贡献参考，未合并 PR 保留为社区贡献记录。
+        </p>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
           <StatCard
-            title="去重贡献者"
+            title="去重参与者"
             value={latestContributors?.main_repo_unique_creators ?? 0}
             icon="👥"
           />
@@ -325,9 +343,19 @@ export default function GitHubPage() {
             icon="📋"
           />
           <StatCard
-            title="PR 创建数"
+            title="PR 提交数"
             value={latestContributors?.main_repo_pr_count ?? 0}
             icon="🔀"
+          />
+          <StatCard
+            title="已合并 PR"
+            value={latestContributors?.main_repo_merged_pr_count ?? 0}
+            icon="✅"
+          />
+          <StatCard
+            title="未合并 PR"
+            value={latestContributors?.main_repo_unmerged_pr_count ?? 0}
+            icon="⏳"
           />
           <StatCard
             title="Issue 创建者"
@@ -335,20 +363,30 @@ export default function GitHubPage() {
             icon="📝"
           />
           <StatCard
-            title="PR 创建者"
+            title="PR 提交者"
             value={latestContributors?.main_repo_pr_creators ?? 0}
             icon="✍️"
+          />
+          <StatCard
+            title="已合并 PR 贡献者"
+            value={latestContributors?.main_repo_merged_pr_creators ?? 0}
+            icon="🧩"
+          />
+          <StatCard
+            title="未合并 PR 提交者"
+            value={latestContributors?.main_repo_unmerged_pr_creators ?? 0}
+            icon="📝"
           />
         </div>
         {mainRepoContributors.length > 0 && (
           <div className="card p-5 mt-4">
-            <h3 className="text-base font-semibold text-slate-100 mb-3">主仓库贡献者 Top 10</h3>
+            <h3 className="text-base font-semibold text-slate-100 mb-3">Issue/PR 提交者 Top 10</h3>
             <div className="divide-y divide-slate-700/60">
               {mainRepoContributors.map((contributor, index) => (
                 <div key={contributor.login} className="flex items-center justify-between py-2 text-sm">
                   <span className="text-slate-300">{index + 1}. {contributor.login}</span>
                   <span className="text-slate-400">
-                    Issue {contributor.issue_count} · PR {contributor.pr_count} · 合计 {contributor.total}
+                    Issue {contributor.issue_count} · PR {contributor.pr_count} · 已合并 {contributor.merged_pr_count} · 未合并 {contributor.unmerged_pr_count}
                   </span>
                 </div>
               ))}
@@ -363,11 +401,13 @@ export default function GitHubPage() {
             <h2 className="text-lg font-semibold text-slate-100">2026 年主仓库贡献明细</h2>
             <span className="text-xs text-slate-400">首次贡献者按仓库历史首次出现时间计算</span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
             <StatCard title="2026 Issue/PR 参与者" value={annualContributors.size} icon="👥" />
             <StatCard title="2026 首次创建者" value={annualNewContributors} icon="✨" />
             <StatCard title="Issue" value={annualIssues} icon="📋" />
-            <StatCard title="PR" value={annualPrs} icon="🔀" />
+            <StatCard title="PR 提交" value={annualPrs} icon="🔀" />
+            <StatCard title="已合并 PR" value={annualMergedPrs} icon="✅" />
+            <StatCard title="未合并 PR" value={annualUnmergedPrs} icon="⏳" />
           </div>
           <div className="space-y-3">
             {monthlyActivity.map(month => (
@@ -376,7 +416,7 @@ export default function GitHubPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="font-semibold text-slate-100">{month.month}</span>
                     <span className="text-sm text-slate-400">
-                      {month.contributor_count} 位参与者 · 新增 {month.new_contributor_count} · Issue {month.issue_count} · PR {month.pr_count}
+                      {month.contributor_count} 位参与者 · 新增 {month.new_contributor_count} · Issue {month.issue_count} · PR {month.pr_count}（合并 {month.merged_pr_count} / 未合并 {month.unmerged_pr_count}）
                     </span>
                   </div>
                 </summary>
@@ -387,7 +427,7 @@ export default function GitHubPage() {
                       {month.contributors.map(contributor => (
                         <div key={contributor.login} className="flex items-center justify-between text-sm">
                           <span className="text-slate-300">{contributor.login}</span>
-                          <span className="text-slate-500">Issue {contributor.issue_count} · PR {contributor.pr_count}</span>
+                          <span className="text-slate-500">Issue {contributor.issue_count} · PR {contributor.pr_count}（合并 {contributor.merged_pr_count} / 未合并 {contributor.unmerged_pr_count}）</span>
                         </div>
                       ))}
                     </div>
@@ -408,7 +448,7 @@ export default function GitHubPage() {
                           >
                             {contribution.type === 'issue' ? 'Issue' : 'PR'} #{contribution.number} · {contribution.title || '未命名贡献'}
                           </a>
-                          <div className="text-xs text-slate-500">{contribution.author} · {contribution.created_at}</div>
+                          <div className="text-xs text-slate-500">{contribution.author} · {contribution.created_at} · {formatContributionStatus(contribution.status)}</div>
                         </div>
                       ))}
                     </div>
@@ -472,10 +512,14 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
 
   if (data.contributors.latest?.main_repo_unique_creators !== undefined) {
     rows.push({
-      指标: '主仓库 Issue/PR 贡献者',
-      去重贡献者: data.contributors.latest.main_repo_unique_creators,
+      指标: '主仓库 Issue/PR 参与者',
+      去重参与者: data.contributors.latest.main_repo_unique_creators,
       Issue创建数: data.contributors.latest.main_repo_issue_count,
-      PR创建数: data.contributors.latest.main_repo_pr_count,
+      PR提交数: data.contributors.latest.main_repo_pr_count,
+      已合并PR数: data.contributors.latest.main_repo_merged_pr_count,
+      未合并PR数: data.contributors.latest.main_repo_unmerged_pr_count,
+      已合并PR贡献者: data.contributors.latest.main_repo_merged_pr_creators,
+      未合并PR提交者: data.contributors.latest.main_repo_unmerged_pr_creators,
       统计起点: data.contributors.latest.main_repo_activity_since,
       时间段: period,
     });
@@ -489,6 +533,8 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
       首次贡献者: month.new_contributor_count,
       Issue: month.issue_count,
       PR: month.pr_count,
+      '已合并 PR': month.merged_pr_count,
+      '未合并 PR': month.unmerged_pr_count,
       时间段: period,
     });
     rows.push(...month.contributions.map(contribution => ({
@@ -499,6 +545,7 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
       贡献者: contribution.author,
       标题: contribution.title,
       日期: contribution.created_at,
+      状态: formatContributionStatus(contribution.status),
       链接: contribution.url,
       时间段: period,
     })));
@@ -521,4 +568,10 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
   }
 
   downloadCSV(rows, `ivorysql-github-${period.replace(/[~ ]/g, '_')}`);
+}
+
+function formatContributionStatus(status: 'open' | 'closed' | 'merged'): string {
+  if (status === 'merged') return '已合并';
+  if (status === 'open') return '开放中';
+  return '已关闭未合并';
 }

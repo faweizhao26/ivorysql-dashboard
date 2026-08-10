@@ -7,6 +7,7 @@ import {
 import {
   aggregateContributorActivity,
   aggregateMonthlyContributorActivity,
+  type ContributorStatus,
   type MainRepoContributorStats,
   type ContributorActivityItem,
 } from '@/lib/contributor-activity';
@@ -26,6 +27,8 @@ interface GitHubActivityItem {
   created_at?: string;
   user?: { login?: string };
   pull_request?: unknown;
+  state?: 'open' | 'closed';
+  merged_at?: string | null;
   title?: string;
   html_url?: string;
 }
@@ -122,6 +125,7 @@ async function fetchMainRepoContributorActivity(
           type: kind === 'pulls' ? 'pr' : 'issue',
           author: item.user.login,
           created_at: createdAt,
+          status: getContributorStatus(kind, item),
         };
         if (item.title) activityItem.title = item.title;
         if (item.html_url) activityItem.url = item.html_url;
@@ -137,6 +141,11 @@ async function fetchMainRepoContributorActivity(
     stats: aggregateContributorActivity(items, since, getToday()),
     items,
   };
+}
+
+function getContributorStatus(kind: 'issues' | 'pulls', item: GitHubActivityItem): ContributorStatus {
+  if (kind === 'pulls' && item.merged_at) return 'merged';
+  return item.state === 'closed' ? 'closed' : 'open';
 }
 
 export async function getMainRepoMetrics(): Promise<GitHubRepoMetrics> {
