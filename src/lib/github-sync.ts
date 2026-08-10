@@ -6,6 +6,7 @@ import {
 } from '@/lib/db';
 import {
   aggregateContributorActivity,
+  aggregateMonthlyContributorActivity,
   type MainRepoContributorStats,
   type ContributorActivityItem,
 } from '@/lib/contributor-activity';
@@ -18,12 +19,20 @@ import {
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_MAIN_REPO = process.env.GITHUB_REPO || 'IvorySQL/IvorySQL';
 const PAGE_SIZE = 100;
+const CONTRIBUTION_YEAR = 2026;
 
 interface GitHubActivityItem {
   number: number;
   created_at?: string;
   user?: { login?: string };
   pull_request?: unknown;
+  title?: string;
+  html_url?: string;
+}
+
+interface MainRepoContributorActivitySnapshot {
+  stats: MainRepoContributorStats;
+  items: ContributorActivityItem[];
 }
 
 function getMainRepoParts(): [string, string] {
@@ -92,7 +101,7 @@ async function fetchMainRepoContributorActivity(
   owner: string,
   repo: string,
   since: string,
-): Promise<MainRepoContributorStats> {
+): Promise<MainRepoContributorActivitySnapshot> {
   const items: ContributorActivityItem[] = [];
 
   for (const kind of ['issues', 'pulls'] as const) {
@@ -108,12 +117,15 @@ async function fetchMainRepoContributorActivity(
         if (!createdAt || !item.user?.login) continue;
         if (kind === 'issues' && item.pull_request) continue;
 
-        items.push({
+        const activityItem: ContributorActivityItem = {
           number: item.number,
           type: kind === 'pulls' ? 'pr' : 'issue',
           author: item.user.login,
           created_at: createdAt,
-        });
+        };
+        if (item.title) activityItem.title = item.title;
+        if (item.html_url) activityItem.url = item.html_url;
+        items.push(activityItem);
       }
 
       const oldestDate = data[data.length - 1]?.created_at?.slice(0, 10);
@@ -121,7 +133,10 @@ async function fetchMainRepoContributorActivity(
     }
   }
 
-  return aggregateContributorActivity(items, since, getToday());
+  return {
+    stats: aggregateContributorActivity(items, since, getToday()),
+    items,
+  };
 }
 
 export async function getMainRepoMetrics(): Promise<GitHubRepoMetrics> {
@@ -150,9 +165,12 @@ export async function syncMainRepoContributorActivity(
 ): Promise<MainRepoContributorStats> {
   const [owner, repo] = getMainRepoParts();
   const activitySince = since || (await getMainRepoMetrics()).repository_created_at;
-  const stats = await fetchMainRepoContributorActivity(owner, repo, activitySince);
-  await saveMainRepoContributorStats(date, stats, activitySince);
-  return stats;
+  const activity = await fetchMainRepoContributorActivity(owner, repo, activitySince);
+  await saveMainRepoContributorStats(date, {
+    ...activity.stats,
+    monthly_activity: aggregateMonthlyContributorActivity(activity.items, CONTRIBUTION_YEAR),
+  }, activitySince);
+  return activity.stats;
 }
 
 export async function syncGitHubData(): Promise<{
@@ -203,8 +221,9 @@ export async function syncGitHubData(): Promise<{
       cumulative_2026: 0,
     });
     await saveMainRepoContributorStats(today, {
-      ...mainRepoActivity,
+      ...mainRepoActivity.stats,
       code_contributors: mainStats.contributors,
+      monthly_activity: aggregateMonthlyContributorActivity(mainRepoActivity.items, CONTRIBUTION_YEAR),
     }, mainStats.repository_created_at);
 
     return {
@@ -214,7 +233,7 @@ export async function syncGitHubData(): Promise<{
         forks: mainStats.forks,
         totalContributors: mainStats.contributors,
         repositoryCreatedAt: mainStats.repository_created_at,
-        mainRepoActivity,
+        mainRepoActivity: mainRepoActivity.stats,
       },
     };
   } catch (error) {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { aggregateContributorActivity } from '../src/lib/contributor-activity';
+import { aggregateContributorActivity, aggregateMonthlyContributorActivity } from '../src/lib/contributor-activity';
 
 test('aggregates issue and pull request creators with an inclusive end date', () => {
   const result = aggregateContributorActivity([
@@ -39,4 +39,103 @@ test('does not double-count duplicate GitHub items', () => {
     pr_count: 1,
     total: 2,
   });
+});
+
+test('groups 2026 activity by month and marks first-time contributors', () => {
+  const result = aggregateMonthlyContributorActivity([
+    {
+      number: 1,
+      type: 'issue',
+      author: 'alice',
+      created_at: '2025-12-20',
+      title: 'Old issue',
+      url: 'https://github.com/IvorySQL/IvorySQL/issues/1',
+    },
+    {
+      number: 2,
+      type: 'issue',
+      author: 'alice',
+      created_at: '2026-01-05',
+      title: 'Fix docs',
+      url: 'https://github.com/IvorySQL/IvorySQL/issues/2',
+    },
+    {
+      number: 3,
+      type: 'pr',
+      author: 'bob',
+      created_at: '2026-01-06',
+      title: 'Improve tests',
+      url: 'https://github.com/IvorySQL/IvorySQL/pull/3',
+    },
+    {
+      number: 4,
+      type: 'issue',
+      author: 'alice',
+      created_at: '2026-02-01',
+      title: 'Follow-up',
+      url: 'https://github.com/IvorySQL/IvorySQL/issues/4',
+    },
+    {
+      number: 4,
+      type: 'issue',
+      author: 'alice',
+      created_at: '2026-02-01',
+      title: 'Follow-up',
+      url: 'https://github.com/IvorySQL/IvorySQL/issues/4',
+    },
+  ], 2026);
+
+  assert.deepEqual(result, [
+    {
+      month: '2026-01',
+      contributor_count: 2,
+      new_contributor_count: 1,
+      issue_count: 1,
+      pr_count: 1,
+      new_contributors: ['bob'],
+      contributors: [
+        { login: 'alice', issue_count: 1, pr_count: 0, total: 1 },
+        { login: 'bob', issue_count: 0, pr_count: 1, total: 1 },
+      ],
+      contributions: [
+        {
+          number: 2,
+          type: 'issue',
+          author: 'alice',
+          created_at: '2026-01-05',
+          title: 'Fix docs',
+          url: 'https://github.com/IvorySQL/IvorySQL/issues/2',
+        },
+        {
+          number: 3,
+          type: 'pr',
+          author: 'bob',
+          created_at: '2026-01-06',
+          title: 'Improve tests',
+          url: 'https://github.com/IvorySQL/IvorySQL/pull/3',
+        },
+      ],
+    },
+    {
+      month: '2026-02',
+      contributor_count: 1,
+      new_contributor_count: 0,
+      issue_count: 1,
+      pr_count: 0,
+      new_contributors: [],
+      contributors: [
+        { login: 'alice', issue_count: 1, pr_count: 0, total: 1 },
+      ],
+      contributions: [
+        {
+          number: 4,
+          type: 'issue',
+          author: 'alice',
+          created_at: '2026-02-01',
+          title: 'Follow-up',
+          url: 'https://github.com/IvorySQL/IvorySQL/issues/4',
+        },
+      ],
+    },
+  ]);
 });

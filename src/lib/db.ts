@@ -1,5 +1,5 @@
 import { Pool } from 'pg';
-import type { MainRepoContributor } from './contributor-activity';
+import type { MainRepoContributor, MainRepoMonthlyActivity } from './contributor-activity';
 
 let pool: Pool | null = null;
 
@@ -70,6 +70,7 @@ async function initializeDb() {
         main_repo_top_contributors JSONB,
         main_repo_activity_since TEXT,
         main_repo_code_contributors INTEGER,
+        main_repo_monthly_activity JSONB,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -81,6 +82,7 @@ async function initializeDb() {
       ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_top_contributors JSONB;
       ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_activity_since TEXT;
       ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_code_contributors INTEGER;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_monthly_activity JSONB;
 
       CREATE TABLE IF NOT EXISTS social_stats (
         id SERIAL PRIMARY KEY,
@@ -291,6 +293,7 @@ export interface ContributorStatsData {
   main_repo_top_contributors?: MainRepoContributor[];
   main_repo_activity_since?: string;
   main_repo_code_contributors?: number;
+  main_repo_monthly_activity?: MainRepoMonthlyActivity[];
 }
 
 export interface SocialStats {
@@ -422,6 +425,7 @@ export async function saveMainRepoContributorStats(
     pr_count: number;
     top_contributors: MainRepoContributor[];
     code_contributors?: number;
+    monthly_activity?: MainRepoMonthlyActivity[];
   },
   since: string,
 ): Promise<void> {
@@ -429,8 +433,8 @@ export async function saveMainRepoContributorStats(
     INSERT INTO contributor_stats
     (date, main_repo_issue_creators, main_repo_pr_creators, main_repo_unique_creators,
      main_repo_issue_count, main_repo_pr_count, main_repo_top_contributors, main_repo_activity_since,
-     main_repo_code_contributors)
-    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9)
+     main_repo_code_contributors, main_repo_monthly_activity)
+    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10::jsonb)
     ON CONFLICT (date) DO UPDATE SET
       main_repo_issue_creators = EXCLUDED.main_repo_issue_creators,
       main_repo_pr_creators = EXCLUDED.main_repo_pr_creators,
@@ -439,10 +443,12 @@ export async function saveMainRepoContributorStats(
       main_repo_pr_count = EXCLUDED.main_repo_pr_count,
       main_repo_top_contributors = EXCLUDED.main_repo_top_contributors,
       main_repo_activity_since = EXCLUDED.main_repo_activity_since,
-      main_repo_code_contributors = EXCLUDED.main_repo_code_contributors
+      main_repo_code_contributors = EXCLUDED.main_repo_code_contributors,
+      main_repo_monthly_activity = EXCLUDED.main_repo_monthly_activity
   `, [date, stats.issue_creators, stats.pr_creators, stats.unique_creators,
       stats.issue_count, stats.pr_count, JSON.stringify(stats.top_contributors), since,
-      stats.code_contributors ?? null]);
+      stats.code_contributors ?? null,
+      JSON.stringify(stats.monthly_activity ?? [])]);
 }
 
 export async function saveSocialStats(stats: SocialStats): Promise<void> {

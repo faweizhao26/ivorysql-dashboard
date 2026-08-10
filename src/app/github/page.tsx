@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { StatCard, calculateChange } from '@/components/StatCard';
-import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
-import { TrendChart, BarChartComponent } from '@/components/Charts';
+import { TimeRangeSelector, DateRange } from '@/components/TimeRangeSelector';
+import { TrendChart } from '@/components/Charts';
 import { ActivityTimeline } from '@/components/Timeline';
 import { downloadCSV } from '@/lib/csv-utils';
 
@@ -41,6 +41,28 @@ interface GitHubPageData {
       main_repo_pr_count?: number;
       main_repo_activity_since?: string;
       main_repo_code_contributors?: number;
+      main_repo_monthly_activity?: Array<{
+        month: string;
+        contributor_count: number;
+        new_contributor_count: number;
+        issue_count: number;
+        pr_count: number;
+        new_contributors: string[];
+        contributors: Array<{
+          login: string;
+          issue_count: number;
+          pr_count: number;
+          total: number;
+        }>;
+        contributions: Array<{
+          number: number;
+          type: 'issue' | 'pr';
+          author: string;
+          created_at: string;
+          title?: string;
+          url?: string;
+        }>;
+      }>;
       main_repo_top_contributors?: Array<{
         login: string;
         issue_count: number;
@@ -73,16 +95,17 @@ export default function GitHubPage() {
       isSingleDay: true
     };
   });
-  const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
   const [data, setData] = useState<GitHubPageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [syncVer, setSyncVer] = useState(0);
 
   const isSingleDay = dateRange.start === dateRange.end;
 
   async function handleSync() {
     setSyncing(true);
+    setSyncError(null);
     try {
       const res = await fetch('/api/github/sync', {
         method: 'POST',
@@ -90,9 +113,13 @@ export default function GitHubPage() {
       });
       if (res.ok) {
         setSyncVer(v => v + 1);
+      } else {
+        const body = await res.json().catch(() => null);
+        setSyncError(body?.error || `同步失败（${res.status}）`);
       }
     } catch (err) {
       console.error(err);
+      setSyncError('无法连接同步服务');
     } finally {
       setSyncing(false);
     }
@@ -157,15 +184,31 @@ export default function GitHubPage() {
   const github = data?.github;
   const contributors = data?.contributors;
   const events = (data?.events || []).filter(
-    (e: any) => e.event_type === 'github_issue' || e.event_type === 'github_pr'
+    e => e.event_type === 'github_issue' || e.event_type === 'github_pr'
   );
 
   const githubHistory = github?.history || [];
-  const contributorHistory = contributors?.history || [];
 
   const latestGitHub = github?.latest;
   const latestContributors = contributors?.latest;
   const mainRepoContributors = latestContributors?.main_repo_top_contributors || [];
+  const storedMonthlyActivity = latestContributors?.main_repo_monthly_activity || [];
+  const monthlyActivity = storedMonthlyActivity.length > 0
+    ? Array.from({ length: 12 }, (_, index) => storedMonthlyActivity.find(month => month.month === `2026-${String(index + 1).padStart(2, '0')}`) || ({
+      month: `2026-${String(index + 1).padStart(2, '0')}`,
+      contributor_count: 0,
+      new_contributor_count: 0,
+      issue_count: 0,
+      pr_count: 0,
+      new_contributors: [],
+      contributors: [],
+      contributions: [],
+    }))
+    : [];
+  const annualContributors = new Set(storedMonthlyActivity.flatMap(month => month.contributors.map(contributor => contributor.login)));
+  const annualNewContributors = storedMonthlyActivity.reduce((sum, month) => sum + month.new_contributor_count, 0);
+  const annualIssues = storedMonthlyActivity.reduce((sum, month) => sum + month.issue_count, 0);
+  const annualPrs = storedMonthlyActivity.reduce((sum, month) => sum + month.pr_count, 0);
   const prevGitHub = githubHistory.length > 1 ? githubHistory[githubHistory.length - 2] : null;
 
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
@@ -202,12 +245,17 @@ export default function GitHubPage() {
 
       <TimeRangeSelector onRangeChange={(range) => {
         setDateRange({ start: range.start, end: range.end, isSingleDay: range.isSingleDay });
-        setComparison(range.comparison);
       }} />
 
       <div className="text-sm text-slate-400">
         当前时间段: <span className="font-medium text-slate-200">{currentPeriod}</span>
       </div>
+
+      {syncError && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          GitHub 同步失败：{syncError}
+        </div>
+      )}
 
       <div>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">仓库基础指标</h2>
@@ -309,6 +357,69 @@ export default function GitHubPage() {
         )}
       </div>
 
+      {monthlyActivity.length > 0 && (
+        <div>
+          <div className="flex flex-wrap items-baseline gap-3 mb-4">
+            <h2 className="text-lg font-semibold text-slate-100">2026 年主仓库贡献明细</h2>
+            <span className="text-xs text-slate-400">首次贡献者按仓库历史首次出现时间计算</span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <StatCard title="2026 Issue/PR 参与者" value={annualContributors.size} icon="👥" />
+            <StatCard title="2026 首次创建者" value={annualNewContributors} icon="✨" />
+            <StatCard title="Issue" value={annualIssues} icon="📋" />
+            <StatCard title="PR" value={annualPrs} icon="🔀" />
+          </div>
+          <div className="space-y-3">
+            {monthlyActivity.map(month => (
+              <details key={month.month} className="card overflow-hidden">
+                <summary className="cursor-pointer list-none px-5 py-4 hover:bg-slate-800/50">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <span className="font-semibold text-slate-100">{month.month}</span>
+                    <span className="text-sm text-slate-400">
+                      {month.contributor_count} 位参与者 · 新增 {month.new_contributor_count} · Issue {month.issue_count} · PR {month.pr_count}
+                    </span>
+                  </div>
+                </summary>
+                <div className="border-t border-slate-700/60 p-5 grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-200 mb-3">本月贡献者</h3>
+                    <div className="space-y-2">
+                      {month.contributors.map(contributor => (
+                        <div key={contributor.login} className="flex items-center justify-between text-sm">
+                          <span className="text-slate-300">{contributor.login}</span>
+                          <span className="text-slate-500">Issue {contributor.issue_count} · PR {contributor.pr_count}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {month.new_contributors.length > 0 && (
+                      <p className="text-xs text-emerald-400 mt-4">本月首次贡献：{month.new_contributors.join('、')}</p>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-200 mb-3">具体贡献</h3>
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {month.contributions.map(contribution => (
+                        <div key={`${contribution.type}-${contribution.number}`} className="text-sm">
+                          <a
+                            href={contribution.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-indigo-300 hover:text-indigo-200"
+                          >
+                            {contribution.type === 'issue' ? 'Issue' : 'PR'} #{contribution.number} · {contribution.title || '未命名贡献'}
+                          </a>
+                          <div className="text-xs text-slate-500">{contribution.author} · {contribution.created_at}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {githubHistory.length > 0 && (
           <TrendChart
@@ -328,23 +439,6 @@ export default function GitHubPage() {
         )}
       </div>
 
-      {contributorHistory.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <TrendChart
-            title={`2026 累计贡献者 (${currentPeriod})`}
-            data={contributorHistory.map(h => ({ date: h.date, cumulative: h.cumulative_2026 }))}
-            dataKey="cumulative"
-            color="#A855F7"
-          />
-          <BarChartComponent
-            title={`每日新增贡献者 (${currentPeriod})`}
-            data={contributorHistory.map(h => ({ date: h.date, daily: h.new_contributors_daily }))}
-            dataKey="daily"
-            color="#EC4899"
-          />
-        </div>
-      )}
-
       <ActivityTimeline events={events} title="IvorySQL Issue/PR 动态" />
     </div>
   );
@@ -353,7 +447,7 @@ export default function GitHubPage() {
 function exportGitHubData(data: GitHubPageData | null, period: string) {
   if (!data) return;
 
-  const rows: Record<string, any>[] = [];
+  const rows: Record<string, unknown>[] = [];
 
   if (data.github.history.length > 0) {
     rows.push(...data.github.history.map(h => ({
@@ -387,11 +481,34 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
     });
   }
 
+  for (const month of data.contributors.latest?.main_repo_monthly_activity || []) {
+    rows.push({
+      指标: '2026 月度贡献汇总',
+      月份: month.month,
+      参与者: month.contributor_count,
+      首次贡献者: month.new_contributor_count,
+      Issue: month.issue_count,
+      PR: month.pr_count,
+      时间段: period,
+    });
+    rows.push(...month.contributions.map(contribution => ({
+      指标: '具体贡献',
+      月份: month.month,
+      类型: contribution.type === 'issue' ? 'Issue' : 'PR',
+      编号: contribution.number,
+      贡献者: contribution.author,
+      标题: contribution.title,
+      日期: contribution.created_at,
+      链接: contribution.url,
+      时间段: period,
+    })));
+  }
+
   const filteredEvents = (data.events || []).filter(
-    (e: any) => e.event_type === 'github_issue' || e.event_type === 'github_pr'
+    e => e.event_type === 'github_issue' || e.event_type === 'github_pr'
   );
   if (filteredEvents.length > 0) {
-    rows.push(...filteredEvents.map((e: any) => ({
+    rows.push(...filteredEvents.map(e => ({
       指标: 'Issue/PR 动态',
       日期: e.date,
       来源: e.source,
