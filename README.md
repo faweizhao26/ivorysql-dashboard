@@ -4,7 +4,7 @@
 
 ## 功能特性
 
-- **GitHub 数据**：Stars、Forks、Watchers、Contributors、Open Issues/PRs、Release 等
+- **GitHub 数据**：Stars、Forks、Watchers、组织级 Contributors、主仓库 Issue/PR 创建者、Open Issues/PRs、Release 等
 - **社交媒体**：公众号、Twitter、B站、YouTube 粉丝和互动数据
 - **技术内容平台**：CSDN、掘金、墨天轮、开源中国、思否、51CTO、ITPUB、头条号、IFCLUB
 - **官网数据**：PV/UV、流量来源、热门页面、搜索关键词
@@ -80,7 +80,7 @@ npm run fetch-github
 
 项目通过 `vercel.json` 配置 Vercel Cron，每天抓取 GitHub、CSDN、博客园、墨天轮和掘金数据，每周一抓取 ITPUB。部署时必须配置 `CRON_SECRET`，否则定时请求无法通过服务端鉴权。
 
-GitHub 的定时任务负责更新仓库基础指标和下载历史；完整贡献者扫描仍建议通过管理后台手动触发，以避免长时间运行导致函数超时。
+GitHub 的定时任务负责更新仓库基础指标、下载历史，以及 `IvorySQL/IvorySQL` 主仓库自 2025-01-01 起的 Issue/PR 创建者统计；完整的组织级贡献者扫描仍建议通过管理后台手动触发，以避免长时间运行导致函数超时。
 
 ### 手动数据录入
 

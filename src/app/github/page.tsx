@@ -34,6 +34,18 @@ interface GitHubPageData {
       new_contributors_weekly: number;
       new_contributors_monthly: number;
       new_contributors_quarterly: number;
+      main_repo_issue_creators?: number;
+      main_repo_pr_creators?: number;
+      main_repo_unique_creators?: number;
+      main_repo_issue_count?: number;
+      main_repo_pr_count?: number;
+      main_repo_activity_since?: string;
+      main_repo_top_contributors?: Array<{
+        login: string;
+        issue_count: number;
+        pr_count: number;
+        total: number;
+      }>;
     } | null;
     history: Array<{
       date: string;
@@ -152,6 +164,7 @@ export default function GitHubPage() {
 
   const latestGitHub = github?.latest;
   const latestContributors = contributors?.latest;
+  const mainRepoContributors = latestContributors?.main_repo_top_contributors || [];
   const prevGitHub = githubHistory.length > 1 ? githubHistory[githubHistory.length - 2] : null;
 
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
@@ -269,6 +282,57 @@ export default function GitHubPage() {
         </div>
       </div>
 
+      <div>
+        <div className="flex items-baseline gap-3 mb-4">
+          <h2 className="text-lg font-semibold text-slate-100">主仓库 Issue / PR 贡献者</h2>
+          <span className="text-xs text-slate-400">
+            {latestContributors?.main_repo_activity_since || '2025-01-01'} 至今 · 仅统计创建者
+          </span>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <StatCard
+            title="去重贡献者"
+            value={latestContributors?.main_repo_unique_creators ?? 0}
+            icon="👥"
+          />
+          <StatCard
+            title="Issue 创建数"
+            value={latestContributors?.main_repo_issue_count ?? 0}
+            icon="📋"
+          />
+          <StatCard
+            title="PR 创建数"
+            value={latestContributors?.main_repo_pr_count ?? 0}
+            icon="🔀"
+          />
+          <StatCard
+            title="Issue 创建者"
+            value={latestContributors?.main_repo_issue_creators ?? 0}
+            icon="📝"
+          />
+          <StatCard
+            title="PR 创建者"
+            value={latestContributors?.main_repo_pr_creators ?? 0}
+            icon="✍️"
+          />
+        </div>
+        {mainRepoContributors.length > 0 && (
+          <div className="card p-5 mt-4">
+            <h3 className="text-base font-semibold text-slate-100 mb-3">主仓库贡献者 Top 10</h3>
+            <div className="divide-y divide-slate-700/60">
+              {mainRepoContributors.map((contributor, index) => (
+                <div key={contributor.login} className="flex items-center justify-between py-2 text-sm">
+                  <span className="text-slate-300">{index + 1}. {contributor.login}</span>
+                  <span className="text-slate-400">
+                    Issue {contributor.issue_count} · PR {contributor.pr_count} · 合计 {contributor.total}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {githubHistory.length > 0 && (
           <TrendChart
@@ -334,6 +398,17 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
       '每日新增': h.new_contributors_daily,
       时间段: period,
     })));
+  }
+
+  if (data.contributors.latest?.main_repo_unique_creators !== undefined) {
+    rows.push({
+      指标: '主仓库 Issue/PR 贡献者',
+      去重贡献者: data.contributors.latest.main_repo_unique_creators,
+      Issue创建数: data.contributors.latest.main_repo_issue_count,
+      PR创建数: data.contributors.latest.main_repo_pr_count,
+      统计起点: data.contributors.latest.main_repo_activity_since,
+      时间段: period,
+    });
   }
 
   const filteredEvents = (data.events || []).filter(

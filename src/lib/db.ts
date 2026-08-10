@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import type { MainRepoContributor } from './contributor-activity';
 
 let pool: Pool | null = null;
 
@@ -61,8 +62,23 @@ async function initializeDb() {
         new_contributors_monthly INTEGER DEFAULT 0,
         new_contributors_quarterly INTEGER DEFAULT 0,
         cumulative_2026 INTEGER DEFAULT 0,
+        main_repo_issue_creators INTEGER,
+        main_repo_pr_creators INTEGER,
+        main_repo_unique_creators INTEGER,
+        main_repo_issue_count INTEGER,
+        main_repo_pr_count INTEGER,
+        main_repo_top_contributors JSONB,
+        main_repo_activity_since TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_issue_creators INTEGER;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_pr_creators INTEGER;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_unique_creators INTEGER;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_issue_count INTEGER;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_pr_count INTEGER;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_top_contributors JSONB;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_activity_since TEXT;
 
       CREATE TABLE IF NOT EXISTS social_stats (
         id SERIAL PRIMARY KEY,
@@ -265,6 +281,13 @@ export interface ContributorStatsData {
   new_contributors_monthly: number;
   new_contributors_quarterly: number;
   cumulative_2026: number;
+  main_repo_issue_creators?: number;
+  main_repo_pr_creators?: number;
+  main_repo_unique_creators?: number;
+  main_repo_issue_count?: number;
+  main_repo_pr_count?: number;
+  main_repo_top_contributors?: MainRepoContributor[];
+  main_repo_activity_since?: string;
 }
 
 export interface SocialStats {
@@ -384,6 +407,35 @@ export async function saveContributorStats(stats: ContributorStatsData): Promise
   `, [stats.date, stats.total_contributors, stats.contributors_before_2026,
       stats.new_contributors_daily, stats.new_contributors_weekly,
       stats.new_contributors_monthly, stats.new_contributors_quarterly, stats.cumulative_2026]);
+}
+
+export async function saveMainRepoContributorStats(
+  date: string,
+  stats: {
+    issue_creators: number;
+    pr_creators: number;
+    unique_creators: number;
+    issue_count: number;
+    pr_count: number;
+    top_contributors: MainRepoContributor[];
+  },
+  since: string,
+): Promise<void> {
+  await query(`
+    INSERT INTO contributor_stats
+    (date, main_repo_issue_creators, main_repo_pr_creators, main_repo_unique_creators,
+     main_repo_issue_count, main_repo_pr_count, main_repo_top_contributors, main_repo_activity_since)
+    VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8)
+    ON CONFLICT (date) DO UPDATE SET
+      main_repo_issue_creators = EXCLUDED.main_repo_issue_creators,
+      main_repo_pr_creators = EXCLUDED.main_repo_pr_creators,
+      main_repo_unique_creators = EXCLUDED.main_repo_unique_creators,
+      main_repo_issue_count = EXCLUDED.main_repo_issue_count,
+      main_repo_pr_count = EXCLUDED.main_repo_pr_count,
+      main_repo_top_contributors = EXCLUDED.main_repo_top_contributors,
+      main_repo_activity_since = EXCLUDED.main_repo_activity_since
+  `, [date, stats.issue_creators, stats.pr_creators, stats.unique_creators,
+      stats.issue_count, stats.pr_count, JSON.stringify(stats.top_contributors), since]);
 }
 
 export async function saveSocialStats(stats: SocialStats): Promise<void> {

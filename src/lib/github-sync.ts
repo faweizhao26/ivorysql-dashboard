@@ -1,12 +1,19 @@
 import {
   saveGitHubStats,
   saveContributorStats,
+  saveMainRepoContributorStats,
   getToday
 } from '@/lib/db';
+import {
+  aggregateContributorActivity,
+  type MainRepoContributorStats,
+  type ContributorActivityItem
+} from '@/lib/contributor-activity';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_ORG = process.env.GITHUB_ORG || 'IvorySQL';
 const GITHUB_MAIN_REPO = process.env.GITHUB_REPO || 'IvorySQL/IvorySQL';
+const MAIN_REPO_ACTIVITY_SINCE = '2025-01-01';
 
 interface ContributorInfo {
   login: string;
@@ -20,6 +27,58 @@ const EXCLUDED_REPOS = new Set([
   'postgresql',
   'pg',
 ]);
+
+interface GitHubActivityItem {
+  number: number;
+  created_at?: string;
+  user?: { login?: string };
+  pull_request?: unknown;
+}
+
+async function fetchMainRepoContributorActivity(owner: string, repo: string): Promise<MainRepoContributorStats> {
+  const items: ContributorActivityItem[] = [];
+
+  for (const kind of ['issues', 'pulls'] as const) {
+    let page = 1;
+    while (true) {
+      const data = await fetchGitHubApi(
+        `/repos/${owner}/${repo}/${kind}?page=${page}&per_page=100&state=all&sort=created&direction=desc`
+      ) as GitHubActivityItem[];
+
+      if (!Array.isArray(data) || data.length === 0) break;
+
+      for (const item of data) {
+        const createdAt = item.created_at?.slice(0, 10);
+        if (!createdAt || createdAt < MAIN_REPO_ACTIVITY_SINCE || !item.user?.login) continue;
+        if (kind === 'issues' && item.pull_request) continue;
+
+        items.push({
+          number: item.number,
+          type: kind === 'pulls' ? 'pr' : 'issue',
+          author: item.user.login,
+          created_at: createdAt,
+        });
+      }
+
+      const oldestDate = data[data.length - 1]?.created_at?.slice(0, 10);
+      if (data.length < 100 || (oldestDate && oldestDate < MAIN_REPO_ACTIVITY_SINCE)) break;
+      page++;
+    }
+  }
+
+  return aggregateContributorActivity(items, MAIN_REPO_ACTIVITY_SINCE, getToday());
+}
+
+export async function syncMainRepoContributorActivity(date = getToday()): Promise<MainRepoContributorStats> {
+  if (!GITHUB_TOKEN) {
+    throw new Error('GitHub token not configured');
+  }
+
+  const [owner, repo] = GITHUB_MAIN_REPO.split('/');
+  const stats = await fetchMainRepoContributorActivity(owner, repo);
+  await saveMainRepoContributorStats(date, stats, MAIN_REPO_ACTIVITY_SINCE);
+  return stats;
+}
 
 async function fetchGitHubApi(endpoint: string, retries = 3): Promise<any> {
   const res = await fetch(`https://api.github.com${endpoint}`, {
@@ -209,6 +268,7 @@ export async function syncGitHubData(): Promise<{
     const [mainOwner, mainRepo] = GITHUB_MAIN_REPO.split('/');
     const mainStats = await getMainRepoStats(mainOwner, mainRepo);
     const mainContributorCount = await getContributorCount(mainOwner, mainRepo);
+    const mainRepoActivity = await fetchMainRepoContributorActivity(mainOwner, mainRepo);
     console.log(`Main repo ${GITHUB_MAIN_REPO}: stars=${mainStats.stars}, forks=${mainStats.forks}, contributors=${mainContributorCount}`);
 
     const allRepos = await getAllRepos(GITHUB_ORG);
@@ -296,6 +356,7 @@ export async function syncGitHubData(): Promise<{
       new_contributors_quarterly: contributors2026,
       cumulative_2026: contributors2026 + contributorsBefore2026
     });
+    await saveMainRepoContributorStats(today, mainRepoActivity, MAIN_REPO_ACTIVITY_SINCE);
 
     console.log(`Sync complete:`);
     console.log(`  Total contributors (all time): ${totalContributors}`);
@@ -321,7 +382,8 @@ export async function syncGitHubData(): Promise<{
             totalContributions: info.prContributions + info.issueContributions
           }))
           .sort((a, b) => b.totalContributions - a.totalContributions)
-          .slice(0, 10)
+          .slice(0, 10),
+        mainRepoActivity
       }
     };
   } catch (error: any) {

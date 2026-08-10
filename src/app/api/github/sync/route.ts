@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { syncGitHubData } from '@/lib/github-sync';
+import { syncGitHubData, syncMainRepoContributorActivity } from '@/lib/github-sync';
 import { getLatestGitHubStats, saveCommunityEvent, saveDownloadStats, saveGitHubStats } from '@/lib/db';
 import { mergeGithubCronStats } from '@/lib/sync-utils';
 
@@ -199,12 +199,14 @@ export async function GET() {
       subscribers: repoRes.subscribers_count || 0,
       open_issues: repoRes.open_issues_count || 0,
     }));
+    const contributorActivity = await syncMainRepoContributorActivity(today);
     await recordDownloadStats(today);
 
     return NextResponse.json({
       success: true,
       stars: repoRes.stargazers_count,
       forks: repoRes.forks_count,
+      mainRepoContributorActivity: contributorActivity,
       mode: 'lightweight'
     });
   } catch (error: any) {
