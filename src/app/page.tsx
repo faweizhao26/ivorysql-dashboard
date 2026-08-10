@@ -33,6 +33,7 @@ interface DashboardData {
       contributors_before_2026: number;
       cumulative_2026: number;
       new_contributors_monthly: number;
+      main_repo_code_contributors?: number;
     } | null;
     history: Array<{
       date: string;
@@ -211,7 +212,7 @@ export default function HomePage() {
           <div className="animate-fade-in stagger-2"><ComparisonStatCard title="GitHub Forks" current={latestGitHub?.forks || 0} icon="🍴" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
           <div className="animate-fade-in stagger-3"><ComparisonStatCard title="公众号关注" current={socialData.wechat?.followers || 0} icon="💚" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
           <div className="animate-fade-in stagger-4"><ComparisonStatCard title="Twitter 粉丝" current={socialData.twitter?.followers || 0} icon="🐦" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
-          <div className="animate-fade-in stagger-5"><ComparisonStatCard title="贡献者数" current={contributors?.latest?.total_contributors || latestGitHub?.contributors || 0} icon="👥" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
+          <div className="animate-fade-in stagger-5"><ComparisonStatCard title="贡献者数" current={contributors?.latest?.main_repo_code_contributors ?? latestGitHub?.contributors ?? 0} icon="👥" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
         </div>
       </div>
 
@@ -282,7 +283,7 @@ function exportDashboardData(data: DashboardData | null, period: string) {
   }
 
   if (data.contributors.latest) {
-    rows.push({ 指标: '贡献者统计', '历史贡献者总数': data.contributors.latest.total_contributors, '2026 前贡献者': data.contributors.latest.contributors_before_2026, '2026 累计新增': data.contributors.latest.cumulative_2026, '本月新增': data.contributors.latest.new_contributors_monthly, 时间段: period });
+    rows.push({ 指标: '主仓库贡献者统计', '代码贡献者': data.contributors.latest.main_repo_code_contributors ?? data.github.latest?.contributors ?? 0, 时间段: period });
   }
 
   data.social.forEach(s => {

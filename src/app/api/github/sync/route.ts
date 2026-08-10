@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server';
-import { syncGitHubData, syncMainRepoContributorActivity } from '@/lib/github-sync';
-import { getLatestGitHubStats, saveCommunityEvent, saveDownloadStats, saveGitHubStats } from '@/lib/db';
-import { mergeGithubCronStats } from '@/lib/sync-utils';
+import { syncGitHubData } from '@/lib/github-sync';
+import { saveCommunityEvent, saveDownloadStats } from '@/lib/db';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const GITHUB_ORG = process.env.GITHUB_ORG || 'IvorySQL';
 const GITHUB_REPO = process.env.GITHUB_REPO || 'IvorySQL/IvorySQL';
 
 const summaryCache = new Map<string, string>();
 
-async function fetchGitHubApi(endpoint: string) {
+interface GitHubEventItem {
+  title: string;
+  body?: string | null;
+  created_at: string;
+  html_url: string;
+  pull_request?: unknown;
+}
+
+async function fetchGitHubApi<T = unknown>(endpoint: string): Promise<T> {
   const res = await fetch(`https://api.github.com${endpoint}`, {
     headers: {
       Authorization: `Bearer ${GITHUB_TOKEN}`,
@@ -23,7 +29,7 @@ async function fetchGitHubApi(endpoint: string) {
     throw new Error(`GitHub API error: ${res.status}`);
   }
 
-  return res.json();
+  return res.json() as Promise<T>;
 }
 
 async function translateToChinese(text: string): Promise<string> {
@@ -118,11 +124,11 @@ export async function POST() {
     const [owner, repo] = GITHUB_REPO.split('/');
     
     const [issuesData, prsData] = await Promise.all([
-      fetchGitHubApi(`/repos/${owner}/${repo}/issues?state=open&per_page=20&sort=updated`),
-      fetchGitHubApi(`/repos/${owner}/${repo}/pulls?state=open&per_page=20&sort=updated`)
+      fetchGitHubApi<GitHubEventItem[]>(`/repos/${owner}/${repo}/issues?state=open&per_page=20&sort=updated`),
+      fetchGitHubApi<GitHubEventItem[]>(`/repos/${owner}/${repo}/pulls?state=open&per_page=20&sort=updated`)
     ]);
 
-    const issues = issuesData.filter((i: any) => !i.pull_request);
+    const issues = issuesData.filter(i => !i.pull_request);
     const pulls = prsData;
 
     const summaryPromises: Promise<void>[] = [];
@@ -181,35 +187,23 @@ export async function POST() {
 }
 
 export async function GET() {
-  // Lightweight cron sync: update repository counters and preserve full-sync fields.
   if (!GITHUB_TOKEN) {
     return NextResponse.json({ error: 'GitHub token not configured' }, { status: 500 });
   }
   try {
-    const [owner, repo] = GITHUB_REPO.split('/');
-    const repoRes = await fetchGitHubApi(`/repos/${owner}/${repo}`);
     const today = new Date().toISOString().split('T')[0];
-
-    const previous = await getLatestGitHubStats();
-    await saveGitHubStats(mergeGithubCronStats(previous, {
-      date: today,
-      stars: repoRes.stargazers_count || 0,
-      forks: repoRes.forks_count || 0,
-      watchers: repoRes.watchers_count || 0,
-      subscribers: repoRes.subscribers_count || 0,
-      open_issues: repoRes.open_issues_count || 0,
-    }));
-    const contributorActivity = await syncMainRepoContributorActivity(today);
+    const result = await syncGitHubData();
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
+    }
     await recordDownloadStats(today);
 
     return NextResponse.json({
       success: true,
-      stars: repoRes.stargazers_count,
-      forks: repoRes.forks_count,
-      mainRepoContributorActivity: contributorActivity,
-      mode: 'lightweight'
+      ...result.data,
+      mode: 'full'
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('GitHub cron sync error:', error);
     return NextResponse.json({ error: 'Failed to sync' }, { status: 500 });
   }

@@ -40,6 +40,7 @@ interface GitHubPageData {
       main_repo_issue_count?: number;
       main_repo_pr_count?: number;
       main_repo_activity_since?: string;
+      main_repo_code_contributors?: number;
       main_repo_top_contributors?: Array<{
         login: string;
         issue_count: number;
@@ -247,37 +248,12 @@ export default function GitHubPage() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold text-slate-100 mb-4">贡献者统计</h2>
+        <h2 className="text-lg font-semibold text-slate-100 mb-4">主仓库代码贡献者</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <StatCard
-            title="历史贡献者总数"
-            value={latestContributors?.total_contributors || latestGitHub?.contributors || 0}
+            title="代码贡献者"
+            value={latestContributors?.main_repo_code_contributors ?? latestGitHub?.contributors ?? 0}
             icon="👥"
-          />
-          <StatCard
-            title="2026 前贡献者"
-            value={latestContributors?.contributors_before_2026 || 0}
-            icon="📅"
-          />
-          <StatCard
-            title="2026 累计新增"
-            value={latestContributors?.cumulative_2026 || 0}
-            icon="📈"
-          />
-          <StatCard
-            title="本月新增"
-            value={latestContributors?.new_contributors_monthly || 0}
-            icon="📆"
-          />
-          <StatCard
-            title="本季度新增"
-            value={latestContributors?.new_contributors_quarterly || 0}
-            icon="🗓️"
-          />
-          <StatCard
-            title="本周新增"
-            value={latestContributors?.new_contributors_weekly || 0}
-            icon="📅"
           />
         </div>
       </div>
@@ -286,7 +262,7 @@ export default function GitHubPage() {
         <div className="flex items-baseline gap-3 mb-4">
           <h2 className="text-lg font-semibold text-slate-100">主仓库 Issue / PR 贡献者</h2>
           <span className="text-xs text-slate-400">
-            {latestContributors?.main_repo_activity_since || '2025-01-01'} 至今 · 仅统计创建者
+            {latestContributors?.main_repo_activity_since || '待同步'} 至今 · 仅统计创建者
           </span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
