@@ -68,7 +68,7 @@ export async function scrapeModb(userId: string = '471017'): Promise<{
 
     const today = getToday();
 
-    saveSocialStats({
+    await saveSocialStats({
       date: today,
       platform: PLATFORM,
       followers: stats.followers,

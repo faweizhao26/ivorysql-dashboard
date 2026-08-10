@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { scrapeModb } from '@/lib/modb-sync';
+import { getSyncHttpStatus } from '@/lib/sync-utils';
 
 const MODB_USER_ID = process.env.MODB_USER_ID || '471017';
 
 export async function POST() {
   try {
     const result = await scrapeModb(MODB_USER_ID);
-    return NextResponse.json(result);
+    return NextResponse.json(result, { status: getSyncHttpStatus(result) });
   } catch (error: any) {
     console.error('modb sync error:', error);
     return NextResponse.json({ error: error.message || 'Failed to sync modb data' }, { status: 500 });
@@ -16,7 +17,7 @@ export async function POST() {
 export async function GET() {
   try {
     const result = await scrapeModb(MODB_USER_ID);
-    return NextResponse.json(result);
+    return NextResponse.json(result, { status: getSyncHttpStatus(result) });
   } catch (error: any) {
     console.error('modb sync error:', error);
     return NextResponse.json({ error: error.message || 'Failed to sync modb data' }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { syncGitHubData } from '@/lib/github-sync';
-import { saveCommunityEvent, saveDownloadStats } from '@/lib/db';
+import { getLatestGitHubStats, saveCommunityEvent, saveDownloadStats, saveGitHubStats } from '@/lib/db';
+import { mergeGithubCronStats } from '@/lib/sync-utils';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_ORG = process.env.GITHUB_ORG || 'IvorySQL';
@@ -72,6 +73,36 @@ async function translateToChinese(text: string): Promise<string> {
   }
 }
 
+async function recordDownloadStats(today: string): Promise<void> {
+  const [ghRes, dockerRes] = await Promise.all([
+    fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=100`, {
+      headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, 'User-Agent': 'IvorySQL' }
+    }),
+    fetch('https://hub.docker.com/v2/repositories/ivorysql/?page_size=50')
+  ]);
+
+  let githubDownloads = 0;
+  if (ghRes.ok) {
+    const releases = await ghRes.json();
+    for (const release of (releases || [])) {
+      for (const asset of (release.assets || [])) {
+        githubDownloads += asset.download_count || 0;
+      }
+    }
+  }
+
+  let dockerPulls = 0;
+  if (dockerRes.ok) {
+    const docker = await dockerRes.json();
+    for (const repository of (docker.results || [])) {
+      dockerPulls += repository.pull_count || 0;
+    }
+  }
+
+  await saveDownloadStats(today, githubDownloads, dockerPulls);
+  console.log(`Download stats: GitHub=${githubDownloads}, Docker=${dockerPulls}`);
+}
+
 export async function POST() {
   if (!GITHUB_TOKEN) {
     return NextResponse.json({ error: 'GitHub token not configured' }, { status: 500 });
@@ -136,36 +167,8 @@ export async function POST() {
 
     await Promise.all(summaryPromises);
 
-    // Record download stats
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const [ghRes, dockerRes] = await Promise.all([
-        fetch(`https://api.github.com/repos/IvorySQL/IvorySQL/releases?per_page=100`, {
-          headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, 'User-Agent': 'IvorySQL' }
-        }),
-        fetch('https://hub.docker.com/v2/repositories/ivorysql/?page_size=50')
-      ]);
-
-      let githubDownloads = 0;
-      if (ghRes.ok) {
-        const releases = await ghRes.json();
-        for (const r of (releases || [])) {
-          for (const a of (r.assets || [])) {
-            githubDownloads += a.download_count || 0;
-          }
-        }
-      }
-
-      let dockerPulls = 0;
-      if (dockerRes.ok) {
-        const docker = await dockerRes.json();
-        for (const r of (docker.results || [])) {
-          dockerPulls += r.pull_count || 0;
-        }
-      }
-
-      await saveDownloadStats(today, githubDownloads, dockerPulls);
-      console.log(`Download stats: GitHub=${githubDownloads}, Docker=${dockerPulls}`);
+      await recordDownloadStats(new Date().toISOString().split('T')[0]);
     } catch (e) {
       console.error('Failed to record download stats:', e);
     }
@@ -178,7 +181,7 @@ export async function POST() {
 }
 
 export async function GET() {
-  // Lightweight cron sync: only update stars/forks from main repo
+  // Lightweight cron sync: update repository counters and preserve full-sync fields.
   if (!GITHUB_TOKEN) {
     return NextResponse.json({ error: 'GitHub token not configured' }, { status: 500 });
   }
@@ -187,18 +190,16 @@ export async function GET() {
     const repoRes = await fetchGitHubApi(`/repos/${owner}/${repo}`);
     const today = new Date().toISOString().split('T')[0];
 
-    const { saveGitHubStats } = await import('@/lib/db');
-    await saveGitHubStats({
+    const previous = await getLatestGitHubStats();
+    await saveGitHubStats(mergeGithubCronStats(previous, {
       date: today,
       stars: repoRes.stargazers_count || 0,
       forks: repoRes.forks_count || 0,
       watchers: repoRes.watchers_count || 0,
       subscribers: repoRes.subscribers_count || 0,
       open_issues: repoRes.open_issues_count || 0,
-      open_prs: 0,
-      contributors: 0,
-      releases_count: 0
-    });
+    }));
+    await recordDownloadStats(today);
 
     return NextResponse.json({
       success: true,

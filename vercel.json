@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/itpub/sync",
-      "schedule": "0 2 * * *"
+      "schedule": "0 2 * * 1"
     },
     {
       "path": "/api/csdn/sync",
@@ -19,6 +19,10 @@
     {
       "path": "/api/modb/sync",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/juejin/sync",
+      "schedule": "0 5 * * *"
     }
   ]
 }

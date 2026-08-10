@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { saveArticleDetails, recalculateArticleStatsForDate } from '@/lib/db';
+import { getSyncHttpStatus } from '@/lib/sync-utils';
 
 const PLATFORM = 'cnblogs';
 
@@ -111,7 +112,7 @@ export async function scrapeCnblogs(username: string = 'ivorysql'): Promise<{
 export async function POST() {
   try {
     const result = await scrapeCnblogs();
-    return NextResponse.json(result);
+    return NextResponse.json(result, { status: getSyncHttpStatus(result) });
   } catch (error: any) {
     console.error('cnblogs sync error:', error);
     return NextResponse.json({ error: error.message || 'Failed to sync cnblogs data' }, { status: 500 });

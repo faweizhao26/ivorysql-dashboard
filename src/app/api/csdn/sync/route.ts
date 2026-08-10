@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { saveArticleDetails, recalculateArticleStatsForDate } from '@/lib/db';
+import { getSyncHttpStatus } from '@/lib/sync-utils';
 
 const PLATFORM = 'csdn';
 
@@ -132,7 +133,7 @@ export async function scrapeCSDN(username: string = 'IvorySQL'): Promise<{
 export async function POST() {
   try {
     const result = await scrapeCSDN();
-    return NextResponse.json(result);
+    return NextResponse.json(result, { status: getSyncHttpStatus(result) });
   } catch (error: any) {
     console.error('CSDN sync error:', error);
     return NextResponse.json({ error: error.message || 'Failed to sync CSDN data' }, { status: 500 });

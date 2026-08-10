@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { saveArticleDetails, recalculateArticleStatsForDate } from '@/lib/db';
+import { getSyncHttpStatus } from '@/lib/sync-utils';
 
 const PLATFORM = 'juejin';
 const USER_ID = '761327331579511';
@@ -122,7 +123,7 @@ export async function scrapeJuejin(): Promise<{
 export async function POST() {
   try {
     const result = await scrapeJuejin();
-    return NextResponse.json(result);
+    return NextResponse.json(result, { status: getSyncHttpStatus(result) });
   } catch (error: any) {
     console.error('Juejin sync error:', error);
     return NextResponse.json({ error: error.message || 'Failed to sync Juejin data' }, { status: 500 });

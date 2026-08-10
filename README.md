@@ -10,7 +10,7 @@
 - **官网数据**：PV/UV、流量来源、热门页面、搜索关键词
 - **趋势图表**：支持日/周/月/季/年维度切换
 - **社区动态**：聚合 GitHub Issue/PR/Release、博客更新、活动动态
-- **自动更新**：通过 GitHub Actions 每日自动抓取数据
+- **自动更新**：通过 Vercel Cron 每日抓取已支持的平台数据
 - **权限控制**：Vercel Password Protection 密码保护
 
 ## 页面结构
@@ -78,7 +78,9 @@ npm run fetch-github
 
 ### 自动更新
 
-项目已配置 GitHub Actions（`.github/workflows/update-data.yml`），每天 UTC 02:00 自动抓取 GitHub 数据并提交更新。
+项目通过 `vercel.json` 配置 Vercel Cron，每天抓取 GitHub、CSDN、博客园、墨天轮和掘金数据，每周一抓取 ITPUB。部署时必须配置 `CRON_SECRET`，否则定时请求无法通过服务端鉴权。
+
+GitHub 的定时任务负责更新仓库基础指标和下载历史；完整贡献者扫描仍建议通过管理后台手动触发，以避免长时间运行导致函数超时。
 
 ### 手动数据录入
 
@@ -86,8 +88,9 @@ npm run fetch-github
 
 | 类型 | 数据项 | 更新频率 |
 |------|--------|----------|
-| 社交媒体 | 公众号、Twitter、B站、YouTube 粉丝/阅读量 | 每周 |
-| 内容平台 | CSDN、掘金等平台文章数、阅读量、粉丝数 | 每周 |
+| 社交媒体 | 公众号、Twitter、B站、YouTube 粉丝/阅读量 | 手动或按平台 API 配置 |
+| 内容平台 | 已有同步接口的平台 | 每天 |
+| 内容平台 | 公众号、知乎、思否、开源中国、51CTO、头条号 | Excel 导入 |
 
 ## 支持的平台
 
@@ -95,17 +98,17 @@ npm run fetch-github
 - 💚 公众号（手动）
 - 🐦 Twitter（手动）
 - 📺 B站（手动）
-- ▶️ YouTube（手动）
+- ▶️ YouTube（手动，配置 API 后可自动）
 
 ### 技术内容平台
-- 🔵 CSDN（手动）
-- 💎 掘金（手动）
-- 🟠 墨天轮（手动）
-- 🟢 开源中国（手动）
-- ⚡ 思否（手动）
-- 📰 51CTO（手动）
-- 🔷 ITPUB（手动）
-- 📱 头条号（手动）
+- 🔵 CSDN（自动）
+- 💎 掘金（自动）
+- 🟠 墨天轮（自动）
+- 🟢 开源中国（Excel 导入）
+- ⚡ 思否（Excel 导入）
+- 📰 51CTO（Excel 导入）
+- 🔷 ITPUB（自动）
+- 📱 头条号（Excel 导入）
 - 💬 IFCLUB（手动）
 
 ## 项目结构
