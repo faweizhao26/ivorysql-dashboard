@@ -43,6 +43,14 @@ test('other contribution category includes an other type', async () => {
   assert.equal(adminPage.evangelistContributionTypes?.['其他']?.at(-1), '其他');
 });
 
+test('generates stable local Multiavatar seeds per evangelist', async () => {
+  const { getEvangelistAvatarSeed } = await import('../src/lib/evangelist-avatar');
+
+  assert.equal(getEvangelistAvatarSeed(7), getEvangelistAvatarSeed(7));
+  assert.notEqual(getEvangelistAvatarSeed(7), getEvangelistAvatarSeed(8));
+  assert.match(getEvangelistAvatarSeed(7), /^ivorysql-evangelist-7$/);
+});
+
 test('contribution editor is rendered as a fixed accessible drawer', () => {
   assert.match(adminPageSource, /role="dialog"/);
   assert.match(adminPageSource, /aria-modal="true"/);

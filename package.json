@@ -13,6 +13,7 @@
     "import-wechat": "tsx src/lib/import-wechat.ts"
   },
   "dependencies": {
+    "@multiavatar/multiavatar": "^1.0.7",
     "@octokit/rest": "^22.0.1",
     "better-sqlite3": "^12.8.0",
     "date-fns": "^4.1.0",

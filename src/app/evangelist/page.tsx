@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { downloadCSV } from '@/lib/csv-utils';
+import EvangelistAvatar from '@/components/EvangelistAvatar';
 
 interface Participant {
   id: number;
@@ -120,7 +121,9 @@ export default function EvangelistPage() {
             <div className="absolute top-3 right-3">
               <span className={`text-xs px-2 py-0.5 rounded-full ${levelBadge(p.total_points).color}`}>{levelBadge(p.total_points).label}</span>
             </div>
-            {p.avatar_url && <img src={p.avatar_url} className="w-16 h-16 rounded-full mx-auto mb-3 object-cover" />}
+            <div className="mx-auto mb-3">
+              <EvangelistAvatar participantId={p.id} name={p.name} size="large" />
+            </div>
             <div className="font-bold text-lg text-slate-200 mb-1">{p.name}</div>
             {p.title && <div className="text-slate-400 text-sm mb-2">{p.title}</div>}
             <div className="text-3xl font-bold text-amber-400">{p.total_points} <span className="text-sm text-slate-500">分</span></div>
@@ -156,11 +159,7 @@ export default function EvangelistPage() {
                     <td className="py-3 px-4 text-slate-500 font-mono">{i + 1}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        {p.avatar_url ? (
-                          <img src={p.avatar_url} className="w-8 h-8 rounded-full object-cover" />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center text-slate-400 text-xs">{p.name[0]}</div>
-                        )}
+                        <EvangelistAvatar participantId={p.id} name={p.name} size="small" />
                         <span className="font-medium text-slate-200">
                           {p.name}
                         </span>
