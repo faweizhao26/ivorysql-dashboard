@@ -2,7 +2,10 @@
 
 import { useMemo } from 'react';
 import multiavatar from '@multiavatar/multiavatar/esm';
-import { getEvangelistAvatarSeed } from '@/lib/evangelist-avatar';
+import {
+  getEvangelistAvatarSeed,
+  getEvangelistAvatarVariant,
+} from '@/lib/evangelist-avatar';
 
 interface EvangelistAvatarProps {
   participantId: number;
@@ -17,7 +20,12 @@ const sizeClasses = {
 
 export default function EvangelistAvatar({ participantId, name, size }: EvangelistAvatarProps) {
   const avatarSvg = useMemo(
-    () => multiavatar(getEvangelistAvatarSeed(participantId), false),
+    () =>
+      multiavatar(
+        getEvangelistAvatarSeed(participantId),
+        false,
+        getEvangelistAvatarVariant(participantId),
+      ),
     [participantId],
   );
 

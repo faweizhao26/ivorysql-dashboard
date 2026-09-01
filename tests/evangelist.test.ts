@@ -44,11 +44,18 @@ test('other contribution category includes an other type', async () => {
 });
 
 test('generates stable local Multiavatar seeds per evangelist', async () => {
-  const { getEvangelistAvatarSeed } = await import('../src/lib/evangelist-avatar');
+  const {
+    getEvangelistAvatarSeed,
+    getEvangelistAvatarVariant,
+  } = await import('../src/lib/evangelist-avatar');
 
   assert.equal(getEvangelistAvatarSeed(7), getEvangelistAvatarSeed(7));
   assert.notEqual(getEvangelistAvatarSeed(7), getEvangelistAvatarSeed(8));
   assert.match(getEvangelistAvatarSeed(7), /^ivorysql-evangelist-7$/);
+
+  assert.deepEqual(getEvangelistAvatarVariant(7), { part: '04', theme: 'B' });
+  assert.deepEqual(getEvangelistAvatarVariant(8), { part: '04', theme: 'C' });
+  assert.equal(getEvangelistAvatarVariant(9).part, '04');
 });
 
 test('contribution editor is rendered as a fixed accessible drawer', () => {
