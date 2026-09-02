@@ -24,9 +24,9 @@ export default function EvangelistAvatar({ participantId, name, size }: Evangeli
       multiavatar(
         getEvangelistAvatarSeed(participantId),
         false,
-        getEvangelistAvatarVariant(participantId),
+        getEvangelistAvatarVariant(participantId, name),
       ),
-    [participantId],
+    [participantId, name],
   );
 
   return (

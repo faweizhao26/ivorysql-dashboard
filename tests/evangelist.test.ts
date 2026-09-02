@@ -53,9 +53,10 @@ test('generates stable local Multiavatar seeds per evangelist', async () => {
   assert.notEqual(getEvangelistAvatarSeed(7), getEvangelistAvatarSeed(8));
   assert.match(getEvangelistAvatarSeed(7), /^ivorysql-evangelist-7$/);
 
-  assert.deepEqual(getEvangelistAvatarVariant(7), { part: '04', theme: 'B' });
-  assert.deepEqual(getEvangelistAvatarVariant(8), { part: '04', theme: 'C' });
-  assert.equal(getEvangelistAvatarVariant(9).part, '04');
+  const variants = [0, 1, 2, 3].map((id) => getEvangelistAvatarVariant(id, '测试用户'));
+  assert.ok(new Set(variants.map(({ part, theme }) => `${part}-${theme}`)).size >= 3);
+  assert.deepEqual(getEvangelistAvatarVariant(7, '傅超'), { part: '08', theme: 'B' });
+  assert.deepEqual(getEvangelistAvatarVariant(7, '付超'), { part: '08', theme: 'B' });
 });
 
 test('contribution editor is rendered as a fixed accessible drawer', () => {
