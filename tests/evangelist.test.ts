@@ -55,6 +55,9 @@ test('generates stable local Multiavatar seeds per evangelist', async () => {
 
   const variants = [0, 1, 2, 3].map((id) => getEvangelistAvatarVariant(id, '测试用户'));
   assert.ok(new Set(variants.map(({ part, theme }) => `${part}-${theme}`)).size >= 3);
+  for (let id = 0; id < 24; id += 1) {
+    assert.ok(!['05', '09', '12', '14'].includes(getEvangelistAvatarVariant(id, '测试用户').part));
+  }
   assert.deepEqual(getEvangelistAvatarVariant(7, '傅超'), { part: '08', theme: 'B' });
   assert.deepEqual(getEvangelistAvatarVariant(7, '付超'), { part: '08', theme: 'B' });
 });
