@@ -5,6 +5,7 @@ export interface ContributorActivityItem {
   type: 'issue' | 'pr';
   author: string;
   created_at: string;
+  merged_at?: string;
   status: ContributorStatus;
   title?: string;
   url?: string;
@@ -115,22 +116,27 @@ export function aggregateMonthlyContributorActivity(
   year: number,
 ): MainRepoMonthlyActivity[] {
   const seenItems = new Set<string>();
-  const sortedItems = [...items]
+  const uniqueItems = [...items]
     .filter(item => item.author && item.created_at)
-    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    .sort((a, b) => getMonthlyActivityDate(a).localeCompare(getMonthlyActivityDate(b)))
+    .filter((item) => {
+      const itemKey = `${item.type}:${item.number}`;
+      if (seenItems.has(itemKey)) return false;
+      seenItems.add(itemKey);
+      return true;
+    });
   const firstSeen = new Map<string, string>();
 
-  for (const item of sortedItems) {
-    const itemKey = `${item.type}:${item.number}`;
-    if (seenItems.has(itemKey)) continue;
-    seenItems.add(itemKey);
-    if (!firstSeen.has(item.author)) {
-      firstSeen.set(item.author, item.created_at.slice(0, 10));
-    }
+  for (const item of uniqueItems) {
+    const contributionDate = getValidContributionDate(item);
+    if (!contributionDate) continue;
+    const previousDate = firstSeen.get(item.author);
+    if (!previousDate || contributionDate < previousDate) firstSeen.set(item.author, contributionDate);
   }
 
   const monthly = new Map<string, {
     counts: Map<string, { issue_count: number; pr_count: number; merged_pr_count: number; unmerged_pr_count: number }>;
+    validContributors: Set<string>;
     contributions: ContributorActivityItem[];
     newContributors: string[];
     issue_count: number;
@@ -139,17 +145,14 @@ export function aggregateMonthlyContributorActivity(
     unmerged_pr_count: number;
   }>();
 
-  for (const item of sortedItems) {
-    const itemKey = `${item.type}:${item.number}`;
-    if (!seenItems.has(itemKey)) continue;
-    seenItems.delete(itemKey);
+  for (const item of uniqueItems) {
+    const activityDate = getMonthlyActivityDate(item);
+    if (new Date(`${activityDate}T00:00:00Z`).getUTCFullYear() !== year) continue;
 
-    const createdDate = item.created_at.slice(0, 10);
-    if (new Date(`${createdDate}T00:00:00Z`).getUTCFullYear() !== year) continue;
-
-    const month = createdDate.slice(0, 7);
+    const month = activityDate.slice(0, 7);
     const current = monthly.get(month) || {
       counts: new Map(),
+      validContributors: new Set<string>(),
       contributions: [] as ContributorActivityItem[],
       newContributors: [] as string[],
       issue_count: 0,
@@ -161,12 +164,14 @@ export function aggregateMonthlyContributorActivity(
     if (item.type === 'issue') {
       contributor.issue_count++;
       current.issue_count++;
+      current.validContributors.add(item.author);
     } else {
       contributor.pr_count++;
       current.pr_count++;
       if (item.status === 'merged') {
         contributor.merged_pr_count++;
         current.merged_pr_count++;
+        current.validContributors.add(item.author);
       } else {
         contributor.unmerged_pr_count++;
         current.unmerged_pr_count++;
@@ -184,7 +189,7 @@ export function aggregateMonthlyContributorActivity(
 
   return Array.from(monthly, ([month, data]) => ({
     month,
-    contributor_count: data.counts.size,
+    contributor_count: data.validContributors.size,
     new_contributor_count: data.newContributors.length,
     issue_count: data.issue_count,
     pr_count: data.pr_count,
@@ -195,7 +200,19 @@ export function aggregateMonthlyContributorActivity(
       login,
       ...counts,
       total: counts.issue_count + counts.pr_count,
-    })).sort((a, b) => b.total - a.total || a.login.localeCompare(b.login)),
+    }))
+      .filter(contributor => data.validContributors.has(contributor.login))
+      .sort((a, b) => b.total - a.total || a.login.localeCompare(b.login)),
     contributions: data.contributions,
   })).sort((a, b) => a.month.localeCompare(b.month));
+}
+
+function getValidContributionDate(item: ContributorActivityItem): string | null {
+  if (item.type === 'issue') return item.created_at.slice(0, 10);
+  if (item.status === 'merged') return (item.merged_at || item.created_at).slice(0, 10);
+  return null;
+}
+
+function getMonthlyActivityDate(item: ContributorActivityItem): string {
+  return getValidContributionDate(item) || item.created_at.slice(0, 10);
 }

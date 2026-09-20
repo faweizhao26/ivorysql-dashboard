@@ -160,3 +160,33 @@ test('groups 2026 activity by month and marks first-time contributors', () => {
     },
   ]);
 });
+
+test('counts monthly contributors from issues and PR merge dates only', () => {
+  const result = aggregateMonthlyContributorActivity([
+    { number: 1, type: 'issue', author: 'alice', created_at: '2025-12-20', status: 'closed' },
+    { number: 2, type: 'pr', author: 'bob', created_at: '2026-01-10', merged_at: '2026-02-03', status: 'merged' },
+    { number: 3, type: 'pr', author: 'carol', created_at: '2026-01-11', status: 'closed' },
+    { number: 4, type: 'pr', author: 'erin', created_at: '2026-01-12', status: 'open' },
+    { number: 5, type: 'issue', author: 'dave', created_at: '2026-01-13', status: 'open' },
+    { number: 6, type: 'issue', author: 'alice', created_at: '2026-02-04', status: 'open' },
+  ], 2026);
+
+  const january = result.find(month => month.month === '2026-01');
+  const february = result.find(month => month.month === '2026-02');
+
+  assert.equal(january?.contributor_count, 1);
+  assert.equal(january?.new_contributor_count, 1);
+  assert.deepEqual(january?.contributors.map(contributor => contributor.login), ['dave']);
+  assert.deepEqual(january?.new_contributors, ['dave']);
+  assert.equal(january?.merged_pr_count, 0);
+  assert.equal(january?.unmerged_pr_count, 2);
+  assert.deepEqual(january?.contributions.map(contribution => contribution.number), [3, 4, 5]);
+
+  assert.equal(february?.contributor_count, 2);
+  assert.equal(february?.new_contributor_count, 1);
+  assert.deepEqual(february?.contributors.map(contributor => contributor.login).sort(), ['alice', 'bob']);
+  assert.deepEqual(february?.new_contributors, ['bob']);
+  assert.equal(february?.merged_pr_count, 1);
+  assert.equal(february?.unmerged_pr_count, 0);
+  assert.deepEqual(february?.contributions.map(contribution => contribution.number), [2, 6]);
+});

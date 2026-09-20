@@ -67,6 +67,7 @@ interface GitHubPageData {
           type: 'issue' | 'pr';
           author: string;
           created_at: string;
+          merged_at?: string;
           status: 'open' | 'closed' | 'merged';
           title?: string;
           url?: string;
@@ -399,11 +400,11 @@ export default function GitHubPage() {
         <div>
           <div className="flex flex-wrap items-baseline gap-3 mb-4">
             <h2 className="text-lg font-semibold text-slate-100">2026 年主仓库贡献明细</h2>
-            <span className="text-xs text-slate-400">首次贡献者按仓库历史首次出现时间计算</span>
+            <span className="text-xs text-slate-400">贡献者按 Issue 创建或 PR 合并计算，新增贡献者按仓库历史首次有效贡献计算</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
-            <StatCard title="2026 Issue/PR 参与者" value={annualContributors.size} icon="👥" />
-            <StatCard title="2026 首次创建者" value={annualNewContributors} icon="✨" />
+            <StatCard title="2026 贡献者" value={annualContributors.size} icon="👥" />
+            <StatCard title="2026 新增贡献者" value={annualNewContributors} icon="✨" />
             <StatCard title="Issue" value={annualIssues} icon="📋" />
             <StatCard title="PR 提交" value={annualPrs} icon="🔀" />
             <StatCard title="已合并 PR" value={annualMergedPrs} icon="✅" />
@@ -416,23 +417,27 @@ export default function GitHubPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="font-semibold text-slate-100">{month.month}</span>
                     <span className="text-sm text-slate-400">
-                      {month.contributor_count} 位参与者 · 新增 {month.new_contributor_count} · Issue {month.issue_count} · PR {month.pr_count}（合并 {month.merged_pr_count} / 未合并 {month.unmerged_pr_count}）
+                      本月贡献者 {month.contributor_count} 人 · 本月新增贡献者 {month.new_contributor_count} 人 · Issue {month.issue_count} · PR {month.pr_count}（合并 {month.merged_pr_count} / 未合并 {month.unmerged_pr_count}）
                     </span>
                   </div>
                 </summary>
                 <div className="border-t border-slate-700/60 p-5 grid grid-cols-1 xl:grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-sm font-semibold text-slate-200 mb-3">本月贡献者</h3>
-                    <div className="space-y-2">
-                      {month.contributors.map(contributor => (
-                        <div key={contributor.login} className="flex items-center justify-between text-sm">
-                          <span className="text-slate-300">{contributor.login}</span>
-                          <span className="text-slate-500">Issue {contributor.issue_count} · PR {contributor.pr_count}（合并 {contributor.merged_pr_count} / 未合并 {contributor.unmerged_pr_count}）</span>
-                        </div>
-                      ))}
-                    </div>
+                    {month.contributors.length > 0 ? (
+                      <div className="space-y-2">
+                        {month.contributors.map(contributor => (
+                          <div key={contributor.login} className="flex items-center justify-between text-sm">
+                            <span className="text-slate-300">{contributor.login}</span>
+                            <span className="text-slate-500">Issue {contributor.issue_count} · PR {contributor.pr_count}（合并 {contributor.merged_pr_count} / 未合并 {contributor.unmerged_pr_count}）</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-500">本月暂无有效贡献者</p>
+                    )}
                     {month.new_contributors.length > 0 && (
-                      <p className="text-xs text-emerald-400 mt-4">本月首次贡献：{month.new_contributors.join('、')}</p>
+                      <p className="text-xs text-emerald-400 mt-4">本月新增贡献者：{month.new_contributors.join('、')}</p>
                     )}
                   </div>
                   <div>
@@ -448,7 +453,7 @@ export default function GitHubPage() {
                           >
                             {contribution.type === 'issue' ? 'Issue' : 'PR'} #{contribution.number} · {contribution.title || '未命名贡献'}
                           </a>
-                          <div className="text-xs text-slate-500">{contribution.author} · {contribution.created_at} · {formatContributionStatus(contribution.status)}</div>
+                          <div className="text-xs text-slate-500">{contribution.author} · {getContributionDate(contribution)} · {formatContributionStatus(contribution.status)}</div>
                         </div>
                       ))}
                     </div>
@@ -529,8 +534,8 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
     rows.push({
       指标: '2026 月度贡献汇总',
       月份: month.month,
-      参与者: month.contributor_count,
-      首次贡献者: month.new_contributor_count,
+      本月贡献者: month.contributor_count,
+      本月新增贡献者: month.new_contributor_count,
       Issue: month.issue_count,
       PR: month.pr_count,
       '已合并 PR': month.merged_pr_count,
@@ -544,7 +549,7 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
       编号: contribution.number,
       贡献者: contribution.author,
       标题: contribution.title,
-      日期: contribution.created_at,
+      日期: getContributionDate(contribution),
       状态: formatContributionStatus(contribution.status),
       链接: contribution.url,
       时间段: period,
@@ -574,4 +579,11 @@ function formatContributionStatus(status: 'open' | 'closed' | 'merged'): string 
   if (status === 'merged') return '已合并';
   if (status === 'open') return '开放中';
   return '已关闭未合并';
+}
+
+function getContributionDate(contribution: { type: 'issue' | 'pr'; created_at: string; merged_at?: string; status: 'open' | 'closed' | 'merged' }): string {
+  if (contribution.type === 'pr' && contribution.status === 'merged') {
+    return contribution.merged_at || contribution.created_at;
+  }
+  return contribution.created_at;
 }

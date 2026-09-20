@@ -129,6 +129,7 @@ async function fetchMainRepoContributorActivity(
         };
         if (item.title) activityItem.title = item.title;
         if (item.html_url) activityItem.url = item.html_url;
+        if (item.merged_at) activityItem.merged_at = item.merged_at.slice(0, 10);
         items.push(activityItem);
       }
 
