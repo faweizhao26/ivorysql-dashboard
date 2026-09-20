@@ -6,6 +6,7 @@ import { TimeRangeSelector, DateRange } from '@/components/TimeRangeSelector';
 import { TrendChart } from '@/components/Charts';
 import { ActivityTimeline } from '@/components/Timeline';
 import { downloadCSV } from '@/lib/csv-utils';
+import { isCurrentContributionMonth } from '@/lib/contributor-activity';
 
 interface GitHubPageData {
   github: {
@@ -412,33 +413,62 @@ export default function GitHubPage() {
           </div>
           <div className="space-y-3">
             {monthlyActivity.map(month => (
-              <details key={month.month} className="card overflow-hidden">
+              <details
+                key={month.month}
+                className="card overflow-hidden"
+                open={isCurrentContributionMonth(month.month)}
+              >
                 <summary className="cursor-pointer list-none px-5 py-4 hover:bg-slate-800/50">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="font-semibold text-slate-100">{month.month}</span>
                     <span className="text-sm text-slate-400">
-                      本月贡献者 {month.contributor_count} 人 · 本月新增贡献者 {month.new_contributor_count} 人 · Issue {month.issue_count} · PR {month.pr_count}（合并 {month.merged_pr_count} / 未合并 {month.unmerged_pr_count}）
+                      全部贡献者 {month.contributor_count} 人 · 其中新增 {month.new_contributor_count} 人 · Issue {month.issue_count} · PR {month.pr_count}（合并 {month.merged_pr_count} / 未合并 {month.unmerged_pr_count}）
                     </span>
                   </div>
                 </summary>
                 <div className="border-t border-slate-700/60 p-5 grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-200 mb-3">本月贡献者</h3>
-                    {month.contributors.length > 0 ? (
-                      <div className="space-y-2">
-                        {month.contributors.map(contributor => (
-                          <div key={contributor.login} className="flex items-center justify-between text-sm">
-                            <span className="text-slate-300">{contributor.login}</span>
-                            <span className="text-slate-500">Issue {contributor.issue_count} · PR {contributor.pr_count}（合并 {contributor.merged_pr_count} / 未合并 {contributor.unmerged_pr_count}）</span>
-                          </div>
-                        ))}
+                  <div className="space-y-5">
+                    <section>
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <h3 className="text-sm font-semibold text-slate-100">本月贡献者（全部）</h3>
+                        <span className="text-xs font-medium text-slate-400">{month.contributor_count} 人</span>
                       </div>
-                    ) : (
-                      <p className="text-sm text-slate-500">本月暂无有效贡献者</p>
-                    )}
-                    {month.new_contributors.length > 0 && (
-                      <p className="text-xs text-emerald-400 mt-4">本月新增贡献者：{month.new_contributors.join('、')}</p>
-                    )}
+                      {month.contributors.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5">
+                          {month.contributors.map(contributor => (
+                            <div key={contributor.login} className="py-2 border-b border-slate-700/50 min-w-0">
+                              <div className="text-sm font-medium text-slate-200 break-all">{contributor.login}</div>
+                              <div className="text-xs text-slate-500 mt-0.5">
+                                Issue {contributor.issue_count} · 合并 PR {contributor.merged_pr_count}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-500">本月暂无有效贡献者</p>
+                      )}
+                    </section>
+
+                    <section className="border-t border-slate-700/60 pt-4">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
+                        <h3 className="text-sm font-semibold text-emerald-300">本月新增贡献者</h3>
+                        <span className="text-xs text-slate-500">包含在本月贡献者中 · {month.new_contributor_count} 人</span>
+                      </div>
+                      {month.new_contributors.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {month.new_contributors.map(contributor => (
+                            <span
+                              key={contributor}
+                              className="max-w-full break-all rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300"
+                            >
+                              {contributor}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-500">本月暂无新增贡献者</p>
+                      )}
+                    </section>
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-slate-200 mb-3">具体贡献</h3>

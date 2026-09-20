@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { aggregateContributorActivity, aggregateMonthlyContributorActivity } from '../src/lib/contributor-activity';
+import {
+  aggregateContributorActivity,
+  aggregateMonthlyContributorActivity,
+  isCurrentContributionMonth,
+} from '../src/lib/contributor-activity';
+
+test('identifies the current contribution month for default expansion', () => {
+  assert.equal(isCurrentContributionMonth('2026-09', new Date('2026-09-20T12:00:00+08:00')), true);
+  assert.equal(isCurrentContributionMonth('2026-08', new Date('2026-09-20T12:00:00+08:00')), false);
+});
 
 test('aggregates issue and pull request creators with an inclusive end date', () => {
   const result = aggregateContributorActivity([

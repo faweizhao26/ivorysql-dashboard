@@ -46,6 +46,10 @@ export interface MainRepoMonthlyActivity {
   contributions: ContributorActivityItem[];
 }
 
+export function isCurrentContributionMonth(month: string, today: Date = new Date()): boolean {
+  return month === today.toISOString().slice(0, 7);
+}
+
 export function aggregateContributorActivity(
   items: ContributorActivityItem[],
   since: string,
