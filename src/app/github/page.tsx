@@ -8,6 +8,15 @@ import { ActivityTimeline } from '@/components/Timeline';
 import { downloadCSV } from '@/lib/csv-utils';
 import { isCurrentContributionMonth } from '@/lib/contributor-activity';
 
+interface MonthlyContributor {
+  login: string;
+  issue_count: number;
+  pr_count: number;
+  merged_pr_count: number;
+  unmerged_pr_count: number;
+  total: number;
+}
+
 interface GitHubPageData {
   github: {
     latest: {
@@ -49,20 +58,15 @@ interface GitHubPageData {
       main_repo_monthly_activity?: Array<{
         month: string;
         contributor_count: number;
+        year_first_contributor_count?: number;
         new_contributor_count: number;
         issue_count: number;
         pr_count: number;
         merged_pr_count: number;
         unmerged_pr_count: number;
+        year_first_contributors?: string[];
         new_contributors: string[];
-        contributors: Array<{
-          login: string;
-          issue_count: number;
-          pr_count: number;
-          merged_pr_count: number;
-          unmerged_pr_count: number;
-          total: number;
-        }>;
+        contributors: MonthlyContributor[];
         contributions: Array<{
           number: number;
           type: 'issue' | 'pr';
@@ -206,26 +210,47 @@ export default function GitHubPage() {
   const latestContributors = contributors?.latest;
   const mainRepoContributors = latestContributors?.main_repo_top_contributors || [];
   const storedMonthlyActivity = latestContributors?.main_repo_monthly_activity || [];
-  const monthlyActivity = storedMonthlyActivity.length > 0
-    ? Array.from({ length: 12 }, (_, index) => storedMonthlyActivity.find(month => month.month === `2026-${String(index + 1).padStart(2, '0')}`) || ({
+  const firstContributionMonth2026 = new Map<string, string>();
+  for (const month of [...storedMonthlyActivity].sort((a, b) => a.month.localeCompare(b.month))) {
+    for (const contributor of month.contributors) {
+      if (!firstContributionMonth2026.has(contributor.login)) {
+        firstContributionMonth2026.set(contributor.login, month.month);
+      }
+    }
+  }
+  const normalizedMonthlyActivity = storedMonthlyActivity.map((month) => {
+    const yearFirstContributors = month.year_first_contributors || month.contributors
+      .filter(contributor => firstContributionMonth2026.get(contributor.login) === month.month)
+      .map(contributor => contributor.login);
+    return {
+      ...month,
+      year_first_contributor_count: month.year_first_contributor_count ?? yearFirstContributors.length,
+      year_first_contributors: yearFirstContributors,
+    };
+  });
+  const monthlyActivity = normalizedMonthlyActivity.length > 0
+    ? Array.from({ length: 12 }, (_, index) => normalizedMonthlyActivity.find(month => month.month === `2026-${String(index + 1).padStart(2, '0')}`) || ({
       month: `2026-${String(index + 1).padStart(2, '0')}`,
       contributor_count: 0,
+      year_first_contributor_count: 0,
       new_contributor_count: 0,
       issue_count: 0,
       pr_count: 0,
       merged_pr_count: 0,
       unmerged_pr_count: 0,
+      year_first_contributors: [],
       new_contributors: [],
       contributors: [],
       contributions: [],
     }))
     : [];
-  const annualContributors = new Set(storedMonthlyActivity.flatMap(month => month.contributors.map(contributor => contributor.login)));
-  const annualNewContributors = storedMonthlyActivity.reduce((sum, month) => sum + month.new_contributor_count, 0);
-  const annualIssues = storedMonthlyActivity.reduce((sum, month) => sum + month.issue_count, 0);
-  const annualPrs = storedMonthlyActivity.reduce((sum, month) => sum + month.pr_count, 0);
-  const annualMergedPrs = storedMonthlyActivity.reduce((sum, month) => sum + month.merged_pr_count, 0);
-  const annualUnmergedPrs = storedMonthlyActivity.reduce((sum, month) => sum + month.unmerged_pr_count, 0);
+  const annualContributors = new Set(normalizedMonthlyActivity.flatMap(month => month.contributors.map(contributor => contributor.login)));
+  const annualYearFirstContributors = normalizedMonthlyActivity.reduce((sum, month) => sum + month.year_first_contributor_count, 0);
+  const annualHistoricalNewContributors = normalizedMonthlyActivity.reduce((sum, month) => sum + month.new_contributor_count, 0);
+  const annualIssues = normalizedMonthlyActivity.reduce((sum, month) => sum + month.issue_count, 0);
+  const annualPrs = normalizedMonthlyActivity.reduce((sum, month) => sum + month.pr_count, 0);
+  const annualMergedPrs = normalizedMonthlyActivity.reduce((sum, month) => sum + month.merged_pr_count, 0);
+  const annualUnmergedPrs = normalizedMonthlyActivity.reduce((sum, month) => sum + month.unmerged_pr_count, 0);
   const prevGitHub = githubHistory.length > 1 ? githubHistory[githubHistory.length - 2] : null;
 
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
@@ -401,11 +426,12 @@ export default function GitHubPage() {
         <div>
           <div className="flex flex-wrap items-baseline gap-3 mb-4">
             <h2 className="text-lg font-semibold text-slate-100">2026 年主仓库贡献明细</h2>
-            <span className="text-xs text-slate-400">贡献者按 Issue 创建或 PR 合并计算，新增贡献者按仓库历史首次有效贡献计算</span>
+            <span className="text-xs text-slate-400">贡献者按 Issue 创建或 PR 合并计算；分别标记 2026 年首次贡献和仓库历史首次贡献</span>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-4">
             <StatCard title="2026 贡献者" value={annualContributors.size} icon="👥" />
-            <StatCard title="2026 新增贡献者" value={annualNewContributors} icon="✨" />
+            <StatCard title="2026 年首次贡献者" value={annualYearFirstContributors} icon="✨" />
+            <StatCard title="历史首次贡献者" value={annualHistoricalNewContributors} icon="🌱" />
             <StatCard title="Issue" value={annualIssues} icon="📋" />
             <StatCard title="PR 提交" value={annualPrs} icon="🔀" />
             <StatCard title="已合并 PR" value={annualMergedPrs} icon="✅" />
@@ -422,12 +448,31 @@ export default function GitHubPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="font-semibold text-slate-100">{month.month}</span>
                     <span className="text-sm text-slate-400">
-                      全部贡献者 {month.contributor_count} 人 · 其中新增 {month.new_contributor_count} 人 · Issue {month.issue_count} · PR {month.pr_count}（合并 {month.merged_pr_count} / 未合并 {month.unmerged_pr_count}）
+                      全部 {month.contributor_count} 人 · 2026 年首次 {month.year_first_contributor_count} 人 · 历史首次 {month.new_contributor_count} 人 · Issue {month.issue_count} · PR {month.pr_count}（合并 {month.merged_pr_count} / 未合并 {month.unmerged_pr_count}）
                     </span>
                   </div>
                 </summary>
-                <div className="border-t border-slate-700/60 p-5 grid grid-cols-1 xl:grid-cols-2 gap-6">
-                  <div className="space-y-5">
+                <div className="border-t border-slate-700/60 p-5 space-y-6">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <ContributorBreakdown
+                      title="2026 年首次贡献者"
+                      description="本月是其 2026 年第一次有效贡献"
+                      contributors={month.contributors}
+                      names={month.year_first_contributors}
+                      count={month.year_first_contributor_count}
+                      tone="indigo"
+                    />
+                    <ContributorBreakdown
+                      title="历史首次贡献者"
+                      description="本月是其在 IvorySQL 仓库的第一次有效贡献"
+                      contributors={month.contributors}
+                      names={month.new_contributors}
+                      count={month.new_contributor_count}
+                      tone="emerald"
+                    />
+                  </div>
+
+                  <div className="border-t border-slate-700/60 pt-5 grid grid-cols-1 xl:grid-cols-2 gap-6">
                     <section>
                       <div className="flex items-center justify-between gap-3 mb-3">
                         <h3 className="text-sm font-semibold text-slate-100">本月贡献者（全部）</h3>
@@ -448,44 +493,23 @@ export default function GitHubPage() {
                         <p className="text-sm text-slate-500">本月暂无有效贡献者</p>
                       )}
                     </section>
-
-                    <section className="border-t border-slate-700/60 pt-4">
-                      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-                        <h3 className="text-sm font-semibold text-emerald-300">本月新增贡献者</h3>
-                        <span className="text-xs text-slate-500">包含在本月贡献者中 · {month.new_contributor_count} 人</span>
-                      </div>
-                      {month.new_contributors.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {month.new_contributors.map(contributor => (
-                            <span
-                              key={contributor}
-                              className="max-w-full break-all rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300"
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-200 mb-3">具体贡献</h3>
+                      <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                        {month.contributions.map(contribution => (
+                          <div key={`${contribution.type}-${contribution.number}`} className="text-sm">
+                            <a
+                              href={contribution.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-indigo-300 hover:text-indigo-200"
                             >
-                              {contributor}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-slate-500">本月暂无新增贡献者</p>
-                      )}
-                    </section>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-200 mb-3">具体贡献</h3>
-                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                      {month.contributions.map(contribution => (
-                        <div key={`${contribution.type}-${contribution.number}`} className="text-sm">
-                          <a
-                            href={contribution.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-indigo-300 hover:text-indigo-200"
-                          >
-                            {contribution.type === 'issue' ? 'Issue' : 'PR'} #{contribution.number} · {contribution.title || '未命名贡献'}
-                          </a>
-                          <div className="text-xs text-slate-500">{contribution.author} · {getContributionDate(contribution)} · {formatContributionStatus(contribution.status)}</div>
-                        </div>
-                      ))}
+                              {contribution.type === 'issue' ? 'Issue' : 'PR'} #{contribution.number} · {contribution.title || '未命名贡献'}
+                            </a>
+                            <div className="text-xs text-slate-500">{contribution.author} · {getContributionDate(contribution)} · {formatContributionStatus(contribution.status)}</div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -516,6 +540,54 @@ export default function GitHubPage() {
 
       <ActivityTimeline events={events} title="IvorySQL Issue/PR 动态" />
     </div>
+  );
+}
+
+function ContributorBreakdown({
+  title,
+  description,
+  contributors,
+  names,
+  count,
+  tone,
+}: {
+  title: string;
+  description: string;
+  contributors: MonthlyContributor[];
+  names: string[];
+  count: number;
+  tone: 'indigo' | 'emerald';
+}) {
+  const nameSet = new Set(names);
+  const selectedContributors = contributors.filter(contributor => nameSet.has(contributor.login));
+  const toneClasses = tone === 'emerald'
+    ? 'border-emerald-500 text-emerald-300'
+    : 'border-indigo-500 text-indigo-300';
+
+  return (
+    <section className={`border-l-2 pl-4 ${toneClasses}`}>
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div>
+          <h3 className="text-sm font-semibold">{title}</h3>
+          <p className="text-xs text-slate-500 mt-1">{description}</p>
+        </div>
+        <span className="text-xs font-medium text-slate-400">{count} 人</span>
+      </div>
+      {selectedContributors.length > 0 ? (
+        <div className="max-h-72 overflow-y-auto pr-2 divide-y divide-slate-700/50">
+          {selectedContributors.map(contributor => (
+            <div key={contributor.login} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2">
+              <span className="min-w-0 break-all text-sm font-medium text-slate-200">{contributor.login}</span>
+              <span className="shrink-0 text-xs text-slate-400">
+                Issue {contributor.issue_count} · 合并 PR {contributor.merged_pr_count}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-slate-500">本月暂无此类贡献者</p>
+      )}
+    </section>
   );
 }
 
@@ -560,12 +632,28 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
     });
   }
 
-  for (const month of data.contributors.latest?.main_repo_monthly_activity || []) {
+  const monthlyActivity = data.contributors.latest?.main_repo_monthly_activity || [];
+  const firstContributionMonth2026 = new Map<string, string>();
+  for (const month of [...monthlyActivity].sort((a, b) => a.month.localeCompare(b.month))) {
+    for (const contributor of month.contributors) {
+      if (!firstContributionMonth2026.has(contributor.login)) {
+        firstContributionMonth2026.set(contributor.login, month.month);
+      }
+    }
+  }
+
+  for (const month of monthlyActivity) {
+    const yearFirstContributors = month.year_first_contributors || month.contributors
+      .filter(contributor => firstContributionMonth2026.get(contributor.login) === month.month)
+      .map(contributor => contributor.login);
     rows.push({
       指标: '2026 月度贡献汇总',
       月份: month.month,
       本月贡献者: month.contributor_count,
-      本月新增贡献者: month.new_contributor_count,
+      '2026 年首次贡献者数': month.year_first_contributor_count ?? yearFirstContributors.length,
+      '2026 年首次贡献者': yearFirstContributors.join('、'),
+      历史首次贡献者数: month.new_contributor_count,
+      历史首次贡献者: month.new_contributors.join('、'),
       Issue: month.issue_count,
       PR: month.pr_count,
       '已合并 PR': month.merged_pr_count,

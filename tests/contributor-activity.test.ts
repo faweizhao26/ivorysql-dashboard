@@ -112,11 +112,13 @@ test('groups 2026 activity by month and marks first-time contributors', () => {
     {
       month: '2026-01',
       contributor_count: 2,
+      year_first_contributor_count: 2,
       new_contributor_count: 1,
       issue_count: 1,
       pr_count: 1,
       merged_pr_count: 1,
       unmerged_pr_count: 0,
+      year_first_contributors: ['alice', 'bob'],
       new_contributors: ['bob'],
       contributors: [
         { login: 'alice', issue_count: 1, pr_count: 0, merged_pr_count: 0, unmerged_pr_count: 0, total: 1 },
@@ -146,11 +148,13 @@ test('groups 2026 activity by month and marks first-time contributors', () => {
     {
       month: '2026-02',
       contributor_count: 1,
+      year_first_contributor_count: 0,
       new_contributor_count: 0,
       issue_count: 1,
       pr_count: 0,
       merged_pr_count: 0,
       unmerged_pr_count: 0,
+      year_first_contributors: [],
       new_contributors: [],
       contributors: [
         { login: 'alice', issue_count: 1, pr_count: 0, merged_pr_count: 0, unmerged_pr_count: 0, total: 1 },
@@ -198,4 +202,25 @@ test('counts monthly contributors from issues and PR merge dates only', () => {
   assert.equal(february?.merged_pr_count, 1);
   assert.equal(february?.unmerged_pr_count, 0);
   assert.deepEqual(february?.contributions.map(contribution => contribution.number), [2, 6]);
+});
+
+test('separates first contribution in 2026 from first contribution ever', () => {
+  const result = aggregateMonthlyContributorActivity([
+    { number: 1, type: 'issue', author: 'alice', created_at: '2025-06-01', status: 'closed' },
+    { number: 2, type: 'issue', author: 'alice', created_at: '2026-02-02', status: 'open' },
+    { number: 3, type: 'issue', author: 'bob', created_at: '2026-02-03', status: 'open' },
+    { number: 4, type: 'pr', author: 'carol', created_at: '2026-01-04', status: 'closed' },
+    { number: 5, type: 'pr', author: 'carol', created_at: '2026-03-05', merged_at: '2026-03-10', status: 'merged' },
+  ], 2026);
+
+  const february = result.find(month => month.month === '2026-02');
+  const march = result.find(month => month.month === '2026-03');
+
+  assert.deepEqual(february?.year_first_contributors, ['alice', 'bob']);
+  assert.equal(february?.year_first_contributor_count, 2);
+  assert.deepEqual(february?.new_contributors, ['bob']);
+  assert.equal(february?.new_contributor_count, 1);
+
+  assert.deepEqual(march?.year_first_contributors, ['carol']);
+  assert.deepEqual(march?.new_contributors, ['carol']);
 });

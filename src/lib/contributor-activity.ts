@@ -36,11 +36,13 @@ export interface MainRepoContributorStats {
 export interface MainRepoMonthlyActivity {
   month: string;
   contributor_count: number;
+  year_first_contributor_count: number;
   new_contributor_count: number;
   issue_count: number;
   pr_count: number;
   merged_pr_count: number;
   unmerged_pr_count: number;
+  year_first_contributors: string[];
   new_contributors: string[];
   contributors: MainRepoContributor[];
   contributions: ContributorActivityItem[];
@@ -130,19 +132,23 @@ export function aggregateMonthlyContributorActivity(
       return true;
     });
   const firstSeen = new Map<string, string>();
+  const firstSeenInYear = new Map<string, string>();
 
   for (const item of uniqueItems) {
     const contributionDate = getValidContributionDate(item);
     if (!contributionDate) continue;
     const previousDate = firstSeen.get(item.author);
     if (!previousDate || contributionDate < previousDate) firstSeen.set(item.author, contributionDate);
+    if (new Date(`${contributionDate}T00:00:00Z`).getUTCFullYear() === year) {
+      const previousYearDate = firstSeenInYear.get(item.author);
+      if (!previousYearDate || contributionDate < previousYearDate) firstSeenInYear.set(item.author, contributionDate);
+    }
   }
 
   const monthly = new Map<string, {
     counts: Map<string, { issue_count: number; pr_count: number; merged_pr_count: number; unmerged_pr_count: number }>;
     validContributors: Set<string>;
     contributions: ContributorActivityItem[];
-    newContributors: string[];
     issue_count: number;
     pr_count: number;
     merged_pr_count: number;
@@ -158,7 +164,6 @@ export function aggregateMonthlyContributorActivity(
       counts: new Map(),
       validContributors: new Set<string>(),
       contributions: [] as ContributorActivityItem[],
-      newContributors: [] as string[],
       issue_count: 0,
       pr_count: 0,
       merged_pr_count: 0,
@@ -183,32 +188,41 @@ export function aggregateMonthlyContributorActivity(
     }
     current.counts.set(item.author, contributor);
     current.contributions.push(item);
-
-    const firstDate = firstSeen.get(item.author);
-    if (firstDate?.slice(0, 7) === month && !current.newContributors.includes(item.author)) {
-      current.newContributors.push(item.author);
-    }
     monthly.set(month, current);
   }
 
-  return Array.from(monthly, ([month, data]) => ({
-    month,
-    contributor_count: data.validContributors.size,
-    new_contributor_count: data.newContributors.length,
-    issue_count: data.issue_count,
-    pr_count: data.pr_count,
-    merged_pr_count: data.merged_pr_count,
-    unmerged_pr_count: data.unmerged_pr_count,
-    new_contributors: data.newContributors.sort(),
-    contributors: Array.from(data.counts, ([login, counts]) => ({
+  return Array.from(monthly, ([month, data]) => {
+    const contributors = Array.from(data.counts, ([login, counts]) => ({
       login,
       ...counts,
       total: counts.issue_count + counts.pr_count,
     }))
       .filter(contributor => data.validContributors.has(contributor.login))
-      .sort((a, b) => b.total - a.total || a.login.localeCompare(b.login)),
-    contributions: data.contributions,
-  })).sort((a, b) => a.month.localeCompare(b.month));
+      .sort((a, b) => b.total - a.total || a.login.localeCompare(b.login));
+    const yearFirstContributors = contributors
+      .filter(contributor => firstSeenInYear.get(contributor.login)?.slice(0, 7) === month)
+      .map(contributor => contributor.login)
+      .sort();
+    const newContributors = contributors
+      .filter(contributor => firstSeen.get(contributor.login)?.slice(0, 7) === month)
+      .map(contributor => contributor.login)
+      .sort();
+
+    return {
+      month,
+      contributor_count: data.validContributors.size,
+      year_first_contributor_count: yearFirstContributors.length,
+      new_contributor_count: newContributors.length,
+      issue_count: data.issue_count,
+      pr_count: data.pr_count,
+      merged_pr_count: data.merged_pr_count,
+      unmerged_pr_count: data.unmerged_pr_count,
+      year_first_contributors: yearFirstContributors,
+      new_contributors: newContributors,
+      contributors,
+      contributions: data.contributions,
+    };
+  }).sort((a, b) => a.month.localeCompare(b.month));
 }
 
 function getValidContributionDate(item: ContributorActivityItem): string | null {
