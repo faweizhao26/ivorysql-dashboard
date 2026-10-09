@@ -1,11 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
-import multiavatar from '@multiavatar/multiavatar/esm';
-import {
-  getEvangelistAvatarSeed,
-  getEvangelistAvatarVariant,
-} from '@/lib/evangelist-avatar';
+import { Avatar, Style } from '@dicebear/core';
+import openPeepsDefinition from '@dicebear/styles/open-peeps.json';
+import { getEvangelistAvatarOptions } from '@/lib/evangelist-avatar';
 
 interface EvangelistAvatarProps {
   participantId: number;
@@ -18,14 +16,11 @@ const sizeClasses = {
   large: 'h-16 w-16',
 };
 
+const openPeepsStyle = new Style(openPeepsDefinition);
+
 export default function EvangelistAvatar({ participantId, name, size }: EvangelistAvatarProps) {
   const avatarSvg = useMemo(
-    () =>
-      multiavatar(
-        getEvangelistAvatarSeed(participantId),
-        false,
-        getEvangelistAvatarVariant(participantId, name),
-      ),
+    () => new Avatar(openPeepsStyle, getEvangelistAvatarOptions(participantId, name)).toString(),
     [participantId, name],
   );
 

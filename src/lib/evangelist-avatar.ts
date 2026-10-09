@@ -1,32 +1,60 @@
-const maleAvatarVariants = [
-  { part: '04', theme: 'A' },
-  { part: '04', theme: 'B' },
-  { part: '04', theme: 'C' },
-  { part: '08', theme: 'A' },
-  { part: '08', theme: 'B' },
-  { part: '08', theme: 'C' },
-  { part: '10', theme: 'A' },
-  { part: '10', theme: 'B' },
-  { part: '10', theme: 'C' },
-  { part: '11', theme: 'A' },
-  { part: '11', theme: 'B' },
-  { part: '11', theme: 'C' },
-  { part: '13', theme: 'A' },
-  { part: '13', theme: 'B' },
-  { part: '13', theme: 'C' },
+const maleShortHeadVariants = [
+  'flatTop',
+  'grayShort',
+  'mohawk',
+  'noHair1',
+  'noHair2',
+  'noHair3',
+  'pomp',
+  'shaved1',
+  'shaved2',
+  'short1',
+  'short2',
+  'short3',
+  'short4',
+  'short5',
 ] as const;
 
-const noBeardAvatarVariant = { part: '08', theme: 'B' } as const;
+const expressionVariants = [
+  'blank',
+  'calm',
+  'concerned',
+  'contempt',
+  'driven',
+  'explaining',
+  'serious',
+  'smile',
+  'smileBig',
+  'solemn',
+  'suspicious',
+] as const;
 
-export function getEvangelistAvatarSeed(participantId: number): string {
-  return `ivorysql-evangelist-${participantId}`;
-}
+const facialHairVariants = [
+  'chin',
+  'full2',
+  'goatee1',
+  'goatee2',
+  'moustache2',
+  'moustache6',
+] as const;
 
-export function getEvangelistAvatarVariant(participantId: number, name: string) {
-  // Multiavatar has no gender option, so only use visually verified male designs.
-  if (name.trim() === '傅超' || name.trim() === '付超') {
-    return noBeardAvatarVariant;
-  }
+export function getEvangelistAvatarOptions(participantId: number, name: string) {
+  const normalizedId = Math.abs(participantId);
+  const hasNoBeard = name.trim() === '傅超' || name.trim() === '付超';
 
-  return maleAvatarVariants[participantId % maleAvatarVariants.length];
+  return {
+    seed: `ivorysql-evangelist-${participantId}`,
+    headVariant: maleShortHeadVariants[normalizedId % maleShortHeadVariants.length],
+    expressionVariant: expressionVariants[normalizedId % expressionVariants.length],
+    facialHairVariant: facialHairVariants[normalizedId % facialHairVariants.length],
+    facialHairProbability: hasNoBeard ? 0 : normalizedId % 5 === 0 ? 100 : 0,
+    accessoriesProbability: 0,
+    maskProbability: 0,
+    skinColor: 'ffffff',
+    clothingColor: 'ffffff',
+    headContrastColor: '000000',
+    inkColor: '000000',
+    backgroundColor: 'ffffff',
+    backgroundColorFill: 'solid' as const,
+  };
 }

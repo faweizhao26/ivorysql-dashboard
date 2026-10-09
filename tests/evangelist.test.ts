@@ -43,23 +43,62 @@ test('other contribution category includes an other type', async () => {
   assert.equal(adminPage.evangelistContributionTypes?.['其他']?.at(-1), '其他');
 });
 
-test('generates stable local Multiavatar seeds per evangelist', async () => {
+test('content creation includes self-published IvorySQL articles', async () => {
+  const adminPage = await import('../src/app/admin/page') as typeof import('../src/app/admin/page') & {
+    evangelistContributionTypes?: Record<string, string[]>;
+  };
+
+  assert.ok(
+    adminPage.evangelistContributionTypes?.['内容创作']?.includes(
+      '自己渠道首发 IvorySQL 文章（15 分）',
+    ),
+  );
+});
+
+test('generates stable monochrome short-haired Open Peeps options per evangelist', async () => {
   const {
-    getEvangelistAvatarSeed,
-    getEvangelistAvatarVariant,
+    getEvangelistAvatarOptions,
   } = await import('../src/lib/evangelist-avatar');
 
-  assert.equal(getEvangelistAvatarSeed(7), getEvangelistAvatarSeed(7));
-  assert.notEqual(getEvangelistAvatarSeed(7), getEvangelistAvatarSeed(8));
-  assert.match(getEvangelistAvatarSeed(7), /^ivorysql-evangelist-7$/);
+  const first = getEvangelistAvatarOptions(7, '测试用户');
+  assert.deepEqual(first, getEvangelistAvatarOptions(7, '测试用户'));
+  assert.notDeepEqual(first, getEvangelistAvatarOptions(8, '测试用户'));
+  assert.equal(first.seed, 'ivorysql-evangelist-7');
 
-  const variants = [0, 1, 2, 3].map((id) => getEvangelistAvatarVariant(id, '测试用户'));
-  assert.ok(new Set(variants.map(({ part, theme }) => `${part}-${theme}`)).size >= 3);
-  for (let id = 0; id < 24; id += 1) {
-    assert.ok(!['05', '09', '12', '14'].includes(getEvangelistAvatarVariant(id, '测试用户').part));
+  const allowedShortHeads = new Set([
+    'flatTop',
+    'grayShort',
+    'mohawk',
+    'noHair1',
+    'noHair2',
+    'noHair3',
+    'pomp',
+    'shaved1',
+    'shaved2',
+    'short1',
+    'short2',
+    'short3',
+    'short4',
+    'short5',
+  ]);
+  const variants = Array.from({ length: 24 }, (_, id) =>
+    getEvangelistAvatarOptions(id, `测试用户${id}`),
+  );
+
+  assert.ok(new Set(variants.map(({ headVariant }) => headVariant)).size >= 12);
+  for (const options of variants) {
+    assert.ok(allowedShortHeads.has(options.headVariant));
+    assert.equal(options.skinColor, 'ffffff');
+    assert.equal(options.clothingColor, 'ffffff');
+    assert.equal(options.headContrastColor, '000000');
+    assert.equal(options.inkColor, '000000');
+    assert.equal(options.backgroundColor, 'ffffff');
+    assert.equal(options.accessoriesProbability, 0);
+    assert.equal(options.maskProbability, 0);
   }
-  assert.deepEqual(getEvangelistAvatarVariant(7, '傅超'), { part: '08', theme: 'B' });
-  assert.deepEqual(getEvangelistAvatarVariant(7, '付超'), { part: '08', theme: 'B' });
+
+  assert.equal(getEvangelistAvatarOptions(7, '傅超').facialHairProbability, 0);
+  assert.equal(getEvangelistAvatarOptions(7, '付超').facialHairProbability, 0);
 });
 
 test('contribution editor is rendered as a fixed accessible drawer', () => {
