@@ -92,6 +92,13 @@ async function initializeDb() {
       ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_code_contributors INTEGER;
       ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS main_repo_monthly_activity JSONB;
 
+      ALTER TABLE github_stats ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE contributor_stats ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE social_stats ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE article_stats ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE article_details ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE website_stats ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
       CREATE TABLE IF NOT EXISTS social_stats (
         id SERIAL PRIMARY KEY,
         date TEXT NOT NULL,
@@ -216,6 +223,18 @@ async function initializeDb() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS sync_runs (
+        id SERIAL PRIMARY KEY,
+        platform TEXT NOT NULL,
+        started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        finished_at TIMESTAMP,
+        status TEXT NOT NULL CHECK (status IN ('running', 'success', 'failed')),
+        records_seen INTEGER NOT NULL DEFAULT 0,
+        records_written INTEGER NOT NULL DEFAULT 0,
+        error_message TEXT,
+        trigger TEXT NOT NULL CHECK (trigger IN ('vercel_cron', 'ego_lite', 'manual'))
+      );
+
       CREATE INDEX IF NOT EXISTS idx_social_date ON social_stats(date);
       CREATE INDEX IF NOT EXISTS idx_social_platform ON social_stats(platform);
       CREATE INDEX IF NOT EXISTS idx_article_date ON article_stats(date);
@@ -225,6 +244,7 @@ async function initializeDb() {
       CREATE INDEX IF NOT EXISTS idx_article_details_date ON article_details(date);
       CREATE INDEX IF NOT EXISTS idx_article_details_platform ON article_details(platform);
       CREATE INDEX IF NOT EXISTS idx_activity_events_date ON activity_events(event_date);
+      CREATE INDEX IF NOT EXISTS idx_sync_runs_platform_started ON sync_runs(platform, started_at DESC);
 
       CREATE TABLE IF NOT EXISTS download_stats (
         id SERIAL PRIMARY KEY,
@@ -233,6 +253,8 @@ async function initializeDb() {
         docker_total INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      ALTER TABLE download_stats ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
       CREATE TABLE IF NOT EXISTS evangelist_participants (
         id SERIAL PRIMARY KEY,
@@ -266,6 +288,10 @@ async function initializeDb() {
 
 export function getDb() {
   return getPool();
+}
+
+export async function queryDb(text: string, values?: unknown[]) {
+  return query(text, values);
 }
 
 export function getToday(): string {
@@ -413,7 +439,8 @@ export async function saveGitHubStats(stats: GitHubStats): Promise<void> {
       open_issues = EXCLUDED.open_issues,
       open_prs = EXCLUDED.open_prs,
       contributors = EXCLUDED.contributors,
-      releases_count = EXCLUDED.releases_count
+      releases_count = EXCLUDED.releases_count,
+      updated_at = CURRENT_TIMESTAMP
   `, [stats.date, stats.stars, stats.forks, stats.watchers, stats.subscribers,
       stats.open_issues, stats.open_prs, stats.contributors, stats.releases_count]);
 }
@@ -431,7 +458,8 @@ export async function saveContributorStats(stats: ContributorStatsData): Promise
       new_contributors_weekly = EXCLUDED.new_contributors_weekly,
       new_contributors_monthly = EXCLUDED.new_contributors_monthly,
       new_contributors_quarterly = EXCLUDED.new_contributors_quarterly,
-      cumulative_2026 = EXCLUDED.cumulative_2026
+      cumulative_2026 = EXCLUDED.cumulative_2026,
+      updated_at = CURRENT_TIMESTAMP
   `, [stats.date, stats.total_contributors, stats.contributors_before_2026,
       stats.new_contributors_daily, stats.new_contributors_weekly,
       stats.new_contributors_monthly, stats.new_contributors_quarterly, stats.cumulative_2026]);
@@ -475,7 +503,8 @@ export async function saveMainRepoContributorStats(
       main_repo_top_contributors = EXCLUDED.main_repo_top_contributors,
       main_repo_activity_since = EXCLUDED.main_repo_activity_since,
       main_repo_code_contributors = EXCLUDED.main_repo_code_contributors,
-      main_repo_monthly_activity = EXCLUDED.main_repo_monthly_activity
+      main_repo_monthly_activity = EXCLUDED.main_repo_monthly_activity,
+      updated_at = CURRENT_TIMESTAMP
   `, [date, stats.issue_creators, stats.pr_creators, stats.unique_creators,
       stats.issue_count, stats.pr_count, stats.merged_pr_count, stats.unmerged_pr_count,
       stats.merged_pr_creators, stats.unmerged_pr_creators,
@@ -497,7 +526,8 @@ export async function saveSocialStats(stats: SocialStats): Promise<void> {
       shares = EXCLUDED.shares,
       comments = EXCLUDED.comments,
       subscribers = EXCLUDED.subscribers,
-      video_views = EXCLUDED.video_views
+      video_views = EXCLUDED.video_views,
+      updated_at = CURRENT_TIMESTAMP
   `, [stats.date, stats.platform, stats.followers, stats.posts, stats.views,
       stats.likes, stats.shares, stats.comments, stats.subscribers, stats.video_views]);
 }
@@ -515,7 +545,8 @@ export async function saveArticleStats(stats: ArticleStats): Promise<void> {
       bookmarks = EXCLUDED.bookmarks,
       comments = EXCLUDED.comments,
       followers = EXCLUDED.followers,
-      new_articles = EXCLUDED.new_articles
+      new_articles = EXCLUDED.new_articles,
+      updated_at = CURRENT_TIMESTAMP
   `, [stats.date, stats.platform, stats.article_count, stats.total_views, stats.avg_views,
       stats.likes, stats.bookmarks, stats.comments, stats.followers, stats.new_articles]);
 }
@@ -530,7 +561,8 @@ export async function saveWebsiteStats(stats: WebsiteStats): Promise<void> {
       unique_visitors = EXCLUDED.unique_visitors,
       top_pages = EXCLUDED.top_pages,
       sources = EXCLUDED.sources,
-      keywords = EXCLUDED.keywords
+      keywords = EXCLUDED.keywords,
+      updated_at = CURRENT_TIMESTAMP
   `, [stats.date, stats.pageviews, stats.unique_visitors,
       JSON.stringify(stats.top_pages), JSON.stringify(stats.sources), JSON.stringify(stats.keywords)]);
 }
@@ -806,7 +838,8 @@ export async function saveArticleDetails(article: ArticleDetails): Promise<void>
       likes = EXCLUDED.likes,
       comments = EXCLUDED.comments,
       content_category = COALESCE(EXCLUDED.content_category, article_details.content_category),
-      content_source = COALESCE(EXCLUDED.content_source, article_details.content_source)
+      content_source = COALESCE(EXCLUDED.content_source, article_details.content_source),
+      updated_at = CURRENT_TIMESTAMP
   `, [article.date, article.platform, article.article_title, article.article_url || null,
     article.views, article.likes, article.comments,
     article.content_category || null, article.content_source || null, article.published_date || null]);
@@ -824,7 +857,8 @@ export async function saveSyncedArticleDetails(article: SyncedArticleDetails): P
       article_title = EXCLUDED.article_title,
       views = COALESCE(EXCLUDED.views, article_details.views),
       likes = COALESCE(EXCLUDED.likes, article_details.likes),
-      comments = COALESCE(EXCLUDED.comments, article_details.comments)
+      comments = COALESCE(EXCLUDED.comments, article_details.comments),
+      updated_at = CURRENT_TIMESTAMP
   `, [
     article.date,
     article.platform,
@@ -858,7 +892,8 @@ export async function saveSyncedArticleDetailsBatch(articles: SyncedArticleDetai
       article_title = EXCLUDED.article_title,
       views = COALESCE(EXCLUDED.views, article_details.views),
       likes = COALESCE(EXCLUDED.likes, article_details.likes),
-      comments = COALESCE(EXCLUDED.comments, article_details.comments)
+      comments = COALESCE(EXCLUDED.comments, article_details.comments),
+      updated_at = CURRENT_TIMESTAMP
   `, [
     articles.map(article => article.date),
     articles.map(article => article.platform),
@@ -876,7 +911,7 @@ export async function deleteArticleDetailsByDate(platform: string, date: string)
 
 export async function saveDownloadStats(date: string, githubTotal: number, dockerTotal: number): Promise<void> {
   await query(
-    'INSERT INTO download_stats (date, github_total, docker_total) VALUES ($1, $2, $3) ON CONFLICT (date) DO UPDATE SET github_total = $2, docker_total = $3',
+    'INSERT INTO download_stats (date, github_total, docker_total) VALUES ($1, $2, $3) ON CONFLICT (date) DO UPDATE SET github_total = $2, docker_total = $3, updated_at = CURRENT_TIMESTAMP',
     [date, githubTotal, dockerTotal]
   );
 }
@@ -1024,6 +1059,7 @@ export async function updateArticleDetails(id: number, article: Partial<ArticleD
   
   if (fields.length === 0) return;
   
+  fields.push('updated_at = CURRENT_TIMESTAMP');
   values.push(id);
   await query(`UPDATE article_details SET ${fields.join(', ')} WHERE id = $${values.length}`, values);
 }
@@ -1057,7 +1093,8 @@ export async function recalculateArticleStatsForDate(platform: string, date: str
       bookmarks = article_stats.bookmarks,
       comments = EXCLUDED.comments,
       followers = article_stats.followers,
-      new_articles = EXCLUDED.new_articles
+      new_articles = EXCLUDED.new_articles,
+      updated_at = CURRENT_TIMESTAMP
   `, [date, platform, article_count, total_views, avg_views, likes, 0, comments, 0, article_count]);
 }
 
@@ -1089,7 +1126,8 @@ export async function recalculateArticleStatsForDates(platform: string, dates: s
       bookmarks = article_stats.bookmarks,
       comments = EXCLUDED.comments,
       followers = article_stats.followers,
-      new_articles = EXCLUDED.new_articles
+      new_articles = EXCLUDED.new_articles,
+      updated_at = CURRENT_TIMESTAMP
   `, [platform, dates]);
 }
 
@@ -1199,4 +1237,22 @@ export async function getActivityEventById(id: number): Promise<ActivityEventPar
     ...row,
     collected_data: JSON.parse(row.collected_data || '{}')
   };
+}
+
+export async function getDashboardUpdatedAt(): Promise<string | null> {
+  const result = await query(`
+    SELECT MAX(updated_at) AS updated_at
+    FROM (
+      SELECT MAX(updated_at) AS updated_at FROM github_stats
+      UNION ALL SELECT MAX(updated_at) FROM contributor_stats
+      UNION ALL SELECT MAX(updated_at) FROM social_stats
+      UNION ALL SELECT MAX(updated_at) FROM article_stats
+      UNION ALL SELECT MAX(updated_at) FROM website_stats
+      UNION ALL SELECT MAX(updated_at) FROM download_stats
+      UNION ALL SELECT MAX(updated_at) FROM activity_events
+    ) freshness
+  `);
+  const value = result.rows[0]?.updated_at;
+  if (!value) return null;
+  return value instanceof Date ? value.toISOString() : String(value);
 }
