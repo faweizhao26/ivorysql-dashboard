@@ -177,6 +177,14 @@ async function collect51Cto() {
 
   for (const suffix of ['', '/p_2']) {
     await ctoPage.goto(`https://blog.51cto.com/u_${CTO_USER_ID}${suffix}`);
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const count = await ctoPage.evaluate(() => (
+        document.querySelectorAll('.common-article-list').length
+      ));
+      if (count >= 30) break;
+      await ctoPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+      await ctoPage.waitForTimeout(500);
+    }
     const pageArticles = await ctoPage.evaluate(() => (
       Array.from(document.querySelectorAll('.common-article-list')).map(card => ({
         title: card.querySelector('.title a')?.textContent?.trim() || '',
@@ -188,13 +196,18 @@ async function collect51Cto() {
     articles.push(...pageArticles);
   }
 
+  const articleUrlPattern = new RegExp(`^https://blog\\.51cto\\.com/u_${CTO_USER_ID}/\\d+$`);
+  const recentArticles = articles
+    .filter(article => articleUrlPattern.test(article.url))
+    .slice(0, LIMIT);
+
   const dates = await resolvePublishedDates(
     ctoPage,
-    articles,
+    recentArticles,
     knownDates,
     /"pubDate":"(\d{4}-\d{2}-\d{2})T/,
   );
-  return uniqueRecent(articles.map(article => ({
+  return uniqueRecent(recentArticles.map(article => ({
     ...article,
     date: parseDateLabel(article.dateLabel, dates.get(article.url)),
   })));
