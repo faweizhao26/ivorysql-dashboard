@@ -6,6 +6,7 @@ import {
   updateReminderLastSent,
   logReminderSent
 } from '@/lib/db';
+import { isReminderEligible } from '@/lib/data-safeguards';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
       return NextResponse.json(settings);
     }
 
-    const settings = await getReminderSettings() as any[];
+    const settings = (await getReminderSettings() as any[]).filter(setting => isReminderEligible(setting.platform));
     const stalePlatforms = await getStalePlatforms();
 
     return NextResponse.json({
@@ -38,6 +39,9 @@ export async function POST(request: Request) {
 
     if (!platform) {
       return NextResponse.json({ error: 'Missing platform' }, { status: 400 });
+    }
+    if (!isReminderEligible(platform)) {
+      return NextResponse.json({ error: 'This platform is retired from update reminders' }, { status: 400 });
     }
 
     await saveReminderSettings({

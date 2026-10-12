@@ -235,6 +235,15 @@ async function initializeDb() {
         trigger TEXT NOT NULL CHECK (trigger IN ('vercel_cron', 'ego_lite', 'manual'))
       );
 
+      CREATE TABLE IF NOT EXISTS quarantined_sample_data (
+        id SERIAL PRIMARY KEY,
+        source_table TEXT NOT NULL,
+        source_id INTEGER NOT NULL,
+        row_data JSONB NOT NULL,
+        quarantined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(source_table, source_id)
+      );
+
       CREATE INDEX IF NOT EXISTS idx_social_date ON social_stats(date);
       CREATE INDEX IF NOT EXISTS idx_social_platform ON social_stats(platform);
       CREATE INDEX IF NOT EXISTS idx_article_date ON article_stats(date);
@@ -1025,7 +1034,7 @@ export async function updateReminderLastUpdated(platform: string): Promise<void>
 }
 
 export async function getStalePlatforms(): Promise<{ platform: string; daysSinceUpdate: number; updateFrequency: number }[]> {
-  const result = await query('SELECT * FROM reminder_settings WHERE reminder_enabled = 1');
+  const result = await query("SELECT * FROM reminder_settings WHERE reminder_enabled = 1 AND platform <> 'juejin'");
   const today = new Date();
   
   return result.rows.map(s => {

@@ -7,6 +7,7 @@ import {
   saveCommunityEvent,
   getToday
 } from './db';
+import { isSampleSeedAllowed } from './data-safeguards';
 
 function generateDates(days: number): string[] {
   const dates: string[] = [];
@@ -19,6 +20,9 @@ function generateDates(days: number): string[] {
 }
 
 export function seedSampleData() {
+  if (!isSampleSeedAllowed(process.env)) {
+    throw new Error('Sample seeding is disabled in production. Set ALLOW_SAMPLE_DATA=1 to override.');
+  }
   console.log('Seeding sample data...');
 
   const dates = generateDates(30);
