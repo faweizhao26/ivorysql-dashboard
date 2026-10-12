@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { syncGitHubData } from '@/lib/github-sync';
 import { saveCommunityEvent, saveDownloadStats } from '@/lib/db';
+import { runTrackedSync } from '@/lib/tracked-sync';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO || 'IvorySQL/IvorySQL';
@@ -115,25 +116,24 @@ export async function POST() {
   }
 
   try {
-    const result = await syncGitHubData();
+    const tracked = await runTrackedSync({ platform: 'github', trigger: 'manual' }, async () => {
+      const result = await syncGitHubData();
 
-    if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
-    }
+      if (!result.success) throw new Error(result.error || 'GitHub sync failed');
 
-    const [owner, repo] = GITHUB_REPO.split('/');
+      const [owner, repo] = GITHUB_REPO.split('/');
     
-    const [issuesData, prsData] = await Promise.all([
-      fetchGitHubApi<GitHubEventItem[]>(`/repos/${owner}/${repo}/issues?state=open&per_page=20&sort=updated`),
-      fetchGitHubApi<GitHubEventItem[]>(`/repos/${owner}/${repo}/pulls?state=open&per_page=20&sort=updated`)
-    ]);
+      const [issuesData, prsData] = await Promise.all([
+        fetchGitHubApi<GitHubEventItem[]>(`/repos/${owner}/${repo}/issues?state=open&per_page=20&sort=updated`),
+        fetchGitHubApi<GitHubEventItem[]>(`/repos/${owner}/${repo}/pulls?state=open&per_page=20&sort=updated`)
+      ]);
 
-    const issues = issuesData.filter(i => !i.pull_request);
-    const pulls = prsData;
+      const issues = issuesData.filter(i => !i.pull_request);
+      const pulls = prsData;
 
-    const summaryPromises: Promise<void>[] = [];
+      const summaryPromises: Promise<void>[] = [];
 
-    for (const issue of issues.slice(0, 10)) {
+      for (const issue of issues.slice(0, 10)) {
       const title = issue.title || '';
       const originalDescription = issue.body?.substring(0, 300) || '';
       const combinedText = title + ' ' + originalDescription;
@@ -150,9 +150,9 @@ export async function POST() {
           });
         })
       );
-    }
+      }
 
-    for (const pr of pulls.slice(0, 10)) {
+      for (const pr of pulls.slice(0, 10)) {
       const title = pr.title || '';
       const originalDescription = pr.body?.substring(0, 300) || '';
       const combinedText = title + ' ' + originalDescription;
@@ -169,17 +169,20 @@ export async function POST() {
           });
         })
       );
-    }
+      }
 
-    await Promise.all(summaryPromises);
+      await Promise.all(summaryPromises);
 
-    try {
-      await recordDownloadStats(new Date().toISOString().split('T')[0]);
-    } catch (e) {
-      console.error('Failed to record download stats:', e);
-    }
+      try {
+        await recordDownloadStats(new Date().toISOString().split('T')[0]);
+      } catch (e) {
+        console.error('Failed to record download stats:', e);
+      }
 
-    return NextResponse.json(result);
+      const count = summaryPromises.length + 2;
+      return { value: result, recordsSeen: count, recordsWritten: count };
+    });
+    return NextResponse.json({ ...tracked.value, runId: tracked.runId });
   } catch (error) {
     console.error('GitHub sync error:', error);
     return NextResponse.json({ error: 'Failed to sync GitHub data' }, { status: 500 });
@@ -191,17 +194,18 @@ export async function GET() {
     return NextResponse.json({ error: 'GitHub token not configured' }, { status: 500 });
   }
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const result = await syncGitHubData();
-    if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
-    }
-    await recordDownloadStats(today);
-
+    const tracked = await runTrackedSync({ platform: 'github', trigger: 'vercel_cron' }, async () => {
+      const today = new Date().toISOString().split('T')[0];
+      const result = await syncGitHubData();
+      if (!result.success) throw new Error(result.error || 'GitHub sync failed');
+      await recordDownloadStats(today);
+      return { value: result, recordsSeen: 2, recordsWritten: 2 };
+    });
     return NextResponse.json({
       success: true,
-      ...result.data,
-      mode: 'full'
+      ...tracked.value.data,
+      mode: 'full',
+      runId: tracked.runId,
     });
   } catch (error) {
     console.error('GitHub cron sync error:', error);

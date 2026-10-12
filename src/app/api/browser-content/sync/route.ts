@@ -6,6 +6,7 @@ import {
   isBrowserSyncAuthorized,
   parseBrowserSyncPayload,
 } from '@/lib/browser-sync';
+import { runTrackedSync } from '@/lib/tracked-sync';
 
 export async function POST(request: Request) {
   const cronAuthorized = isBrowserSyncAuthorized(
@@ -28,8 +29,18 @@ export async function POST(request: Request) {
 
   try {
     const { platform, articles } = parseBrowserSyncPayload(await request.json());
-    const result = await persistSyncedArticles(platform, articles);
-    return NextResponse.json(result);
+    const tracked = await runTrackedSync({
+      platform,
+      trigger: cronAuthorized ? 'ego_lite' : 'manual',
+    }, async () => {
+      const result = await persistSyncedArticles(platform, articles);
+      return {
+        value: result,
+        recordsSeen: articles.length,
+        recordsWritten: result.articles || 0,
+      };
+    });
+    return NextResponse.json({ ...tracked.value, runId: tracked.runId });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Browser content sync error:', message);

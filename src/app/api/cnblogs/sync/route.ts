@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { persistSyncedArticles } from '@/lib/article-sync';
 import { ARTICLE_SYNC_LIMIT, fetchSyncHtml } from '@/lib/content-sync';
 import { getSyncHttpStatus } from '@/lib/sync-utils';
+import { runTrackedSync } from '@/lib/tracked-sync';
 
 const PLATFORM = 'cnblogs';
 
@@ -76,11 +77,24 @@ export async function scrapeCnblogs(username: string = 'ivorysql'): Promise<{
   }
 }
 
-export async function POST() {
-  const result = await scrapeCnblogs();
-  return NextResponse.json(result, { status: getSyncHttpStatus(result) });
+export async function POST(request?: Request) {
+  try {
+    const tracked = await runTrackedSync({
+      platform: PLATFORM,
+      trigger: request?.method === 'GET' ? 'vercel_cron' : 'manual',
+    }, async () => {
+      const result = await scrapeCnblogs();
+      if (!result.success) throw new Error(result.error || 'cnblogs sync failed');
+      const count = result.articles || 0;
+      return { value: result, recordsSeen: count, recordsWritten: count };
+    });
+    return NextResponse.json({ ...tracked.value, runId: tracked.runId });
+  } catch (error) {
+    const result = { success: false, error: error instanceof Error ? error.message : String(error) };
+    return NextResponse.json(result, { status: getSyncHttpStatus(result) });
+  }
 }
 
-export async function GET() {
-  return POST();
+export async function GET(request: Request) {
+  return POST(request);
 }

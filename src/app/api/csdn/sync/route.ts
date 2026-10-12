@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { persistSyncedArticles } from '@/lib/article-sync';
 import { fetchSyncHtml } from '@/lib/content-sync';
 import { getSyncHttpStatus } from '@/lib/sync-utils';
+import { runTrackedSync } from '@/lib/tracked-sync';
 
 const PLATFORM = 'csdn';
 
@@ -98,11 +99,24 @@ export async function scrapeCSDN(username: string = 'IvorySQL'): Promise<{
   }
 }
 
-export async function POST() {
-  const result = await scrapeCSDN();
-  return NextResponse.json(result, { status: getSyncHttpStatus(result) });
+export async function POST(request?: Request) {
+  try {
+    const tracked = await runTrackedSync({
+      platform: PLATFORM,
+      trigger: request?.method === 'GET' ? 'vercel_cron' : 'manual',
+    }, async () => {
+      const result = await scrapeCSDN();
+      if (!result.success) throw new Error(result.error || 'CSDN sync failed');
+      const count = result.articles || 0;
+      return { value: result, recordsSeen: count, recordsWritten: count };
+    });
+    return NextResponse.json({ ...tracked.value, runId: tracked.runId });
+  } catch (error) {
+    const result = { success: false, error: error instanceof Error ? error.message : String(error) };
+    return NextResponse.json(result, { status: getSyncHttpStatus(result) });
+  }
 }
 
-export async function GET() {
-  return POST();
+export async function GET(request: Request) {
+  return POST(request);
 }
