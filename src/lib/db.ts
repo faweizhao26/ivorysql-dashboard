@@ -374,6 +374,16 @@ export interface ArticleDetails {
   published_date?: string;
 }
 
+export interface SyncedArticleDetails {
+  date: string;
+  platform: string;
+  article_title: string;
+  article_url: string;
+  views?: number;
+  likes?: number;
+  comments?: number;
+}
+
 export interface DownloadStatsHistory {
   date: string;
   github_total: number;
@@ -802,6 +812,30 @@ export async function saveArticleDetails(article: ArticleDetails): Promise<void>
     article.content_category || null, article.content_source || null, article.published_date || null]);
 }
 
+export async function saveSyncedArticleDetails(article: SyncedArticleDetails): Promise<void> {
+  await query(`
+    INSERT INTO article_details
+    (date, platform, article_title, article_url, views, likes, comments)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    ON CONFLICT (platform, article_url)
+      WHERE article_url IS NOT NULL AND article_url <> ''
+    DO UPDATE SET
+      date = EXCLUDED.date,
+      article_title = EXCLUDED.article_title,
+      views = COALESCE(EXCLUDED.views, article_details.views),
+      likes = COALESCE(EXCLUDED.likes, article_details.likes),
+      comments = COALESCE(EXCLUDED.comments, article_details.comments)
+  `, [
+    article.date,
+    article.platform,
+    article.article_title,
+    article.article_url,
+    article.views ?? null,
+    article.likes ?? null,
+    article.comments ?? null,
+  ]);
+}
+
 export async function deleteArticleDetailsByDate(platform: string, date: string): Promise<void> {
   await query('DELETE FROM article_details WHERE platform = $1 AND date = $2', [platform, date]);
 }
@@ -829,6 +863,20 @@ export async function getArticleDetailsByPlatform(platform: string, days: number
   const result = await query(
     'SELECT * FROM article_details WHERE platform = $1 AND date >= $2 ORDER BY date DESC, views DESC',
     [platform, since.toISOString().split('T')[0]]
+  );
+  return result.rows;
+}
+
+export async function getRecentArticleDetailsByPlatform(
+  platform: string,
+  limit: number = 50,
+): Promise<ArticleDetails[]> {
+  const result = await query(
+    `SELECT * FROM article_details
+     WHERE platform = $1 AND article_url IS NOT NULL AND article_url <> ''
+     ORDER BY COALESCE(published_date, date) DESC, id DESC
+     LIMIT $2`,
+    [platform, limit],
   );
   return result.rows;
 }

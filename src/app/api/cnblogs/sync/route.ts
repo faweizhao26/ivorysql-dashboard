@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { saveArticleDetails, recalculateArticleStatsForDate } from '@/lib/db';
+import { persistSyncedArticles } from '@/lib/article-sync';
+import { ARTICLE_SYNC_LIMIT, fetchSyncHtml } from '@/lib/content-sync';
 import { getSyncHttpStatus } from '@/lib/sync-utils';
 
 const PLATFORM = 'cnblogs';
@@ -18,7 +19,6 @@ function extractArticles(html: string) {
 
     const postMatches = block.matchAll(/<a class="postTitle2[^"]*" href="([^"]+)"[^>]*>\s*<span>([^<]+)<\/span>/g);
 
-    let lastIndex = 0;
     for (const postMatch of postMatches) {
       const link = postMatch[1];
       const title = postMatch[2].trim();
@@ -40,16 +40,6 @@ function extractArticles(html: string) {
   return articles;
 }
 
-async function fetchPage(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
-    }
-  });
-  return res.text();
-}
-
 export async function scrapeCnblogs(username: string = 'ivorysql'): Promise<{
   success: boolean;
   articles?: number;
@@ -64,59 +54,31 @@ export async function scrapeCnblogs(username: string = 'ivorysql'): Promise<{
 
     for (let page = 1; page <= 5; page++) {
       const url = page === 1 ? baseUrl : baseUrl + '?page=' + page;
-      const html = await fetchPage(url);
+      const html = await fetchSyncHtml(url);
       const articles = extractArticles(html);
 
       if (articles.length === 0) break;
       allArticles.push(...articles);
+      if (allArticles.length >= ARTICLE_SYNC_LIMIT) break;
       await new Promise(r => setTimeout(r, 500));
     }
 
-    if (allArticles.length === 0) {
-      return { success: true, articles: 0 };
-    }
-
-    let saved = 0;
-    const datesSet = new Set<string>();
-
-    for (const article of allArticles) {
-      try {
-        await saveArticleDetails({
-          date: article.date || new Date().toISOString().split('T')[0],
-          platform: PLATFORM,
-          article_title: article.title,
-          article_url: article.link,
-          views: article.views,
-          likes: 0,
-          comments: 0
-        });
-        if (article.date) datesSet.add(article.date);
-        saved++;
-      } catch (err: any) {
-        console.error('Error saving article:', err.message);
-      }
-    }
-
-    await Promise.all(Array.from(datesSet).map(date =>
-      recalculateArticleStatsForDate(PLATFORM, date)
-    ));
-
-    console.log('cnblogs sync complete: ' + saved + ' articles saved');
-    return { success: true, articles: saved };
-  } catch (error: any) {
-    console.error('cnblogs sync error:', error);
-    return { success: false, error: error.message };
+    return await persistSyncedArticles(PLATFORM, allArticles.map(article => ({
+      title: article.title,
+      url: article.link,
+      date: article.date || new Date().toISOString().split('T')[0],
+      views: article.views,
+    })));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('cnblogs sync error:', message);
+    return { success: false, error: message };
   }
 }
 
 export async function POST() {
-  try {
-    const result = await scrapeCnblogs();
-    return NextResponse.json(result, { status: getSyncHttpStatus(result) });
-  } catch (error: any) {
-    console.error('cnblogs sync error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to sync cnblogs data' }, { status: 500 });
-  }
+  const result = await scrapeCnblogs();
+  return NextResponse.json(result, { status: getSyncHttpStatus(result) });
 }
 
 export async function GET() {

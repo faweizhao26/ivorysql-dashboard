@@ -1,4 +1,5 @@
 import { saveSocialStats, getToday } from '@/lib/db';
+import { fetchSyncHtml } from '@/lib/content-sync';
 
 const PLATFORM = 'modb';
 
@@ -38,15 +39,6 @@ function extractUserStats(html: string): ModbUserStats | null {
   }
 }
 
-async function fetchPage(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-    }
-  });
-  return res.text();
-}
-
 export async function scrapeModb(userId: string = '471017'): Promise<{
   success: boolean;
   stats?: ModbUserStats;
@@ -57,7 +49,7 @@ export async function scrapeModb(userId: string = '471017'): Promise<{
   console.log(`Starting 墨天轮 sync for user: ${userId}`);
 
   try {
-    const html = await fetchPage(url);
+    const html = await fetchSyncHtml(url);
     const stats = extractUserStats(html);
 
     if (!stats) {
@@ -84,8 +76,9 @@ export async function scrapeModb(userId: string = '471017'): Promise<{
     console.log(`墨天轮 sync complete for ${today}`);
 
     return { success: true, stats };
-  } catch (error: any) {
-    console.error('墨天轮 sync error:', error);
-    return { success: false, error: error.message };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('墨天轮 sync error:', message);
+    return { success: false, error: message };
   }
 }

@@ -6,6 +6,7 @@ import {
   getLatestContributorStats,
   getLatestGitHubStats,
   saveArticleDetails,
+  saveSyncedArticleDetails,
 } from '../src/lib/db';
 
 test('limits each serverless instance to one database connection', () => {
@@ -103,6 +104,33 @@ test('keeps the legacy identity for articles without a URL', async () => {
     });
 
     assert.match(queries.at(-1) || '', /ON CONFLICT \(date, platform, article_title\)/);
+  } finally {
+    Pool.prototype.query = originalQuery;
+  }
+});
+
+test('automatic sync does not replace existing metrics when a source omits them', async () => {
+  const originalQuery = Pool.prototype.query;
+  const queries: string[] = [];
+
+  Pool.prototype.query = async function (sql: string) {
+    queries.push(sql);
+    return { rows: [] } as never;
+  };
+
+  try {
+    await saveSyncedArticleDetails({
+      date: '2026-10-12',
+      platform: 'sf',
+      article_title: '自动同步文章',
+      article_url: 'https://example.com/article',
+      views: 25,
+    });
+
+    const sql = queries.at(-1) || '';
+    assert.match(sql, /views = COALESCE\(EXCLUDED\.views, article_details\.views\)/);
+    assert.match(sql, /likes = COALESCE\(EXCLUDED\.likes, article_details\.likes\)/);
+    assert.match(sql, /comments = COALESCE\(EXCLUDED\.comments, article_details\.comments\)/);
   } finally {
     Pool.prototype.query = originalQuery;
   }
