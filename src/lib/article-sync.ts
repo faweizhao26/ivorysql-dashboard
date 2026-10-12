@@ -1,7 +1,7 @@
 import {
-  recalculateArticleStatsForDate,
+  recalculateArticleStatsForDates,
   getRecentArticleDetailsByPlatform,
-  saveSyncedArticleDetails,
+  saveSyncedArticleDetailsBatch,
   updateReminderLastUpdated,
   type SyncedArticleDetails,
 } from './db';
@@ -9,14 +9,14 @@ import { prepareRecentArticles, type SyncedArticle } from './content-sync';
 import { fetchSyncHtml } from './content-sync';
 
 interface ArticleSyncDependencies {
-  save: (article: SyncedArticleDetails) => Promise<void>;
-  recalculate: (platform: string, date: string) => Promise<void>;
+  saveBatch: (articles: SyncedArticleDetails[]) => Promise<void>;
+  recalculateBatch: (platform: string, dates: string[]) => Promise<void>;
   markUpdated: (platform: string) => Promise<void>;
 }
 
 const defaultDependencies: ArticleSyncDependencies = {
-  save: saveSyncedArticleDetails,
-  recalculate: recalculateArticleStatsForDate,
+  saveBatch: saveSyncedArticleDetailsBatch,
+  recalculateBatch: recalculateArticleStatsForDates,
   markUpdated: updateReminderLastUpdated,
 };
 
@@ -30,23 +30,19 @@ export async function persistSyncedArticles(
     throw new Error(`No valid ${platform} articles were returned`);
   }
 
-  const dates = new Set<string>();
-  for (const article of prepared) {
-    await dependencies.save({
-      date: article.date,
-      platform,
-      article_title: article.title,
-      article_url: article.url,
-      views: article.views,
-      likes: article.likes,
-      comments: article.comments,
-    });
-    dates.add(article.date);
-  }
+  const syncedArticles = prepared.map(article => ({
+    date: article.date,
+    platform,
+    article_title: article.title,
+    article_url: article.url,
+    views: article.views,
+    likes: article.likes,
+    comments: article.comments,
+  }));
+  const dates = Array.from(new Set(prepared.map(article => article.date)));
 
-  await Promise.all(
-    Array.from(dates, date => dependencies.recalculate(platform, date)),
-  );
+  await dependencies.saveBatch(syncedArticles);
+  await dependencies.recalculateBatch(platform, dates);
   await dependencies.markUpdated(platform);
 
   return { success: true, articles: prepared.length };

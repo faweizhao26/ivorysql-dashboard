@@ -104,8 +104,8 @@ test('persists one batch, recalculates affected dates, and marks the platform up
     { title: 'B', url: 'https://example.com/b', date: '2026-10-11', views: 20 },
     { title: 'A duplicate', url: 'https://example.com/a', date: '2026-10-12', views: 30 },
   ], {
-    save: async article => { saved.push(article.article_url); },
-    recalculate: async (_platform, date) => { recalculated.push(date); },
+    saveBatch: async articles => { saved.push(...articles.map(article => article.article_url)); },
+    recalculateBatch: async (_platform, dates) => { recalculated.push(...dates); },
     markUpdated: async platform => { updated.push(platform); },
   });
 

@@ -836,6 +836,40 @@ export async function saveSyncedArticleDetails(article: SyncedArticleDetails): P
   ]);
 }
 
+export async function saveSyncedArticleDetailsBatch(articles: SyncedArticleDetails[]): Promise<void> {
+  if (articles.length === 0) return;
+
+  await query(`
+    INSERT INTO article_details
+    (date, platform, article_title, article_url, views, likes, comments)
+    SELECT * FROM UNNEST(
+      $1::text[],
+      $2::text[],
+      $3::text[],
+      $4::text[],
+      $5::integer[],
+      $6::integer[],
+      $7::integer[]
+    )
+    ON CONFLICT (platform, article_url)
+      WHERE article_url IS NOT NULL AND article_url <> ''
+    DO UPDATE SET
+      date = EXCLUDED.date,
+      article_title = EXCLUDED.article_title,
+      views = COALESCE(EXCLUDED.views, article_details.views),
+      likes = COALESCE(EXCLUDED.likes, article_details.likes),
+      comments = COALESCE(EXCLUDED.comments, article_details.comments)
+  `, [
+    articles.map(article => article.date),
+    articles.map(article => article.platform),
+    articles.map(article => article.article_title),
+    articles.map(article => article.article_url),
+    articles.map(article => article.views ?? null),
+    articles.map(article => article.likes ?? null),
+    articles.map(article => article.comments ?? null),
+  ]);
+}
+
 export async function deleteArticleDetailsByDate(platform: string, date: string): Promise<void> {
   await query('DELETE FROM article_details WHERE platform = $1 AND date = $2', [platform, date]);
 }
@@ -1025,6 +1059,38 @@ export async function recalculateArticleStatsForDate(platform: string, date: str
       followers = article_stats.followers,
       new_articles = EXCLUDED.new_articles
   `, [date, platform, article_count, total_views, avg_views, likes, 0, comments, 0, article_count]);
+}
+
+export async function recalculateArticleStatsForDates(platform: string, dates: string[]): Promise<void> {
+  if (dates.length === 0) return;
+
+  await query(`
+    INSERT INTO article_stats
+    (date, platform, article_count, total_views, avg_views, likes, bookmarks, comments, followers, new_articles)
+    SELECT
+      date,
+      platform,
+      COUNT(*)::integer,
+      COALESCE(SUM(views), 0)::integer,
+      ROUND(COALESCE(SUM(views), 0)::numeric / COUNT(*))::integer,
+      COALESCE(SUM(likes), 0)::integer,
+      0,
+      COALESCE(SUM(comments), 0)::integer,
+      0,
+      COUNT(*)::integer
+    FROM article_details
+    WHERE platform = $1 AND date = ANY($2::text[])
+    GROUP BY date, platform
+    ON CONFLICT (date, platform) DO UPDATE SET
+      article_count = EXCLUDED.article_count,
+      total_views = EXCLUDED.total_views,
+      avg_views = EXCLUDED.avg_views,
+      likes = EXCLUDED.likes,
+      bookmarks = article_stats.bookmarks,
+      comments = EXCLUDED.comments,
+      followers = article_stats.followers,
+      new_articles = EXCLUDED.new_articles
+  `, [platform, dates]);
 }
 
 export interface ActivityEvent {

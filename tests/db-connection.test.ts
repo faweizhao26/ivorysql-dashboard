@@ -5,8 +5,10 @@ import {
   getDb,
   getLatestContributorStats,
   getLatestGitHubStats,
+  recalculateArticleStatsForDates,
   saveArticleDetails,
   saveSyncedArticleDetails,
+  saveSyncedArticleDetailsBatch,
 } from '../src/lib/db';
 
 test('limits each serverless instance to one database connection', () => {
@@ -131,6 +133,62 @@ test('automatic sync does not replace existing metrics when a source omits them'
     assert.match(sql, /views = COALESCE\(EXCLUDED\.views, article_details\.views\)/);
     assert.match(sql, /likes = COALESCE\(EXCLUDED\.likes, article_details\.likes\)/);
     assert.match(sql, /comments = COALESCE\(EXCLUDED\.comments, article_details\.comments\)/);
+  } finally {
+    Pool.prototype.query = originalQuery;
+  }
+});
+
+test('automatic sync writes an article collection in one query', async () => {
+  const originalQuery = Pool.prototype.query;
+  const queries: string[] = [];
+
+  Pool.prototype.query = async function (sql: string) {
+    queries.push(sql);
+    return { rows: [] } as never;
+  };
+
+  try {
+    await saveSyncedArticleDetailsBatch([
+      {
+        date: '2026-10-12',
+        platform: 'zhihu',
+        article_title: '文章一',
+        article_url: 'https://example.com/1',
+        views: 25,
+      },
+      {
+        date: '2026-10-11',
+        platform: 'zhihu',
+        article_title: '文章二',
+        article_url: 'https://example.com/2',
+      },
+    ]);
+
+    const sql = queries.at(-1) || '';
+    assert.match(sql, /SELECT \* FROM UNNEST/);
+    assert.match(sql, /views = COALESCE\(EXCLUDED\.views, article_details\.views\)/);
+    assert.equal(queries.filter(query => /INSERT INTO article_details/.test(query)).length, 1);
+  } finally {
+    Pool.prototype.query = originalQuery;
+  }
+});
+
+test('automatic sync recalculates all affected dates in one query', async () => {
+  const originalQuery = Pool.prototype.query;
+  const queries: string[] = [];
+
+  Pool.prototype.query = async function (sql: string) {
+    queries.push(sql);
+    return { rows: [] } as never;
+  };
+
+  try {
+    await recalculateArticleStatsForDates('zhihu', ['2026-10-11', '2026-10-12']);
+
+    const sql = queries.at(-1) || '';
+    assert.match(sql, /date = ANY\(\$2::text\[\]\)/);
+    assert.match(sql, /GROUP BY date, platform/);
+    assert.equal(queries.filter(query => /INSERT INTO article_stats/.test(query)).length, 1);
   } finally {
     Pool.prototype.query = originalQuery;
   }
