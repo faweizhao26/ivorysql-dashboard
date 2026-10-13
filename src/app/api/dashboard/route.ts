@@ -16,30 +16,22 @@ import {
   getEventsForDate,
   getDownloadStatsHistory
 } from '@/lib/db';
+import { createDataSlice, createPlatformFreshness } from '@/lib/data-slices';
+import { getDataRangeParams } from '@/lib/date-query';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  
-  const endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
-  const startDateParam = searchParams.get('start');
-  const isSingleDay = startDateParam === endDate && startDateParam !== null;
-  
-  let startDate: string;
-  if (startDateParam) {
-    startDate = startDateParam;
-  } else {
-    const days = parseInt(searchParams.get('days') || '30', 10);
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    startDate = d.toISOString().split('T')[0];
-  }
-
   try {
+    const { searchParams } = new URL(request.url);
+    const { startDate, endDate, isSingleDay } = getDataRangeParams(
+      searchParams,
+      new Date().toISOString().split('T')[0],
+    );
     let githubData: any;
     let contributorData: any;
     let socialData: any[];
     let articleData: any[];
     let events: any[];
+    let freshness: Record<string, unknown>;
 
     if (isSingleDay) {
       const [
@@ -58,29 +50,40 @@ export async function GET(request: Request) {
         getSocialStatsForDate(startDate),
         getArticleStatsForDate(startDate),
         getEventsForDate(startDate),
-        getLatestGitHubStats(),
-        getLatestContributorStats(),
-        getLatestSocialStats(),
-        getLatestArticleStats()
+        getLatestGitHubStats(endDate),
+        getLatestContributorStats(endDate),
+        getLatestSocialStats(endDate),
+        getLatestArticleStats(endDate)
       ]);
 
-      const hasDataForDate = githubForDate || contributorForDate || socialForDate.length > 0;
+      const githubSlice = createDataSlice(startDate, githubForDate, githubLatest);
+      const contributorSlice = createDataSlice(startDate, contributorForDate, contributorLatest);
 
       githubData = {
-        latest: githubForDate || githubLatest,
-        history: githubForDate ? [githubForDate] : (githubLatest ? [githubLatest] : []),
-        isArchive: !hasDataForDate,
-        archiveDate: hasDataForDate ? startDate : (githubLatest?.date || null)
+        latest: githubSlice.data,
+        history: githubSlice.data ? [githubSlice.data] : [],
+        isArchive: !githubSlice.has_exact_data,
+        archiveDate: githubSlice.data_date,
       };
       contributorData = {
-        latest: contributorForDate || contributorLatest,
-        history: contributorForDate ? [contributorForDate] : (contributorLatest ? [contributorLatest] : []),
-        isArchive: !hasDataForDate,
-        archiveDate: hasDataForDate ? startDate : (contributorLatest?.date || null)
+        latest: contributorSlice.data,
+        history: contributorSlice.data ? [contributorSlice.data] : [],
+        isArchive: !contributorSlice.has_exact_data,
+        archiveDate: contributorSlice.data_date,
       };
-      socialData = socialForDate.length > 0 ? socialForDate : socialLatest;
-      articleData = articleForDate.length > 0 ? articleForDate : articleLatest;
+      const socialPlatforms = Array.from(new Set(socialLatest.map(row => row.platform)));
+      const articlePlatforms = Array.from(new Set(articleLatest.map(row => row.platform)));
+      const socialFreshness = createPlatformFreshness(socialPlatforms, startDate, socialForDate, socialLatest);
+      const articleFreshness = createPlatformFreshness(articlePlatforms, startDate, articleForDate, articleLatest);
+      socialData = Object.values(socialFreshness).flatMap(slice => slice.data ? [slice.data] : []);
+      articleData = Object.values(articleFreshness).flatMap(slice => slice.data ? [slice.data] : []);
       events = eventsForDate;
+      freshness = {
+        github: githubSlice,
+        contributors: contributorSlice,
+        social: socialFreshness,
+        articles: articleFreshness,
+      };
     } else {
       const [
         githubLatest,
@@ -91,9 +94,9 @@ export async function GET(request: Request) {
         articleStats,
         eventsData
       ] = await Promise.all([
-        getLatestGitHubStats(),
+        getLatestGitHubStats(endDate),
         getGitHubStatsByDateRange(startDate, endDate),
-        getLatestContributorStats(),
+        getLatestContributorStats(endDate),
         getContributorStatsByDateRange(startDate, endDate),
         getSocialStatsByDateRange(startDate, endDate),
         getArticleStatsByDateRange(startDate, endDate),
@@ -113,6 +116,26 @@ export async function GET(request: Request) {
       socialData = socialStats;
       articleData = articleStats;
       events = eventsData;
+      const [socialLatest, articleLatest] = await Promise.all([
+        getLatestSocialStats(endDate),
+        getLatestArticleStats(endDate),
+      ]);
+      freshness = {
+        github: createDataSlice(undefined, githubHistory.at(-1) || null, githubLatest),
+        contributors: createDataSlice(undefined, contributorHistory.at(-1) || null, contributorLatest),
+        social: createPlatformFreshness(
+          Array.from(new Set(socialLatest.map(row => row.platform))),
+          undefined,
+          socialStats,
+          socialLatest,
+        ),
+        articles: createPlatformFreshness(
+          Array.from(new Set(articleLatest.map(row => row.platform))),
+          undefined,
+          articleStats,
+          articleLatest,
+        ),
+      };
     }
 
     const [downloadHistory] = await Promise.all([
@@ -125,11 +148,15 @@ export async function GET(request: Request) {
       social: socialData,
       articles: articleData,
       events: events,
-      downloads: downloadHistory || []
+      downloads: downloadHistory || [],
+      freshness,
     };
 
     return NextResponse.json(response);
   } catch (error) {
+    if (error instanceof RangeError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Error fetching dashboard data:', error);
     return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
   }

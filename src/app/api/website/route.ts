@@ -1,38 +1,34 @@
 import { NextResponse } from 'next/server';
 import { getWebsiteStatsByDateRange, getLatestWebsiteStats, getWebsiteStatsForDate } from '@/lib/db';
+import { createDataSlice } from '@/lib/data-slices';
+import { getDataRangeParams } from '@/lib/date-query';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  
-  const endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
-  const startDateParam = searchParams.get('start');
-  
-  let startDate: string;
-  if (startDateParam) {
-    startDate = startDateParam;
-  } else {
-    const days = parseInt(searchParams.get('days') || '30', 10);
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    startDate = d.toISOString().split('T')[0];
-  }
-
-  const isSingleDay = startDate === endDate && startDateParam !== null;
-
   try {
+    const { searchParams } = new URL(request.url);
+    const { startDate, endDate, isSingleDay } = getDataRangeParams(
+      searchParams,
+      new Date().toISOString().split('T')[0],
+    );
     let websiteData: any;
+    let freshness;
 
     if (isSingleDay) {
-      const websiteForDate = await getWebsiteStatsForDate(startDate);
+      const [websiteForDate, fallback] = await Promise.all([
+        getWebsiteStatsForDate(startDate),
+        getLatestWebsiteStats(endDate),
+      ]);
+      const selected = websiteForDate || fallback;
       websiteData = {
-        latest: websiteForDate,
-        history: websiteForDate ? [websiteForDate] : [],
+        latest: selected,
+        history: selected ? [selected] : [],
         isArchive: true,
-        archiveDate: startDate
+        archiveDate: selected?.date || null,
       };
+      freshness = createDataSlice(startDate, websiteForDate, fallback);
     } else {
       const [latest, history] = await Promise.all([
-        getLatestWebsiteStats(),
+        getLatestWebsiteStats(endDate),
         getWebsiteStatsByDateRange(startDate, endDate)
       ]);
       websiteData = {
@@ -40,12 +36,17 @@ export async function GET(request: Request) {
         history,
         isArchive: false
       };
+      freshness = createDataSlice(undefined, history.at(-1) || null, latest);
     }
 
     return NextResponse.json({
-      website: websiteData
+      website: websiteData,
+      freshness,
     });
   } catch (error) {
+    if (error instanceof RangeError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Error fetching website data:', error);
     return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
   }

@@ -591,8 +591,10 @@ export async function saveManualData(data: ManualData): Promise<void> {
   `, [data.date, data.category, data.metric, data.value, data.notes || null]);
 }
 
-export async function getLatestGitHubStats(): Promise<GitHubStats | null> {
-  const result = await query('SELECT * FROM github_stats ORDER BY date DESC LIMIT 1');
+export async function getLatestGitHubStats(endDate?: string): Promise<GitHubStats | null> {
+  const result = endDate
+    ? await query('SELECT * FROM github_stats WHERE date <= $1 ORDER BY date DESC LIMIT 1', [endDate])
+    : await query('SELECT * FROM github_stats ORDER BY date DESC LIMIT 1');
   return result.rows[0] || null;
 }
 
@@ -606,8 +608,10 @@ export async function getGitHubStatsHistory(days: number = 30): Promise<GitHubSt
   return result.rows;
 }
 
-export async function getLatestContributorStats(): Promise<ContributorStatsData | null> {
-  const result = await query('SELECT * FROM contributor_stats ORDER BY date DESC LIMIT 1');
+export async function getLatestContributorStats(endDate?: string): Promise<ContributorStatsData | null> {
+  const result = endDate
+    ? await query('SELECT * FROM contributor_stats WHERE date <= $1 ORDER BY date DESC LIMIT 1', [endDate])
+    : await query('SELECT * FROM contributor_stats ORDER BY date DESC LIMIT 1');
   return result.rows[0] || null;
 }
 
@@ -631,12 +635,13 @@ export async function getSocialStatsByPlatform(platform: string, days: number = 
   return result.rows;
 }
 
-export async function getLatestSocialStats(): Promise<SocialStats[]> {
+export async function getLatestSocialStats(endDate?: string): Promise<SocialStats[]> {
   const result = await query(`
     SELECT DISTINCT ON (platform) platform, s.*
     FROM social_stats s
+    ${endDate ? 'WHERE date <= $1' : ''}
     ORDER BY platform, date DESC
-  `);
+  `, endDate ? [endDate] : undefined);
   return result.rows;
 }
 
@@ -655,12 +660,13 @@ export async function getArticleStatsByPlatform(platform: string, days: number =
   return result.rows;
 }
 
-export async function getLatestArticleStats(): Promise<ArticleStats[]> {
+export async function getLatestArticleStats(endDate?: string): Promise<ArticleStats[]> {
   const result = await query(`
     SELECT DISTINCT ON (platform) platform, a.*
     FROM article_stats a
+    ${endDate ? 'WHERE date <= $1' : ''}
     ORDER BY platform, date DESC
-  `);
+  `, endDate ? [endDate] : undefined);
   return result.rows;
 }
 
@@ -684,8 +690,10 @@ export async function getWebsiteStatsHistory(days: number = 30): Promise<Website
   }));
 }
 
-export async function getLatestWebsiteStats(): Promise<WebsiteStats | null> {
-  const result = await query('SELECT * FROM website_stats ORDER BY date DESC LIMIT 1');
+export async function getLatestWebsiteStats(endDate?: string): Promise<WebsiteStats | null> {
+  const result = endDate
+    ? await query('SELECT * FROM website_stats WHERE date <= $1 ORDER BY date DESC LIMIT 1', [endDate])
+    : await query('SELECT * FROM website_stats ORDER BY date DESC LIMIT 1');
   if (!result.rows[0]) return null;
   const row = result.rows[0];
   return {
