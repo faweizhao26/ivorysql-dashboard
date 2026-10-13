@@ -63,7 +63,7 @@ interface DashboardData {
     url: string;
     event_type: string;
   }>;
-  downloads: Array<{
+  downloads?: Array<{
     date: string;
     github_total: number;
     docker_total: number;

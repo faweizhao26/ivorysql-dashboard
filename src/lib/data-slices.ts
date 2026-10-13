@@ -28,6 +28,16 @@ export function getLatestUpdatedAt(
   }, null);
 }
 
+export function projectDataSlice<T, U>(
+  slice: DataSlice<T>,
+  project: (value: T) => U,
+): DataSlice<U> {
+  return {
+    ...slice,
+    data: slice.data ? project(slice.data) : null,
+  };
+}
+
 function timestamp(value: string | Date | null | undefined): string | null {
   if (!value) return null;
   return value instanceof Date ? value.toISOString() : value;

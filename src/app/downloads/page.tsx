@@ -46,7 +46,7 @@ export default function DownloadsPage() {
       try {
         const [liveRes, histRes] = await Promise.all([
           fetch('/api/downloads', { credentials: 'include' }),
-          fetch('/api/dashboard?start=2025-01-01&end=2099-12-31&days=730', { credentials: 'include' }),
+          fetch('/api/dashboard?start=2025-01-01&end=2099-12-31&days=730&include=downloads', { credentials: 'include' }),
         ]);
         if (liveRes.ok) setDownloads(await liveRes.json() as DownloadStats);
         if (histRes.ok) {

@@ -16,8 +16,24 @@ import {
   getEventsForDate,
   getDownloadStatsHistory
 } from '@/lib/db';
-import { createDataSlice, createPlatformFreshness } from '@/lib/data-slices';
+import { createDataSlice, createPlatformFreshness, projectDataSlice, type DataSlice } from '@/lib/data-slices';
 import { getDataRangeParams } from '@/lib/date-query';
+import {
+  toDashboardArticleSummary,
+  toDashboardContributorSummary,
+  toDashboardGitHubSummary,
+  toDashboardSocialSummary,
+  type DashboardRow,
+} from '@/lib/dashboard-summary';
+
+function projectFreshnessMap(
+  values: Record<string, DataSlice<DashboardRow>>,
+  project: (row: DashboardRow) => DashboardRow,
+) {
+  return Object.fromEntries(
+    Object.entries(values).map(([platform, slice]) => [platform, projectDataSlice(slice, project)]),
+  );
+}
 
 export async function GET(request: Request) {
   try {
@@ -26,6 +42,7 @@ export async function GET(request: Request) {
       searchParams,
       new Date().toISOString().split('T')[0],
     );
+    const includeDownloads = searchParams.get('include')?.split(',').includes('downloads') || false;
     let githubData: any;
     let contributorData: any;
     let socialData: any[];
@@ -138,19 +155,37 @@ export async function GET(request: Request) {
       };
     }
 
-    const [downloadHistory] = await Promise.all([
-      getDownloadStatsHistory(365)
-    ]);
+    const downloadHistory = includeDownloads ? await getDownloadStatsHistory(365) : [];
+
+    const typedFreshness = freshness as {
+      github: DataSlice<DashboardRow>;
+      contributors: DataSlice<DashboardRow>;
+      social: Record<string, DataSlice<DashboardRow>>;
+      articles: Record<string, DataSlice<DashboardRow>>;
+    };
 
     const response: Record<string, any> = {
-      github: githubData,
-      contributors: contributorData,
-      social: socialData,
-      articles: articleData,
+      github: {
+        ...githubData,
+        latest: toDashboardGitHubSummary(githubData.latest),
+        history: githubData.history.map(toDashboardGitHubSummary),
+      },
+      contributors: {
+        ...contributorData,
+        latest: toDashboardContributorSummary(contributorData.latest),
+        history: contributorData.history.map(toDashboardContributorSummary),
+      },
+      social: socialData.map(toDashboardSocialSummary),
+      articles: articleData.map(toDashboardArticleSummary),
       events: events,
-      downloads: downloadHistory || [],
-      freshness,
+      freshness: {
+        github: projectDataSlice(typedFreshness.github, row => toDashboardGitHubSummary(row) || {}),
+        contributors: projectDataSlice(typedFreshness.contributors, row => toDashboardContributorSummary(row) || {}),
+        social: projectFreshnessMap(typedFreshness.social, toDashboardSocialSummary),
+        articles: projectFreshnessMap(typedFreshness.articles, toDashboardArticleSummary),
+      },
     };
+    if (includeDownloads) response.downloads = downloadHistory;
 
     return NextResponse.json(response);
   } catch (error) {

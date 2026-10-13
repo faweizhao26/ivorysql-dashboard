@@ -1,156 +1,114 @@
 # IvorySQL 运营数据面板
 
-基于 Next.js 的开源项目运营数据看板，支持 GitHub 数据自动获取和手动数据录入。
+基于 Next.js 16 和 PostgreSQL 的 IvorySQL 社区运营看板，汇总 GitHub、内容平台、社交媒体、官网、活动与布道者数据。
 
-## 功能特性
-
-- **GitHub 数据**：Stars、Forks、Watchers、组织级 Contributors、主仓库 Issue/PR 创建者、Open Issues/PRs、Release 等
-- **社交媒体**：公众号、Twitter、B站、YouTube 粉丝和互动数据
-- **技术内容平台**：CSDN、掘金、墨天轮、开源中国、思否、51CTO、ITPUB、头条号、IFCLUB
-- **官网数据**：PV/UV、流量来源、热门页面、搜索关键词
-- **趋势图表**：支持日/周/月/季/年维度切换
-- **社区动态**：聚合 GitHub Issue/PR/Release、博客更新、活动动态
-- **自动更新**：通过 Vercel Cron 每日抓取已支持的平台数据
-- **权限控制**：Vercel Password Protection 密码保护
-
-## 页面结构
+## 页面与能力
 
 | 页面 | 路径 | 说明 |
 |------|------|------|
-| 首页 | `/` | 核心指标概览、趋势图、最新动态 |
-| GitHub | `/github` | 仓库数据、贡献者统计 |
-| 社媒 | `/social` | 公众号、Twitter、B站、YouTube 数据 |
-| 内容 | `/content` | 技术平台文章统计 |
-| 官网 | `/website` | 网站流量分析 |
-| 管理 | `/admin` | 手动数据录入 |
+| 首页 | `/` | 核心指标、真实数据日期和最近更新时间 |
+| GitHub | `/github` | 仓库指标、贡献者月度活动与新增贡献者 |
+| 社媒 | `/social` | 公众号、视频号、Twitter、B站和 YouTube |
+| 内容 | `/content` | 各内容平台汇总、分页检索和 CSV 导出 |
+| 官网 | `/website` | PV、UV、热门页面和流量来源 |
+| 活动 | `/events` | IvorySQL 社区活动 |
+| 布道者 | `/evangelist` | 布道者积分与贡献记录 |
+| 管理 | `/admin` | 数据录入、文章维护、提醒和同步状态 |
 
-## 快速部署
+看板区分两个时间：`data_date` 是指标对应的统计日期，`updated_at` 是数据最近写入时间。筛选日期没有记录时，页面会明确显示“最新可用数据”，不会把历史值标成当天数据。
 
-### 1. Fork 本仓库
+## 数据自动化
 
-### 2. 在 Vercel 导入项目
+### Vercel Cron
 
-```
-https://vercel.com/new
-```
+`vercel.json` 中的任务通过受保护的同步入口运行，并将成功、失败、读写数量和错误记录到 `sync_runs`。Vercel 会使用 `CRON_SECRET` 调用 GET 路由。
 
-选择你的 GitHub 仓库导入。
+| 平台 | 计划 | 数据范围 |
+|------|------|----------|
+| GitHub | 每天 | 仓库指标、贡献者活动、Release、GitHub 与 Docker 下载量 |
+| CSDN | 每天 | 作者主页最近文章 |
+| 博客园 | 每天 | 作者主页最近文章 |
+| 墨天轮 | 每天 | 用户页嵌入数据中的文章指标 |
+| 思否 | 每天 | 已知文章链接的阅读量 |
+| ITPUB | 每周一 | 作者主页最近文章 |
 
-### 3. 配置环境变量（可选）
+GitHub 贡献者统计从 `IvorySQL/IvorySQL` 仓库的实际创建日期开始扫描，不使用固定的 2025 年起点。月度贡献者包括当月创建 Issue 的用户和当月 PR 被合并的用户；未合并 PR 不计入该指标。页面同时区分“2026 年首次贡献”和“历史首次贡献”。
 
-在 Vercel 项目设置中添加：
+### ego-lite
 
-| 变量名 | 说明 |
-|--------|------|
-| `GITHUB_TOKEN` | GitHub Personal Access Token（用于 API 调用） |
+开源中国、51CTO、头条号和知乎由本机 ego-lite 浏览器采集最近 50 篇，再写入 `/api/browser-content/sync`。该接口需要 `CRON_SECRET`，运行结果同样进入后台“同步状态”。这四个平台不在 Vercel Cron 中重复抓取。
 
-### 4. 启用密码保护
+### 人工维护
 
-在 Vercel 控制台：
+- 公众号和视频号无法稳定从公开页面获得完整后台指标，继续人工导入。
+- Twitter、B站、YouTube 和 IFCLUB 当前人工维护。
+- 掘金账号已停用，只保留历史数据，不再同步，也不再触发过期提醒。
+- 自动采集只更新来源能提供的指标，不自动猜测文章分类和来源。
 
-```
-Settings → General → Password Protection → Enable
-```
+## 部署
 
-设置访问密码。
+1. 在 Vercel 导入本仓库。
+2. 连接一个持久化 PostgreSQL 数据库。
+3. 在 Project Settings → Environment Variables 配置环境变量。
+4. 部署后访问 `/admin`，在“同步状态”检查首次运行结果。
 
-### 5. 部署
+必需变量：
 
-点击 Deploy，Vercel 将自动构建并部署。
+| 变量 | 用途 |
+|------|------|
+| `DATABASE_URL` | PostgreSQL 连接字符串 |
+| `ACCESS_PASSWORD` | 只读访问密码 |
+| `ADMIN_PASSWORD` | 管理员密码 |
+| `CRON_SECRET` | Vercel Cron 与 ego-lite 写入鉴权 |
+| `GITHUB_TOKEN` | GitHub API；需要读取公开仓库数据的权限与足够额度 |
+
+可选变量：
+
+| 变量 | 默认值 | 用途 |
+|------|--------|------|
+| `GITHUB_REPO` | `IvorySQL/IvorySQL` | GitHub 主仓库 |
+| `ITPUB_USER_ID` | 项目内默认账号 | ITPUB 作者账号 |
+| `MODB_USER_ID` | 项目内默认账号 | 墨天轮作者账号 |
+
+不要在生产环境设置 `ALLOW_SAMPLE_DATA=1`。该变量只用于明确允许写入演示数据的特殊场景。
 
 ## 本地开发
 
 ```bash
-# 安装依赖
 npm install
-
-# 填充示例数据
-npm run seed
-
-# 启动开发服务器
 npm run dev
-
-# 获取 GitHub 数据
-npm run fetch-github
 ```
 
-## 数据更新
+本地也需要可访问的 `DATABASE_URL`。常用验证命令：
 
-### 自动更新
-
-项目通过 `vercel.json` 配置 Vercel Cron，每天抓取 GitHub、CSDN、博客园、墨天轮和思否数据，每周一抓取 ITPUB。内容平台每次最多更新最近 50 篇文章。部署时必须配置 `CRON_SECRET`，否则定时请求无法通过服务端鉴权。
-
-CSDN、博客园和 ITPUB 从作者主页发现文章；墨天轮和思否根据数据库中已有的文章链接刷新阅读量。开源中国、51CTO、头条号和知乎通过本机 ego-lite 浏览器采集并写入受保护接口。公众号手动导入。掘金账号已停用，只保留历史数据，不再自动同步。
-
-GitHub 的定时任务负责更新仓库基础指标、下载历史，以及 `IvorySQL/IvorySQL` 主仓库自 2025-01-01 起的 Issue/PR 创建者统计；完整的组织级贡献者扫描仍建议通过管理后台手动触发，以避免长时间运行导致函数超时。
-
-### 手动数据录入
-
-访问 `/admin` 页面，手动录入以下数据：
-
-| 类型 | 数据项 | 更新频率 |
-|------|--------|----------|
-| 社交媒体 | 公众号、Twitter、B站、YouTube 粉丝/阅读量 | 手动或按平台 API 配置 |
-| 内容平台 | 已有同步接口的平台 | 每天 |
-| 内容平台 | 开源中国、51CTO、头条号、知乎 | ego-lite 每日采集 |
-| 内容平台 | 公众号 | Excel 导入 |
-
-## 支持的平台
-
-### 社交媒体
-- 💚 公众号（手动）
-- 🐦 Twitter（手动）
-- 📺 B站（手动）
-- ▶️ YouTube（手动，配置 API 后可自动）
-
-### 技术内容平台
-- 🔵 CSDN（自动）
-- 💎 掘金（仅保留历史数据）
-- 🟠 墨天轮（自动）
-- 🟢 开源中国（ego-lite 自动）
-- ⚡ 思否（自动刷新已有文章）
-- 📰 51CTO（ego-lite 自动）
-- 🔷 ITPUB（自动）
-- 📱 头条号（ego-lite 自动）
-- 🔵 知乎（ego-lite 自动）
-- 💬 IFCLUB（手动）
-
-## 项目结构
-
+```bash
+npm test
+npm run build
 ```
-ivorysql-dashboard/
-├── src/
-│   ├── app/
-│   │   ├── page.tsx           # 首页/概览
-│   │   ├── github/page.tsx   # GitHub 数据
-│   │   ├── social/page.tsx   # 社交媒体
-│   │   ├── content/page.tsx   # 内容平台
-│   │   ├── website/page.tsx   # 官网数据
-│   │   ├── admin/page.tsx    # 管理后台
-│   │   └── api/              # API 路由
-│   ├── components/            # UI 组件
-│   └── lib/                   # 数据库和工具
-├── data/                      # SQLite 数据库
-└── .github/workflows/        # GitHub Actions
+
+`npm run seed` 会写入演示数据：开发环境可运行，生产环境默认拒绝。若怀疑数据库中存在早期演示记录，先执行只读审计：
+
+```bash
+node scripts/audit-sample-data.mjs
 ```
+
+确认清单后才能执行隔离脚本；脚本要求显式确认参数，并会先复制到 `quarantined_sample_data`，再在同一事务中删除业务表记录。不要按日期整段删除。
+
+## 内容数据维护
+
+- 页面首屏只请求平台汇总，选择平台后分页获取文章。
+- `/api/content/export` 用于完整 CSV 导出，不复用页面列表响应。
+- 后台“同步状态”显示各平台最近运行、读写数量和失败原因；支持的服务端采集器可手动重试。
+- ego-lite 渠道需要在本机浏览器任务中重跑，后台不会尝试绕过平台登录或验证。
 
 ## 技术栈
 
-- **框架**：Next.js 16 (App Router)
-- **样式**：Tailwind CSS
-- **图表**：Recharts
-- **数据库**：SQLite (better-sqlite3)
-- **部署**：Vercel (Hobby Plan 免费)
-
-## 费用
-
-| 项目 | 费用 |
-|------|------|
-| Vercel Hobby | 免费 |
-| GitHub Actions | 免费 |
-| 数据库 | 免费 (SQLite) |
-
-**预计总费用：¥0**
+- Next.js 16 App Router
+- React 19
+- Tailwind CSS 4
+- Recharts
+- PostgreSQL (`pg`)
+- Vercel Cron
 
 ## License
 
