@@ -5,6 +5,7 @@ import LogoutButton from "@/components/logout-button";
 import NavLinks, { MobileNavLinks } from "@/components/NavLinks";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import ThemeToggle from "@/components/ThemeToggle";
+import { AuthProvider } from './auth-provider';
 
 export const metadata: Metadata = {
   title: "IvorySQL 运营数据面板",
@@ -20,6 +21,7 @@ export default function RootLayout({
     <html lang="zh-CN" data-theme="dark">
       <body className="min-h-screen" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
         <ThemeProvider>
+          <AuthProvider>
           <nav className="bg-white dark:bg-slate-900/80 dark:backdrop-blur-sm border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between h-16">
@@ -43,6 +45,7 @@ export default function RootLayout({
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {children}
           </main>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

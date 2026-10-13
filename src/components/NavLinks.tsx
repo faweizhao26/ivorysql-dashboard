@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NavIcon } from './NavIcon';
+import { useAuth } from '@/app/auth-provider';
 
 const items = [
   { href: '/', icon: 'home', name: '首页' },
@@ -17,10 +18,11 @@ const items = [
 
 export default function NavLinks() {
   const pathname = usePathname();
+  const { accessLevel } = useAuth();
 
   return (
     <div className="hidden md:flex items-center gap-0.5">
-      {items.map((item) => {
+      {items.filter(item => item.href !== '/admin' || accessLevel === 'admin').map((item) => {
         const isActive = pathname === item.href
           || (item.href !== '/' && pathname.startsWith(item.href));
         return (
@@ -44,10 +46,11 @@ export default function NavLinks() {
 
 export function MobileNavLinks() {
   const pathname = usePathname();
+  const { accessLevel } = useAuth();
 
   return (
     <div className="md:hidden border-t border-slate-200 dark:border-slate-800 px-4 py-2 flex gap-2 overflow-x-auto scrollbar-thin">
-      {items.map((item) => {
+      {items.filter(item => item.href !== '/admin' || accessLevel === 'admin').map((item) => {
         const isActive = pathname === item.href
           || (item.href !== '/' && pathname.startsWith(item.href));
         return (

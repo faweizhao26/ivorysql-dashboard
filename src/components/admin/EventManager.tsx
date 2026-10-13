@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import type { ActivityEventListItem, ActivityEventParsed } from '@/lib/db';
@@ -18,6 +18,14 @@ export default function EventManager() {
   const [materialDirty, setMaterialDirty] = useState(false);
   const [error, setError] = useState('');
   const [syncing, setSyncing] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const hasSelection = selected !== null;
+  const selectedId = selected?.id;
+  useEffect(() => {
+    if (hasSelection && window.matchMedia('(max-width: 1023px)').matches) {
+      editorRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  }, [hasSelection, selectedId]);
   useEffect(() => {
     const controller = new AbortController();
     const timer = setTimeout(() => {
@@ -65,7 +73,7 @@ export default function EventManager() {
         <ul className="max-h-[65vh] overflow-y-auto divide-y divide-slate-700">{items.map(event => <li key={event.id}><button onClick={() => choose(event)} aria-pressed={selected?.id === event.id} className={`w-full p-3 text-left ${selected?.id === event.id ? 'border-l-2 border-emerald-400 bg-emerald-500/10' : 'hover:bg-slate-700/30'}`}><span className="block text-xs text-slate-400">{event.event_date.slice(0, 10)}</span><span className="my-1 block break-words text-sm text-slate-200">{event.event_name}</span><span className="block text-xs text-slate-500">{describeMaterials(event.material_counts)}</span></button></li>)}</ul>
         <nav className="flex items-center justify-between text-xs text-slate-400"><button title="上一页" aria-label="上一页" disabled={page <= 1} onClick={() => setPage(p => p - 1)} className="p-2 disabled:opacity-30"><ChevronLeft size={16} /></button>{page} / {Math.max(1, Math.ceil(total / 12))}<button title="下一页" aria-label="下一页" disabled={page * 12 >= total} onClick={() => setPage(p => p + 1)} className="p-2 disabled:opacity-30"><ChevronRight size={16} /></button></nav>
       </aside>
-      <div className="min-w-0 space-y-6 lg:border-l lg:border-slate-700 lg:pl-6">{selected ? <><EventForm key={selected.id || 'new'} initial={selected} onSaved={saved} onCancel={() => choose(null)} onDirtyChange={setFormDirty} />
+      <div ref={editorRef} className="min-w-0 scroll-mt-24 space-y-6 lg:border-l lg:border-slate-700 lg:pl-6">{selected ? <><EventForm key={selected.id || 'new'} initial={selected} onSaved={saved} onCancel={() => choose(null)} onDirtyChange={setFormDirty} />
         {selected.id && <><div className="flex items-center justify-between"><Link href={`/events/${selected.id}`} className="text-sm text-emerald-300">查看活动详情</Link><button onClick={remove} className="inline-flex items-center gap-2 text-sm text-red-400"><Trash2 size={16} />删除活动</button></div><EventMaterialEditor key={selected.id} eventId={selected.id} onDirtyChange={setMaterialDirty} /></>}
       </> : <p className="py-12 text-center text-sm text-slate-400">未选择活动</p>}</div>
     </div>
