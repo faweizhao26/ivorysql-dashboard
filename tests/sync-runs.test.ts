@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Pool } from 'pg';
-import { getDashboardUpdatedAt } from '../src/lib/db';
+import { getDashboardUpdatedAt, getStalePlatforms } from '../src/lib/db';
 import {
   finishSyncRun,
   getLatestSyncStatus,
@@ -110,4 +110,36 @@ test('returns latest status per platform and page-level update time', async () =
   } finally {
     Pool.prototype.query = originalQuery;
   }
+});
+
+test('keeps the last successful time separate from a newer failed run', async () => {
+  const originalQuery = Pool.prototype.query;
+  Pool.prototype.query = async function (sql: string) {
+    assert.match(sql, /MAX\(finished_at\).*FILTER\s*\(WHERE status = 'success'\)/s);
+    return { rows: [{ platform: 'zhihu', status: 'failed', started_at: new Date('2026-10-13T01:00:00Z'), finished_at: new Date('2026-10-13T01:01:00Z'), last_success_at: new Date('2026-10-12T01:01:00Z') }] } as never;
+  };
+  try {
+    const [status] = await getLatestSyncStatus();
+    assert.equal(status.status, 'failed');
+    assert.equal(status.last_success_at, '2026-10-12T01:01:00.000Z');
+  } finally { Pool.prototype.query = originalQuery; }
+});
+
+test('stale reminders use successful runs and retain manual-only timestamps', async () => {
+  const originalQuery = Pool.prototype.query;
+  const old = new Date(Date.now() - 12 * 86400000);
+  Pool.prototype.query = async function (sql: string) {
+    assert.match(sql, /status = 'success'/);
+    assert.match(sql, /last_data_updated/);
+    return { rows: [
+      { platform: 'zhihu', update_frequency_days: 7, last_data_updated: new Date(), effective_updated_at: old },
+      { platform: 'wechat', update_frequency_days: 7, effective_updated_at: new Date() },
+      { platform: 'ctoutiao', update_frequency_days: 7, effective_updated_at: null },
+    ] } as never;
+  };
+  try {
+    const stale = await getStalePlatforms();
+    assert.deepEqual(stale.map(item => item.platform), ['zhihu', 'ctoutiao']);
+    assert.equal(stale[0].daysSinceUpdate, 12);
+  } finally { Pool.prototype.query = originalQuery; }
 });

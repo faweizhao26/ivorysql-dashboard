@@ -105,6 +105,7 @@ export default function SyncStatusPanel() {
                 <th className="px-4 py-3 text-left">平台</th>
                 <th className="px-4 py-3 text-left">状态</th>
                 <th className="px-4 py-3 text-left">最近运行</th>
+                <th className="px-4 py-3 text-left">最近成功</th>
                 <th className="px-4 py-3 text-right">读取 / 写入</th>
                 <th className="px-4 py-3 text-left">详情</th>
                 <th className="px-4 py-3 text-right">操作</th>
@@ -122,6 +123,7 @@ export default function SyncStatusPanel() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-400">{formatTime(item.finished_at || item.started_at)}</td>
+                    <td className="px-4 py-3 text-slate-400">{formatTime(item.last_success_at)}</td>
                     <td className="px-4 py-3 text-right text-slate-400">{item.records_seen} / {item.records_written}</td>
                     <td className="max-w-xs px-4 py-3 text-slate-400">
                       {item.error_message || (retryable ? '可在此手动执行' : '通过 ego-lite 更新')}

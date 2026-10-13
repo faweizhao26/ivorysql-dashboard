@@ -1114,7 +1114,7 @@ export async function saveReminderSettings(settings: ReminderSettings): Promise<
       update_frequency_days = EXCLUDED.update_frequency_days,
       reminder_enabled = EXCLUDED.reminder_enabled,
       webhook_url = EXCLUDED.webhook_url,
-      last_data_updated = EXCLUDED.last_data_updated,
+      last_data_updated = COALESCE(EXCLUDED.last_data_updated, reminder_settings.last_data_updated),
       updated_at = CURRENT_TIMESTAMP
   `, [settings.platform, settings.update_frequency_days, settings.reminder_enabled,
       settings.webhook_url || null, settings.last_data_updated || null]);
@@ -1146,11 +1146,21 @@ export async function updateReminderLastUpdated(platform: string): Promise<void>
 }
 
 export async function getStalePlatforms(): Promise<{ platform: string; daysSinceUpdate: number; updateFrequency: number }[]> {
-  const result = await query("SELECT * FROM reminder_settings WHERE reminder_enabled = 1 AND platform <> 'juejin'");
+  const result = await query(`
+    SELECT r.*,
+      CASE WHEN s.run_count > 0 THEN s.last_success_at ELSE r.last_data_updated END AS effective_updated_at
+    FROM reminder_settings r
+    LEFT JOIN (
+      SELECT platform, COUNT(*) AS run_count,
+        MAX(finished_at) FILTER (WHERE status = 'success') AS last_success_at
+      FROM sync_runs GROUP BY platform
+    ) s ON s.platform = r.platform
+    WHERE r.reminder_enabled = 1 AND r.platform <> 'juejin'
+  `);
   const today = new Date();
   
   return result.rows.map(s => {
-    const lastUpdated = s.last_data_updated ? new Date(s.last_data_updated) : new Date(0);
+    const lastUpdated = s.effective_updated_at ? new Date(s.effective_updated_at) : new Date(0);
     const daysSinceUpdate = Math.floor((today.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24));
     return {
       platform: s.platform,

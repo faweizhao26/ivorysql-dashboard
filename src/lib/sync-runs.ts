@@ -15,7 +15,9 @@ export interface SyncRun {
   trigger: SyncTrigger;
 }
 
-export type SyncPlatformStatus = SyncRun;
+export interface SyncPlatformStatus extends SyncRun {
+  last_success_at: string | null;
+}
 
 export interface SyncRunResult {
   status: Exclude<SyncStatus, 'running'>;
@@ -63,7 +65,8 @@ export async function getLatestSyncStatus(): Promise<SyncPlatformStatus[]> {
   const result = await queryDb(`
     SELECT DISTINCT ON (platform)
       id, platform, started_at, finished_at, status,
-      records_seen, records_written, error_message, trigger
+      records_seen, records_written, error_message, trigger,
+      MAX(finished_at) FILTER (WHERE status = 'success') OVER (PARTITION BY platform) AS last_success_at
     FROM sync_runs
     ORDER BY platform, started_at DESC, id DESC
   `);
@@ -71,5 +74,6 @@ export async function getLatestSyncStatus(): Promise<SyncPlatformStatus[]> {
     ...row,
     started_at: row.started_at instanceof Date ? row.started_at.toISOString() : String(row.started_at),
     finished_at: row.finished_at instanceof Date ? row.finished_at.toISOString() : row.finished_at,
+    last_success_at: row.last_success_at instanceof Date ? row.last_success_at.toISOString() : row.last_success_at || null,
   })) as SyncPlatformStatus[];
 }
