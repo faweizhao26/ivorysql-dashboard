@@ -5,6 +5,8 @@ import { StatCard, calculateChange } from '@/components/StatCard';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { TrendChart } from '@/components/Charts';
 import { downloadCSV } from '@/lib/csv-utils';
+import LastUpdated from '@/components/LastUpdated';
+import { formatFreshnessLabel, type DataSlice } from '@/lib/data-slices';
 
 interface WebsiteData {
   website: {
@@ -21,6 +23,7 @@ interface WebsiteData {
       unique_visitors: number;
     }>;
   };
+  freshness: DataSlice<unknown>;
 }
 
 export default function WebsitePage() {
@@ -82,7 +85,10 @@ export default function WebsitePage() {
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <span className="text-2xl">🌐</span>
-          <h1 className="text-2xl font-bold text-slate-100">官网数据</h1>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-100">官网数据</h1>
+            <p className="mt-1 text-xs text-slate-500"><LastUpdated value={data?.freshness?.updated_at || null} /></p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {displayDate && (
@@ -107,6 +113,7 @@ export default function WebsitePage() {
       <div className="text-sm text-slate-400">
         当前时间段: <span className="font-medium text-slate-200">{currentPeriod}</span>
       </div>
+      <p className="text-xs text-slate-500">{formatFreshnessLabel(data?.freshness)}</p>
 
       <div>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">访问数据</h2>

@@ -8,6 +8,10 @@ import { TrendChart } from '@/components/Charts';
 import { ActivityTimeline } from '@/components/Timeline';
 import { PlatformIcon } from '@/components/PlatformIcon';
 import { downloadCSV } from '@/lib/csv-utils';
+import LastUpdated from '@/components/LastUpdated';
+import { formatFreshnessLabel, getLatestUpdatedAt, type DataSlice } from '@/lib/data-slices';
+
+type FreshnessMap = Record<string, DataSlice<unknown>>;
 
 interface DashboardData {
   github: {
@@ -64,6 +68,12 @@ interface DashboardData {
     github_total: number;
     docker_total: number;
   }>;
+  freshness: {
+    github: DataSlice<unknown>;
+    contributors: DataSlice<unknown>;
+    social: FreshnessMap;
+    articles: FreshnessMap;
+  };
 }
 
 const socialPlatforms: Record<string, { name: string }> = {
@@ -146,6 +156,15 @@ export default function HomePage() {
 
   const latestGitHub = github?.latest;
   const displayDate = isSingleDay ? dateRange.start : null;
+  const freshnessSlices = data?.freshness
+    ? [
+        data.freshness.github,
+        data.freshness.contributors,
+        ...Object.values(data.freshness.social),
+        ...Object.values(data.freshness.articles),
+      ]
+    : [];
+  const lastUpdated = getLatestUpdatedAt(freshnessSlices);
 
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
   let comparePeriod = '';
@@ -171,7 +190,8 @@ export default function HomePage() {
         <div className="relative flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-slate-100 mb-2">IvorySQL 社区数据中心</h1>
-            <p className="text-slate-400 text-sm max-w-md">实时追踪 GitHub、社交媒体、内容平台的运营数据，助力社区增长决策。</p>
+            <p className="text-slate-400 text-sm max-w-md">追踪 GitHub、社交媒体、内容平台的运营数据，助力社区增长决策。</p>
+            <p className="mt-2 text-xs text-slate-500"><LastUpdated value={lastUpdated} /></p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             {displayDate && (
@@ -204,6 +224,13 @@ export default function HomePage() {
           </>
         )}
       </div>
+
+      {isSingleDay && data?.freshness && (
+        <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
+          <span>GitHub：{formatFreshnessLabel(data.freshness.github)}</span>
+          <span>贡献者：{formatFreshnessLabel(data.freshness.contributors)}</span>
+        </div>
+      )}
 
       <div>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">核心指标</h2>
@@ -239,14 +266,16 @@ export default function HomePage() {
         <h2 className="text-lg font-semibold text-slate-100 mb-4">社交媒体</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Object.entries(socialPlatforms).map(([key, { name }]) => (
-            <PlatformCard
-              key={key}
-              name={name}
-              platform={key}
-              followers={socialData[key]?.followers}
-              views={socialData[key]?.views}
-              changePeriod={comparePeriod ? 'vs 上期' : undefined}
-            />
+            <div key={key} className="space-y-1">
+              <PlatformCard
+                name={name}
+                platform={key}
+                followers={socialData[key]?.followers}
+                views={socialData[key]?.views}
+                changePeriod={comparePeriod ? 'vs 上期' : undefined}
+              />
+              <p className="px-1 text-xs text-slate-500">{formatFreshnessLabel(data?.freshness?.social[key])}</p>
+            </div>
           ))}
         </div>
       </div>
@@ -255,14 +284,16 @@ export default function HomePage() {
         <h2 className="text-lg font-semibold text-slate-100 mb-4">技术内容平台</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {Object.entries(contentPlatforms).map(([key, { name }]) => (
-            <PlatformCard
-              key={key}
-              name={name}
-              platform={key}
-              articles={articleData[key]?.article_count}
-              views={articleData[key]?.total_views}
-              changePeriod={comparePeriod ? 'vs 上期' : undefined}
-            />
+            <div key={key} className="space-y-1">
+              <PlatformCard
+                name={name}
+                platform={key}
+                articles={articleData[key]?.article_count}
+                views={articleData[key]?.total_views}
+                changePeriod={comparePeriod ? 'vs 上期' : undefined}
+              />
+              <p className="px-1 text-xs text-slate-500">{formatFreshnessLabel(data?.freshness?.articles[key])}</p>
+            </div>
           ))}
         </div>
       </div>

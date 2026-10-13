@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { PlatformIcon } from '@/components/PlatformIcon';
 import { downloadCSV } from '@/lib/csv-utils';
+import LastUpdated from '@/components/LastUpdated';
+import { formatFreshnessLabel, getLatestUpdatedAt, type DataSlice } from '@/lib/data-slices';
 
 interface SocialData {
   social: Array<{
@@ -18,6 +20,7 @@ interface SocialData {
     subscribers: number;
     video_views: number;
   }>;
+  freshness: Record<string, DataSlice<unknown>>;
 }
 
 interface PlatformCardData {
@@ -51,18 +54,16 @@ export default function SocialPage() {
         const params = new URLSearchParams({ start: dateRange.start, end: dateRange.end });
         const [socialRes, articlesRes] = await Promise.all([
           fetch(`/api/social?${params}`, { credentials: 'include' }),
-          fetch('/api/articles?start=2020-01-01&end=2099-12-31', { credentials: 'include' })
+          fetch('/api/content', { credentials: 'include' })
         ]);
         if (socialRes.ok) setData(await socialRes.json());
         if (articlesRes.ok) {
           const json = await articlesRes.json();
           const stats: Record<string, { count: number; views: number }> = {};
-          const allPlatforms = json.articles || {};
-          for (const [platform, articles] of Object.entries(allPlatforms)) {
-            const list = articles as any[];
-            stats[platform] = {
-              count: list.length,
-              views: list.reduce((sum: number, a: any) => sum + (a.views || 0), 0)
+          for (const summary of json.platforms || []) {
+            stats[summary.platform] = {
+              count: summary.article_count || 0,
+              views: summary.total_views || 0,
             };
           }
           setArticleStats(stats);
@@ -104,6 +105,7 @@ export default function SocialPage() {
 
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
   const displayDate = dateRange.start === dateRange.end ? dateRange.start : null;
+  const lastUpdated = getLatestUpdatedAt(Object.values(data?.freshness || {}));
 
   return (
     <div className="space-y-6">
@@ -118,6 +120,7 @@ export default function SocialPage() {
             <div>
               <h1 className="text-2xl font-bold text-slate-100">社交媒体</h1>
               <p className="text-slate-500 text-sm">{displayDate ? '单日数据快照' : '时段数据概览'}</p>
+              <p className="mt-1 text-xs text-slate-500"><LastUpdated value={lastUpdated} /></p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -184,6 +187,7 @@ export default function SocialPage() {
                     </div>
                   </div>
                 </div>
+                <p className="mt-3 text-xs text-slate-500">{formatFreshnessLabel(data?.freshness?.[key])}</p>
               </div>
             </div>
           );

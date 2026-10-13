@@ -11,6 +11,23 @@ export interface DataSlice<T> {
   data: T | null;
 }
 
+export function formatFreshnessLabel(slice: DataSlice<unknown> | null | undefined): string {
+  if (!slice?.data_date) return '暂无可用数据';
+  if (slice.requested_date && !slice.has_exact_data) {
+    return `最新可用数据：${slice.data_date}`;
+  }
+  return `数据日期：${slice.data_date}`;
+}
+
+export function getLatestUpdatedAt(
+  slices: Array<DataSlice<unknown> | null | undefined>,
+): string | null {
+  return slices.reduce<string | null>((latest, slice) => {
+    if (!slice?.updated_at) return latest;
+    return !latest || slice.updated_at > latest ? slice.updated_at : latest;
+  }, null);
+}
+
 function timestamp(value: string | Date | null | undefined): string | null {
   if (!value) return null;
   return value instanceof Date ? value.toISOString() : value;

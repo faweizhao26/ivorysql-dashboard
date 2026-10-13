@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PlatformIcon } from '@/components/PlatformIcon';
 import { useAuth } from '@/app/auth-provider';
+import LastUpdated from '@/components/LastUpdated';
 
 interface ArticleDetail {
   id?: number;
@@ -127,7 +128,7 @@ export default function ContentPage() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">技术内容平台</h1>
-          {updatedAt && <p className="mt-1 text-xs text-slate-500">数据更新于 {new Date(updatedAt).toLocaleString('zh-CN')}</p>}
+          <p className="mt-1 text-xs text-slate-500"><LastUpdated value={updatedAt} /></p>
         </div>
         <a href="/api/content/export" className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-800 text-sm">导出全部 CSV</a>
       </header>

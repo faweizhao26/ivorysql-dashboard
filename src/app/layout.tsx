@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 import LogoutButton from "@/components/logout-button";
-import LastUpdated from "@/components/LastUpdated";
 import NavLinks, { MobileNavLinks } from "@/components/NavLinks";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -35,9 +34,6 @@ export default function RootLayout({
                 </div>
                 <div className="flex items-center gap-3">
                   <ThemeToggle />
-                  <span className="text-sm text-slate-400 dark:text-slate-500 hidden sm:block">
-                    <LastUpdated />
-                  </span>
                   <LogoutButton />
                 </div>
               </div>

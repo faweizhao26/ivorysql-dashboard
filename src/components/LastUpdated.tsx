@@ -1,15 +1,22 @@
-'use client';
+export function formatLastUpdated(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
 
-import { useState, useEffect } from 'react';
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+}
 
-export default function LastUpdated() {
-  const [date, setDate] = useState('');
+export default function LastUpdated({ value }: { value: string | null }) {
+  const formatted = formatLastUpdated(value);
+  if (!formatted) return null;
 
-  useEffect(() => {
-    setDate(new Date().toLocaleDateString('zh-CN'));
-  }, []);
-
-  if (!date) return null;
-
-  return <>最后更新: {date}</>;
+  return <>最后更新：{formatted}</>;
 }

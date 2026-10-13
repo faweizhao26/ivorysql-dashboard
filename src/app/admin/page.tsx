@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import SyncStatusPanel from '@/components/admin/SyncStatusPanel';
 
 type DataCategory = 'social' | 'article' | 'activity';
-type TabType = 'manual' | 'articles' | 'reminders' | 'events' | 'evangelist';
+type TabType = 'manual' | 'articles' | 'reminders' | 'sync' | 'events' | 'evangelist';
 
 interface DataEntry {
   id?: number;
@@ -159,7 +160,7 @@ export default function AdminPage() {
 
       <div className="bg-slate-800/50 rounded-xl border border-slate-700/50">
         <div className="border-b border-slate-700">
-          <nav className="flex -mb-px">
+          <nav className="flex -mb-px overflow-x-auto">
             <button
               onClick={() => setActiveTab('manual')}
               className={`px-6 py-3 text-sm font-medium border-b-2 ${
@@ -191,6 +192,16 @@ export default function AdminPage() {
               提醒设置
             </button>
             <button
+              onClick={() => setActiveTab('sync')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap ${
+                activeTab === 'sync'
+                  ? 'border-indigo-500 text-indigo-400'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'
+              }`}
+            >
+              同步状态
+            </button>
+            <button
               onClick={() => setActiveTab('events')}
               className={`px-6 py-3 text-sm font-medium border-b-2 ${
                 activeTab === 'events'
@@ -217,6 +228,7 @@ export default function AdminPage() {
           {activeTab === 'manual' && <ManualDataSection />}
           {activeTab === 'articles' && <ArticleSection onDataChange={fetchReminderStatus} />}
           {activeTab === 'reminders' && <ReminderSection onSettingsChange={fetchReminderStatus} />}
+          {activeTab === 'sync' && <SyncStatusPanel />}
           {activeTab === 'events' && <EventsSection />}
           {activeTab === 'evangelist' && <EvangelistSection />}
         </div>
