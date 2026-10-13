@@ -1362,11 +1362,11 @@ export async function getPagedActivityEvents(options: ActivityEventListOptions):
   };
 }
 
-export async function saveActivityEvent(event: ActivityEvent): Promise<void> {
-  await query(`
+export async function saveActivityEvent(event: ActivityEvent): Promise<number> {
+  const result = await query(`
     INSERT INTO activity_events 
     (event_name, event_date, event_type, location, venue, participants, registrations, online_viewers, collected_data, description, url)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id
   `, [
     event.event_name,
     event.event_date,
@@ -1380,6 +1380,7 @@ export async function saveActivityEvent(event: ActivityEvent): Promise<void> {
     event.description || null,
     event.url || null
   ]);
+  return Number(result.rows[0].id);
 }
 
 export async function updateActivityEvent(id: number, event: Partial<ActivityEvent>): Promise<void> {

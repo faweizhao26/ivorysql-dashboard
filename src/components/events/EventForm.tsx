@@ -1,20 +1,22 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Save, X } from 'lucide-react';
 import type { ActivityEventParsed } from '@/lib/db';
 import { EVENT_TYPES } from '@/lib/events-ui';
 export const newEvent = (): ActivityEventParsed => ({ event_name: '', event_date: new Date().toISOString().slice(0, 10), event_type: 'conference', participants: 0, registrations: 0, online_viewers: 0, collected_data: {} });
-export function EventForm({ initial, onSaved, onCancel }: { initial: ActivityEventParsed; onSaved: () => void; onCancel: () => void }) {
+export function EventForm({ initial, onSaved, onCancel, onDirtyChange }: { initial: ActivityEventParsed; onSaved: (id?: number) => void; onCancel: () => void; onDirtyChange?: (dirty: boolean) => void }) {
   const [draft, setDraft] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => { onDirtyChange?.(JSON.stringify(draft) !== JSON.stringify(initial)); return () => onDirtyChange?.(false); }, [draft, initial, onDirtyChange]);
   const style = 'w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-200';
   async function save(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setError('');
     try {
       const res = await fetch('/api/events', { method: draft.id ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft) });
       if (!res.ok) throw new Error('保存活动失败，请重试');
-      onSaved();
+      const result = await res.json();
+      onSaved(draft.id || result.eventId);
     } catch (err) { setError(err instanceof Error ? err.message : '保存失败'); } finally { setSaving(false); }
   }
   return <form onSubmit={save} className="space-y-4">

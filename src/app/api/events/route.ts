@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    await saveActivityEvent({
+    const eventId = await saveActivityEvent({
       event_name,
       event_date,
       event_type,
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       url
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, eventId });
   } catch (error) {
     console.error('Error saving activity event:', error);
     return NextResponse.json({ error: 'Failed to save data' }, { status: 500 });
