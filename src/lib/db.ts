@@ -1252,6 +1252,115 @@ export interface ActivityEventParsed extends Omit<ActivityEvent, 'collected_data
   collected_data: Record<string, unknown>;
 }
 
+export interface ActivityEventListOptions {
+  page: number;
+  pageSize: number;
+  year?: string;
+  type?: string;
+  search?: string;
+}
+
+export interface ActivityEventListItem extends ActivityEventParsed {
+  material_counts: Record<string, number>;
+  material_total: number;
+}
+
+export interface ActivityEventTotals {
+  events: number;
+  participants: number;
+  registrations: number;
+  online_viewers: number;
+}
+
+function parseCollectedData(value: unknown): Record<string, unknown> {
+  if (value && typeof value === 'object') return value as Record<string, unknown>;
+  try {
+    return JSON.parse(typeof value === 'string' ? value : '{}');
+  } catch {
+    return {};
+  }
+}
+
+function buildActivityEventFilters(options: ActivityEventListOptions) {
+  const clauses: string[] = [];
+  const values: unknown[] = [];
+  if (options.year) {
+    values.push(options.year);
+    clauses.push(`LEFT(e.event_date, 4) = $${values.length}`);
+  }
+  if (options.type) {
+    values.push(options.type);
+    clauses.push(`e.event_type = $${values.length}`);
+  }
+  if (options.search) {
+    values.push(`%${options.search}%`);
+    clauses.push(`(e.event_name ILIKE $${values.length} OR e.location ILIKE $${values.length} OR e.venue ILIKE $${values.length} OR e.description ILIKE $${values.length})`);
+  }
+  return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', values };
+}
+
+export async function getPagedActivityEvents(options: ActivityEventListOptions): Promise<{
+  items: ActivityEventListItem[];
+  total: number;
+  facets: { years: string[]; types: string[] };
+  totals: ActivityEventTotals;
+}> {
+  const { where, values } = buildActivityEventFilters(options);
+  const pageValues = [...values, options.pageSize, (options.page - 1) * options.pageSize];
+  const [itemsResult, totalsResult, yearsResult, typesResult] = await Promise.all([
+    query(`
+      SELECT e.*,
+        COALESCE(m.material_counts, '{}'::jsonb) AS material_counts,
+        COALESCE(m.material_total, 0)::integer AS material_total
+      FROM activity_events e
+      LEFT JOIN (
+        SELECT event_id,
+          jsonb_object_agg(material_type, type_count) AS material_counts,
+          SUM(type_count)::integer AS material_total
+        FROM (
+          SELECT event_id, material_type, COUNT(*)::integer AS type_count
+          FROM activity_materials
+          GROUP BY event_id, material_type
+        ) grouped_materials
+        GROUP BY event_id
+      ) m ON m.event_id = e.id
+      ${where}
+      ORDER BY e.event_date DESC, e.id DESC
+      LIMIT $${values.length + 1} OFFSET $${values.length + 2}
+    `, pageValues),
+    query(`
+      SELECT COUNT(*)::integer AS events,
+        COALESCE(SUM(e.participants), 0)::integer AS participants,
+        COALESCE(SUM(e.registrations), 0)::integer AS registrations,
+        COALESCE(SUM(e.online_viewers), 0)::integer AS online_viewers
+      FROM activity_events e ${where}
+    `, values),
+    query(`SELECT DISTINCT LEFT(event_date, 4) AS value FROM activity_events WHERE event_date <> '' ORDER BY value DESC`),
+    query(`SELECT DISTINCT event_type AS value FROM activity_events WHERE event_type <> '' ORDER BY value ASC`),
+  ]);
+
+  const totals = totalsResult.rows[0] || { events: 0, participants: 0, registrations: 0, online_viewers: 0 };
+  return {
+    items: itemsResult.rows.map(row => ({
+      ...row,
+      collected_data: parseCollectedData(row.collected_data),
+      material_counts: row.material_counts || {},
+      material_total: Number(row.material_total || 0),
+    })),
+    total: Number(totals.events || 0),
+    facets: {
+      years: yearsResult.rows.map(row => String(row.value)),
+      types: typesResult.rows.map(row => String(row.value)),
+    },
+    totals: {
+      events: Number(totals.events || 0),
+      participants: Number(totals.participants || 0),
+      registrations: Number(totals.registrations || 0),
+      online_viewers: Number(totals.online_viewers || 0),
+    },
+  };
+}
+
 export async function saveActivityEvent(event: ActivityEvent): Promise<void> {
   await query(`
     INSERT INTO activity_events 
@@ -1337,8 +1446,17 @@ export async function getActivityEventById(id: number): Promise<ActivityEventPar
   const row = result.rows[0];
   return {
     ...row,
-    collected_data: JSON.parse(row.collected_data || '{}')
+    collected_data: parseCollectedData(row.collected_data)
   };
+}
+
+export async function getActivityMaterialCounts(eventId: number): Promise<Record<string, number>> {
+  const result = await query(
+    `SELECT material_type, COUNT(*)::integer AS count
+     FROM activity_materials WHERE event_id = $1 GROUP BY material_type`,
+    [eventId],
+  );
+  return Object.fromEntries(result.rows.map(row => [row.material_type, Number(row.count)]));
 }
 
 export async function getDashboardUpdatedAt(): Promise<string | null> {

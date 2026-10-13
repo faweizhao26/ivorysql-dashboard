@@ -18,6 +18,14 @@ function isCronRequest(request: NextRequest, pathname: string): boolean {
   return authHeader === `Bearer ${cronSecret}` || secretHeader === cronSecret;
 }
 
+export function requiresAdminMutation(pathname: string, method: string): boolean {
+  if (method === 'GET' || method === 'HEAD') return false;
+  return pathname.startsWith('/api/articles')
+    || pathname.startsWith('/api/events')
+    || pathname.startsWith('/api/manual')
+    || pathname.startsWith('/api/reminders');
+}
+
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
@@ -58,7 +66,7 @@ export async function proxy(request: NextRequest) {
     if (pathname.startsWith('/admin')) {
       return NextResponse.redirect(new URL('/auth?error=admin_required', request.url));
     }
-    if (/^\/api\/(articles|events|manual|reminders)/.test(pathname) && request.method !== 'GET') {
+    if (requiresAdminMutation(pathname, request.method)) {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
     if (/^\/api\/(github|itpub|csdn|cnblogs|juejin|modb|sf|browser-content)\/sync/.test(pathname)) {

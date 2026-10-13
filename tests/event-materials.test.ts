@@ -13,6 +13,13 @@ import {
 
 const materialTypes: ActivityMaterialType[] = ['photo', 'poster', 'ppt', 'video', 'article', 'other'];
 
+test('malformed JSON field types produce validation errors, not server errors', () => {
+  const base = { event_id: 1, material_type: 'photo', title: 'Photos', url: 'https://example.com/a' };
+  for (const field of ['title', 'url', 'thumbnail_url', 'access_note', 'source_url']) {
+    assert.throws(() => validateMaterialInput({ ...base, [field]: 123 } as never), RangeError);
+  }
+});
+
 test('accepts every supported material type and a cloud link with access notes', () => {
   for (const materialType of materialTypes) {
     const input = validateMaterialInput({

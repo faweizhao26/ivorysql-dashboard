@@ -29,6 +29,7 @@ export interface ActivityMaterialInput {
 }
 
 function optionalText(value: string | null | undefined): string | null {
+  if (value != null && typeof value !== 'string') throw new RangeError('Text fields must be strings');
   const normalized = value?.trim();
   return normalized || null;
 }
@@ -55,7 +56,7 @@ export function validateMaterialInput(input: ActivityMaterialInput): Required<Ac
   if (!ACTIVITY_MATERIAL_TYPES.includes(input.material_type)) {
     throw new RangeError('Unsupported material type');
   }
-  const title = input.title?.trim();
+  const title = optionalText(input.title);
   if (!title) throw new RangeError('title is required');
 
   const url = httpsUrl(input.url, 'url');
@@ -99,6 +100,12 @@ export async function listActivityMaterials(eventId: number): Promise<ActivityMa
     [eventId],
   );
   return result.rows.map(mapMaterial);
+}
+
+export async function getActivityMaterialById(id: number): Promise<ActivityMaterial | null> {
+  if (!Number.isInteger(id) || id <= 0) throw new RangeError('Invalid material id');
+  const result = await queryDb('SELECT * FROM activity_materials WHERE id = $1', [id]);
+  return result.rows[0] ? mapMaterial(result.rows[0]) : null;
 }
 
 export async function saveActivityMaterial(input: ActivityMaterialInput): Promise<ActivityMaterial> {

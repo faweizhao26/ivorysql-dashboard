@@ -1,42 +1,49 @@
 import { NextResponse } from 'next/server';
 import { 
-  getActivityEvents, 
-  getActivityEventsByDateRange,
-  getAllActivityEvents, 
+  getPagedActivityEvents,
   saveActivityEvent, 
   updateActivityEvent, 
   deleteActivityEvent
 } from '@/lib/db';
 
-export function getEventRangeParams(searchParams: URLSearchParams) {
-  const start = searchParams.get('start');
-  const end = searchParams.get('end');
+const EVENT_TYPES = new Set(['conference', 'meetup', 'webinar', 'workshop', 'hackathon', 'other']);
 
-  if (start && end) {
-    return { mode: 'range' as const, start, end };
+export function parseEventId(value: string): number {
+  const id = Number(value);
+  if (!/^\d+$/.test(value) || !Number.isSafeInteger(id) || id <= 0) throw new RangeError('Invalid event id');
+  return id;
+}
+
+export function parseEventListParams(searchParams: URLSearchParams) {
+  const page = Number(searchParams.get('page') || '1');
+  const pageSize = Number(searchParams.get('pageSize') || '100');
+  const year = searchParams.get('year')?.trim() || undefined;
+  const type = searchParams.get('type')?.trim() || undefined;
+  const search = searchParams.get('search')?.trim().slice(0, 100) || undefined;
+
+  if (!Number.isSafeInteger(page) || page < 1 || page > 1000000) throw new RangeError('Invalid page');
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
+    throw new RangeError('Invalid pageSize; expected 1 to 100');
   }
-
-  const daysParam = searchParams.get('days');
-  if (!daysParam) {
-    return { mode: 'all' as const };
-  }
-
-  const days = parseInt(daysParam, 10);
-  return { mode: 'days' as const, days };
+  if (year && !/^\d{4}$/.test(year)) throw new RangeError('Invalid year');
+  if (type && !EVENT_TYPES.has(type)) throw new RangeError('Invalid event type');
+  return { page, pageSize, year, type, search };
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const range = getEventRangeParams(searchParams);
-
   try {
-    const events = range.mode === 'range'
-      ? await getActivityEventsByDateRange(range.start, range.end)
-      : range.mode === 'days' && range.days > 0
-        ? await getActivityEvents(range.days)
-        : await getAllActivityEvents();
-    return NextResponse.json({ events });
+    const params = parseEventListParams(new URL(request.url).searchParams);
+    const result = await getPagedActivityEvents(params);
+    return NextResponse.json({
+      ...result,
+      page: params.page,
+      pageSize: params.pageSize,
+      events: result.items,
+    });
   } catch (error) {
+    if (error instanceof RangeError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Error fetching activity events:', error);
     return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
   }
@@ -111,9 +118,12 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Missing event id' }, { status: 400 });
     }
 
-    await deleteActivityEvent(parseInt(id));
+    await deleteActivityEvent(parseEventId(id));
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof RangeError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error('Error deleting activity event:', error);
     return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
   }
