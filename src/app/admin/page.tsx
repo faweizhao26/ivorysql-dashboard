@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import SyncStatusPanel from '@/components/admin/SyncStatusPanel';
 import EventManager from '@/components/admin/EventManager';
+import EvangelistAvatar from '@/components/EvangelistAvatar';
+import EvangelistAvatarPicker from '@/components/admin/EvangelistAvatarPicker';
+import { getAvailableEvangelistAvatar, getEvangelistAvatar } from '@/lib/evangelist-avatar';
 
 type DataCategory = 'social' | 'article' | 'activity';
 type TabType = 'manual' | 'articles' | 'reminders' | 'sync' | 'events' | 'evangelist';
@@ -1138,6 +1141,12 @@ function EvangelistSection() {
   const [loadingContributions, setLoadingContributions] = useState(false);
   const [drawerTab, setDrawerTab] = useState<'form' | 'history'>('form');
   const contributionRequestRef = useRef(0);
+  const personFormRef = useRef<HTMLDivElement>(null);
+
+  function openPerson(person?: { id: number; name: string; avatar_url?: string | null }) {
+    setEditingPerson(person ? { ...person, avatar_url: getEvangelistAvatar(person.id, person.avatar_url).url } : { name: '', title: '', bio: '', avatar_url: getAvailableEvangelistAvatar(participants) });
+    requestAnimationFrame(() => personFormRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  }
 
   useEffect(() => { fetchParticipants(); }, []);
 
@@ -1268,23 +1277,28 @@ function EvangelistSection() {
   return (
     <div className="space-y-6">
       {/* Person Form */}
-      <div className="bg-slate-900/50 rounded-xl p-4 border border-slate-700">
+      <div ref={personFormRef} className="scroll-mt-36 bg-slate-900/50 rounded-xl p-4 border border-slate-700">
         <div className="flex justify-between mb-2">
           <h2 className="font-semibold text-slate-100">{editingPerson ? (editingPerson.id ? '编辑成员' : '新建成员') : '成员管理'}</h2>
           <div className="flex gap-2">
             {editingPerson && <button onClick={() => setEditingPerson(null)} className="text-sm text-slate-400 hover:bg-slate-700 px-3 py-1 rounded-lg">取消</button>}
-            {!editingPerson && <button type="button" onClick={() => setEditingPerson({name:'',title:'',bio:''})} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-500">+ 新增成员</button>}
+            {!editingPerson && <button type="button" onClick={() => openPerson()} className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm hover:bg-amber-500">+ 新增成员</button>}
           </div>
         </div>
         {!editingPerson ? (
           <p className="text-sm text-slate-500">点击「+ 新增成员」按钮开始添加</p>
         ) : (
         <form onSubmit={savePerson} className="space-y-2">
+          <div className="flex items-center gap-3 pb-2">
+            <EvangelistAvatar participantId={editingPerson.id || 0} name={editingPerson.name || '新成员'} avatarUrl={editingPerson.avatar_url} size="large" />
+            <span className="text-sm text-slate-300">{editingPerson.name || '新成员'}</span>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input required placeholder="姓名" value={editingPerson?.name || ''} onChange={e => setEditingPerson({...editingPerson, name: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
             <input placeholder="头衔" value={editingPerson?.title || ''} onChange={e => setEditingPerson({...editingPerson, title: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
           </div>
           <input placeholder="简介" value={editingPerson?.bio || ''} onChange={e => setEditingPerson({...editingPerson, bio: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
+          <EvangelistAvatarPicker value={editingPerson.avatar_url} onChange={avatar_url => setEditingPerson({ ...editingPerson, avatar_url })} members={participants} participantId={editingPerson.id} />
           <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500">{editingPerson?.id ? '更新' : '添加'}</button>
         </form>
         )}
@@ -1304,13 +1318,13 @@ function EvangelistSection() {
               <tr key={p.id} className={`border-b border-slate-700/50 ${selectedId === p.id ? 'bg-indigo-500/10' : 'hover:bg-slate-700/30'}`}>
                 <td className="py-2 px-2">
                   <button onClick={() => { if (selectedId === p.id) { clearContributionSelection(); } else void fetchContributions(p.id); }} className="text-slate-200 hover:text-indigo-400 text-left">
-                    {p.name}
+                    <span className="inline-flex items-center gap-2"><EvangelistAvatar participantId={p.id} name={p.name} avatarUrl={p.avatar_url} size="small" />{p.name}</span>
                     {selectedId === p.id && <span className="ml-2 text-xs text-indigo-400">▼</span>}
                   </button>
                 </td>
                 <td className="py-2 px-2 text-right font-bold text-slate-200">{p.total_points || 0}</td>
                 <td className="py-2 px-2 text-right text-xs whitespace-nowrap space-x-0.5">
-                  <button onClick={() => setEditingPerson(p)} className="text-indigo-400 hover:text-indigo-300 px-1.5 py-0.5 rounded hover:bg-indigo-500/10">编辑</button>
+                  <button onClick={() => openPerson(p)} className="text-indigo-400 hover:text-indigo-300 px-1.5 py-0.5 rounded hover:bg-indigo-500/10">编辑</button>
                   <button onClick={() => deletePerson(p.id)} className="text-red-400 hover:text-red-300 px-1.5 py-0.5 rounded hover:bg-red-500/10">删除</button>
                   <button onClick={() => openNewContribution(p.id)} className="text-amber-400 hover:text-amber-300 px-1.5 py-0.5 rounded hover:bg-amber-500/10">+贡献</button>
                 </td>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import { getAvailableEvangelistAvatar, normalizeEvangelistAvatarUrl } from '@/lib/evangelist-avatar';
 
 export async function GET(request: Request) {
   const pool = getDb();
@@ -37,9 +38,14 @@ export async function POST(request: Request) {
 
     // Handle participant creation
     if (body.name && !body.participant_id && !body.category) {
+      let avatarUrl = normalizeEvangelistAvatarUrl(body.avatar_url);
+      if (!avatarUrl) {
+        const members = await pool.query('SELECT id, avatar_url FROM evangelist_participants ORDER BY id');
+        avatarUrl = getAvailableEvangelistAvatar(members.rows);
+      }
       const r = await pool.query(
         `INSERT INTO evangelist_participants (name, avatar_url, title, bio, joined_date) VALUES ($1,$2,$3,$4,$5) RETURNING id`,
-        [body.name, body.avatar_url || null, body.title || null, body.bio || null, body.joined_date || null]
+        [body.name, avatarUrl, body.title || null, body.bio || null, body.joined_date || null]
       );
       return NextResponse.json({ id: r.rows[0].id, success: true });
     }
@@ -55,7 +61,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: error instanceof RangeError ? 400 : 500 });
   }
 }
 
@@ -66,9 +72,10 @@ export async function PUT(request: Request) {
 
     // Update participant
     if (body.id && body.name) {
+      const avatarUrl = normalizeEvangelistAvatarUrl(body.avatar_url);
       await pool.query(
-        `UPDATE evangelist_participants SET name=$2, avatar_url=$3, title=$4, bio=$5, joined_date=$6 WHERE id=$1`,
-        [body.id, body.name, body.avatar_url || null, body.title || null, body.bio || null, body.joined_date || null]
+        `UPDATE evangelist_participants SET name=$2, avatar_url=CASE WHEN $7 THEN $3 ELSE avatar_url END, title=$4, bio=$5, joined_date=$6 WHERE id=$1`,
+        [body.id, body.name, avatarUrl, body.title || null, body.bio || null, body.joined_date || null, Object.hasOwn(body, 'avatar_url')]
       );
       return NextResponse.json({ success: true });
     }
@@ -84,7 +91,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: error instanceof RangeError ? 400 : 500 });
   }
 }
 

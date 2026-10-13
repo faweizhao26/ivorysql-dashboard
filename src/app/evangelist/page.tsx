@@ -122,7 +122,7 @@ export default function EvangelistPage() {
               <span className={`text-xs px-2 py-0.5 rounded-full ${levelBadge(p.total_points).color}`}>{levelBadge(p.total_points).label}</span>
             </div>
             <div className="mx-auto mb-3">
-              <EvangelistAvatar participantId={p.id} name={p.name} size="large" />
+              <EvangelistAvatar participantId={p.id} name={p.name} avatarUrl={p.avatar_url} size="large" />
             </div>
             <div className="font-bold text-lg text-slate-200 mb-1">{p.name}</div>
             {p.title && <div className="text-slate-400 text-sm mb-2">{p.title}</div>}
@@ -159,7 +159,7 @@ export default function EvangelistPage() {
                     <td className="py-3 px-4 text-slate-500 font-mono">{i + 1}</td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        <EvangelistAvatar participantId={p.id} name={p.name} size="small" />
+                        <EvangelistAvatar participantId={p.id} name={p.name} avatarUrl={p.avatar_url} size="small" />
                         <span className="font-medium text-slate-200">
                           {p.name}
                         </span>

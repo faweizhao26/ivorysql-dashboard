@@ -1,60 +1,32 @@
-const maleShortHeadVariants = [
-  'flatTop',
-  'grayShort',
-  'mohawk',
-  'noHair1',
-  'noHair2',
-  'noHair3',
-  'pomp',
-  'shaved1',
-  'shaved2',
-  'short1',
-  'short2',
-  'short3',
-  'short4',
-  'short5',
-] as const;
+export const EVANGELIST_AVATAR_ATLAS = '/avatars/ivorysql-line-men.png';
 
-const expressionVariants = [
-  'blank',
-  'calm',
-  'concerned',
-  'contempt',
-  'driven',
-  'explaining',
-  'serious',
-  'smile',
-  'smileBig',
-  'solemn',
-  'suspicious',
-] as const;
+export const EVANGELIST_AVATARS = Array.from({ length: 36 }, (_, index) => ({
+  index,
+  label: `头像 ${String(index + 1).padStart(2, '0')}`,
+  url: `${EVANGELIST_AVATAR_ATLAS}#${String(index + 1).padStart(2, '0')}`,
+  position: `${(index % 6) * 20}% ${Math.floor(index / 6) * 20}%`,
+}));
 
-const facialHairVariants = [
-  'chin',
-  'full2',
-  'goatee1',
-  'goatee2',
-  'moustache2',
-  'moustache6',
-] as const;
+export interface EvangelistAvatarMember {
+  id: number;
+  avatar_url?: string | null;
+}
 
-export function getEvangelistAvatarOptions(participantId: number, name: string) {
-  const normalizedId = Math.abs(participantId);
-  const hasNoBeard = name.trim() === '傅超' || name.trim() === '付超';
+export function getEvangelistAvatar(participantId: number, avatarUrl?: string | null) {
+  const selected = EVANGELIST_AVATARS.find(avatar => avatar.url === avatarUrl);
+  const index = Number.isSafeInteger(participantId) && participantId > 0 ? (participantId - 1) % EVANGELIST_AVATARS.length : 0;
+  return selected || EVANGELIST_AVATARS[index];
+}
 
-  return {
-    seed: `ivorysql-evangelist-${participantId}`,
-    headVariant: maleShortHeadVariants[normalizedId % maleShortHeadVariants.length],
-    expressionVariant: expressionVariants[normalizedId % expressionVariants.length],
-    facialHairVariant: facialHairVariants[normalizedId % facialHairVariants.length],
-    facialHairProbability: hasNoBeard ? 0 : normalizedId % 5 === 0 ? 100 : 0,
-    accessoriesProbability: 0,
-    maskProbability: 0,
-    skinColor: 'ffffff',
-    clothingColor: 'ffffff',
-    headContrastColor: '000000',
-    inkColor: '000000',
-    backgroundColor: 'ffffff',
-    backgroundColorFill: 'solid' as const,
-  };
+export function getAvailableEvangelistAvatar(members: EvangelistAvatarMember[]): string {
+  const used = new Set(members.map(member => getEvangelistAvatar(member.id, member.avatar_url).url));
+  return (EVANGELIST_AVATARS.find(avatar => !used.has(avatar.url)) || EVANGELIST_AVATARS[0]).url;
+}
+
+export function normalizeEvangelistAvatarUrl(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  if (typeof value !== 'string' || !EVANGELIST_AVATARS.some(avatar => avatar.url === value)) {
+    throw new RangeError('请选择头像库中的头像');
+  }
+  return value;
 }

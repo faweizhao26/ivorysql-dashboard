@@ -1,0 +1,9 @@
+# IvorySQL Line Avatars
+
+`ivorysql-line-men.png` is a 1254 x 1254 sprite atlas generated with the built-in image generation tool for this project on 2026-10-13. It contains a 6 x 6 grid of 36 original avatar illustrations. The file is used unchanged; each 209 x 209 cell is selected with CSS background positioning.
+
+All portraits were visually reviewed for male appearance, a full normal head of medium-short hair, natural expressions and no facial hair. No photographs or real-person likenesses are used. Variation comes from hairstyles, glasses and clothing.
+
+Generation prompt: create exactly 36 distinct male head-and-shoulder avatars in an exact 6-column by 6-row square grid without gutters, margins, headings, numbers or watermarks. Use a pure white background, clean minimalist black-and-white comic line art, confident black outlines, solid black hair, white faces, simple eyes and friendly natural mouths. Center each portrait at equal scale with safe cell padding. All subjects are clean-shaven adult men with normal medium-short hair and volume, never bald, buzz-cut, shaved, very short-haired or long-haired. Exclude beards, moustaches, stubble, shaved sides, fades, mohawks, ponytails, buns, hair below ears, hats, caps, earrings, makeup, tongues, winks and exaggerated expressions. Vary side parts, fringes, waves, curls, face shapes, eyebrows, round or rectangular glasses, hoodies, sweaters, shirts, jackets and polos. Keep illustration style and cell placement consistent.
+
+Selected avatar URLs are stored in the existing `evangelist_participants.avatar_url` field as `/avatars/ivorysql-line-men.png#01` through `#36`. A missing or legacy value displays a stable default based on member id; a new member prefers an unused avatar. Reusing a tile is allowed after the library is exhausted or when explicitly chosen.

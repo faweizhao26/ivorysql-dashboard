@@ -55,50 +55,36 @@ test('content creation includes self-published IvorySQL articles', async () => {
   );
 });
 
-test('generates stable monochrome short-haired Open Peeps options per evangelist', async () => {
-  const {
-    getEvangelistAvatarOptions,
-  } = await import('../src/lib/evangelist-avatar');
+test('provides distinct stable defaults and honors manually selected avatars', async () => {
+  const avatars = await import('../src/lib/evangelist-avatar');
+  assert.equal(typeof avatars.getEvangelistAvatar, 'function');
+  assert.equal(avatars.EVANGELIST_AVATARS.length, 36);
+  const defaults = Array.from({ length: 36 }, (_, index) => avatars.getEvangelistAvatar(index + 1).url);
+  assert.equal(new Set(defaults).size, 36);
+  assert.equal(avatars.getEvangelistAvatar(7).url, avatars.getEvangelistAvatar(7).url);
+  assert.equal(avatars.getEvangelistAvatar(7, avatars.EVANGELIST_AVATARS[20].url).index, 20);
+  assert.equal(avatars.getEvangelistAvatar(1).position, '0% 0%');
+  assert.equal(avatars.getEvangelistAvatar(36).position, '100% 100%');
+});
 
-  const first = getEvangelistAvatarOptions(7, '测试用户');
-  assert.deepEqual(first, getEvangelistAvatarOptions(7, '测试用户'));
-  assert.notDeepEqual(first, getEvangelistAvatarOptions(8, '测试用户'));
-  assert.equal(first.seed, 'ivorysql-evangelist-7');
+test('new members prefer an avatar unused by legacy or manually configured members', async () => {
+  const avatars = await import('../src/lib/evangelist-avatar');
+  assert.equal(typeof avatars.getAvailableEvangelistAvatar, 'function');
+  const people = [{ id: 1, avatar_url: null }, { id: 3, avatar_url: null }, { id: 2, avatar_url: avatars.EVANGELIST_AVATARS[8].url }];
+  assert.equal(avatars.getAvailableEvangelistAvatar(people), avatars.EVANGELIST_AVATARS[1].url);
+  const full = avatars.EVANGELIST_AVATARS.map((avatar, index) => ({ id: index + 1, avatar_url: avatar.url }));
+  assert.ok(avatars.getAvailableEvangelistAvatar(full));
+});
 
-  const allowedShortHeads = new Set([
-    'flatTop',
-    'grayShort',
-    'mohawk',
-    'noHair1',
-    'noHair2',
-    'noHair3',
-    'pomp',
-    'shaved1',
-    'shaved2',
-    'short1',
-    'short2',
-    'short3',
-    'short4',
-    'short5',
-  ]);
-  const variants = Array.from({ length: 24 }, (_, id) =>
-    getEvangelistAvatarOptions(id, `测试用户${id}`),
-  );
-
-  assert.ok(new Set(variants.map(({ headVariant }) => headVariant)).size >= 12);
-  for (const options of variants) {
-    assert.ok(allowedShortHeads.has(options.headVariant));
-    assert.equal(options.skinColor, 'ffffff');
-    assert.equal(options.clothingColor, 'ffffff');
-    assert.equal(options.headContrastColor, '000000');
-    assert.equal(options.inkColor, '000000');
-    assert.equal(options.backgroundColor, 'ffffff');
-    assert.equal(options.accessoriesProbability, 0);
-    assert.equal(options.maskProbability, 0);
+test('avatar input accepts only the reviewed library, with legacy fallback on display', async () => {
+  const avatars = await import('../src/lib/evangelist-avatar');
+  assert.equal(typeof avatars.normalizeEvangelistAvatarUrl, 'function');
+  assert.equal(avatars.normalizeEvangelistAvatarUrl(null), null);
+  assert.equal(avatars.normalizeEvangelistAvatarUrl(avatars.EVANGELIST_AVATARS[1].url), avatars.EVANGELIST_AVATARS[1].url);
+  for (const value of ['javascript:alert(1)', 'https://example.com/female.png', '/avatars/ivorysql-line-men.png#99', {}, 1]) {
+    assert.throws(() => avatars.normalizeEvangelistAvatarUrl(value), RangeError);
   }
-
-  assert.equal(getEvangelistAvatarOptions(7, '傅超').facialHairProbability, 0);
-  assert.equal(getEvangelistAvatarOptions(7, '付超').facialHairProbability, 0);
+  assert.equal(avatars.getEvangelistAvatar(8, 'https://example.com/old.png').url, avatars.getEvangelistAvatar(8).url);
 });
 
 test('contribution editor is rendered as a fixed accessible drawer', () => {

@@ -22,6 +22,7 @@ export function requiresAdminMutation(pathname: string, method: string): boolean
   if (method === 'GET' || method === 'HEAD') return false;
   return pathname.startsWith('/api/articles')
     || pathname.startsWith('/api/events')
+    || pathname.startsWith('/api/evangelist')
     || pathname.startsWith('/api/manual')
     || pathname.startsWith('/api/reminders');
 }
