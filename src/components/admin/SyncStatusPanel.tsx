@@ -12,6 +12,7 @@ const retryRoutes: Record<string, string> = {
   cnblogs: '/api/cnblogs/sync',
   modb: '/api/modb/sync',
   sf: '/api/sf/sync',
+  events: '/api/events/sync',
 };
 
 const platformNames: Record<string, string> = {
@@ -25,6 +26,7 @@ const platformNames: Record<string, string> = {
   ctoutiao: '51CTO',
   toutiao: '头条号',
   zhihu: '知乎',
+  events: '官网活动',
 };
 
 export function canRetrySync(accessLevel: AccessLevel | null, platform: string): boolean {

@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/events/sync",
+      "schedule": "0 8 * * *"
+    },
+    {
       "path": "/api/github/sync",
       "schedule": "0 0 * * *"
     },

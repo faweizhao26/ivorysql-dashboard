@@ -8,7 +8,7 @@ function isCronRequest(request: NextRequest, pathname: string): boolean {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) return false;
   const isScheduledGet = request.method === 'GET'
-    && /^\/api\/(github|itpub|csdn|cnblogs|modb|sf)\/sync/.test(pathname);
+    && /^\/api\/(github|itpub|csdn|cnblogs|modb|sf|events)\/sync$/.test(pathname);
   const isBrowserImport = request.method === 'POST'
     && pathname === '/api/browser-content/sync';
   if (!isScheduledGet && !isBrowserImport) return false;
@@ -69,7 +69,7 @@ export async function proxy(request: NextRequest) {
     if (requiresAdminMutation(pathname, request.method)) {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
-    if (/^\/api\/(github|itpub|csdn|cnblogs|juejin|modb|sf|browser-content)\/sync/.test(pathname)) {
+    if (/^\/api\/(github|itpub|csdn|cnblogs|juejin|modb|sf|browser-content|events)\/sync/.test(pathname)) {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
     return NextResponse.next();

@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, type PoolClient } from 'pg';
 import type { MainRepoContributor, MainRepoMonthlyActivity } from './contributor-activity';
 
 let pool: Pool | null = null;
@@ -237,6 +237,10 @@ async function initializeDb() {
         created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
+      ALTER TABLE activity_events ADD COLUMN IF NOT EXISTS source_url TEXT;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_activity_events_source_url
+        ON activity_events(source_url) WHERE source_url IS NOT NULL;
+      ALTER TABLE activity_materials ENABLE ROW LEVEL SECURITY;
 
       CREATE TABLE IF NOT EXISTS sync_runs (
         id SERIAL PRIMARY KEY,
@@ -320,6 +324,20 @@ export function getDb() {
 
 export async function queryDb(text: string, values?: unknown[]) {
   return query(text, values);
+}
+
+export async function withDbTransaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> {
+  await initDb();
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+    const value = await operation(client);
+    await client.query('COMMIT');
+    return value;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally { client.release(); }
 }
 
 export function getToday(): string {
@@ -1247,6 +1265,7 @@ export interface ActivityEvent {
   collected_data: string | Record<string, unknown>;
   description?: string;
   url?: string;
+  source_url?: string;
 }
 
 export interface ActivityEventParsed extends Omit<ActivityEvent, 'collected_data'> {
