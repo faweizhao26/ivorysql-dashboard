@@ -3,7 +3,7 @@ import { fetchSyncHtml } from '@/lib/content-sync';
 
 const PLATFORM = 'modb';
 
-interface ModbUserStats {
+export interface ModbUserStats {
   followers: number;
   posts: number;
   views: number;
@@ -14,29 +14,39 @@ interface ModbUserStats {
   video_views: number;
 }
 
-function extractUserStats(html: string): ModbUserStats | null {
-  const nuxtMatch = html.match(/window\.__NUXT__=\(([\s\S]+?)\);<\/script>/);
-  if (!nuxtMatch || !nuxtMatch[1]) return null;
+export function parseModbAuthorState(html: string): ModbUserStats | null {
+  const totalMatch = html.match(/userTotal:\{([^}]+)\}/);
+  if (!totalMatch) return null;
+  const totalBody = totalMatch[1];
 
-  try {
-    const nuxtData = JSON.parse(nuxtMatch[1]);
-    const userTotal = nuxtData?.data?.[0]?.userTotal;
-    if (!userTotal) return null;
-
-    return {
-      followers: userTotal.follows || 0,
-      posts: userTotal.knowledges || 0,
-      views: userTotal.totalViews || 0,
-      likes: userTotal.likeds || 0,
-      shares: userTotal.stars || 0,
-      comments: userTotal.commentCount || 0,
-      subscribers: 0,
-      video_views: 0
-    };
-  } catch (e) {
-    console.error('Error parsing NUXT data:', e);
-    return null;
+  const invocation = html.match(/window\.__NUXT__=\(function\(([^)]*)\)\{[\s\S]*?\}\(([^)]*)\)\);/);
+  const aliases = new Map<string, number>();
+  if (invocation) {
+    const names = invocation[1].split(',').map(value => value.trim());
+    const values = invocation[2].split(',').map(value => value.trim());
+    names.forEach((name, index) => {
+      const parsed = Number(values[index]);
+      if (Number.isFinite(parsed)) aliases.set(name, parsed);
+    });
   }
+
+  function numberField(name: string): number {
+    const raw = totalBody.match(new RegExp(`(?:^|,)${name}:([^,}]+)`))?.[1]?.trim();
+    if (!raw) return 0;
+    const direct = Number(raw);
+    return Number.isFinite(direct) ? direct : aliases.get(raw) || 0;
+  }
+
+  return {
+    followers: numberField('follows'),
+    posts: numberField('knowledges') || numberField('contents'),
+    views: numberField('totalViews'),
+    likes: numberField('likeds'),
+    shares: numberField('stars'),
+    comments: numberField('commentCount'),
+    subscribers: 0,
+    video_views: 0,
+  };
 }
 
 export async function scrapeModb(userId: string = '471017'): Promise<{
@@ -50,7 +60,7 @@ export async function scrapeModb(userId: string = '471017'): Promise<{
 
   try {
     const html = await fetchSyncHtml(url);
-    const stats = extractUserStats(html);
+    const stats = parseModbAuthorState(html);
 
     if (!stats) {
       return { success: false, error: 'Could not extract user stats from page' };

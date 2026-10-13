@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   normalizeMetric,
   parseJuejinResponse,
@@ -8,6 +10,10 @@ import {
   prepareRecentArticles,
 } from '../src/lib/content-sync';
 import { persistSyncedArticles } from '../src/lib/article-sync';
+import { parseItpubArticles, solveItpubGuard } from '../src/lib/itpub-sync';
+import { parseModbAuthorState } from '../src/lib/modb-sync';
+
+const fixture = (name: string) => readFileSync(join(process.cwd(), 'tests', 'fixtures', name), 'utf8');
 
 test('normalizes localized article metrics', () => {
   assert.equal(normalizeMetric('1,234'), 1234);
@@ -92,6 +98,42 @@ test('parses article metrics embedded in Modb Nuxt state', () => {
     likes: 5,
     comments: 2,
   });
+});
+
+test('parses current ITPUB author cards and relative links', () => {
+  assert.deepEqual(parseItpubArticles(fixture('itpub-author-page.html')), [
+    {
+      title: 'IvorySQL 迁移实践',
+      link: 'https://blog.itpub.net/70043484/viewspace-3023456/',
+      views: 1234,
+      date: '2026-10-11',
+    },
+    {
+      title: 'IvorySQL 新版本',
+      link: 'https://blog.itpub.net/70043484/viewspace-3023457/',
+      views: 88,
+      date: '2026-10-10',
+    },
+  ]);
+});
+
+test('solves the ITPUB guard challenge deterministically', () => {
+  assert.equal(solveItpubGuard('d962f089Bfz367'), 'K7ou');
+  assert.throws(() => solveItpubGuard('short'), /Invalid ITPUB guard/);
+});
+
+test('parses current Modb IIFE author state without evaluating scripts', () => {
+  assert.deepEqual(parseModbAuthorState(fixture('modb-author-state.html')), {
+    followers: 34,
+    posts: 558,
+    views: 113080,
+    likes: 306,
+    shares: 124,
+    comments: 362,
+    subscribers: 0,
+    video_views: 0,
+  });
+  assert.equal(parseModbAuthorState('<html>missing state</html>'), null);
 });
 
 test('persists one batch, recalculates affected dates, and marks the platform updated', async () => {
