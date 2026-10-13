@@ -409,6 +409,19 @@ export interface ArticleDetails {
   published_date?: string;
 }
 
+export interface ArticlePlatformSummary {
+  platform: string;
+  article_count: number;
+  total_views: number;
+  data_date: string | null;
+  updated_at: string | null;
+}
+
+export interface PagedArticleDetails {
+  items: ArticleDetails[];
+  total: number;
+}
+
 export interface SyncedArticleDetails {
   date: string;
   platform: string;
@@ -999,6 +1012,60 @@ export async function getArticleDetailsById(id: number): Promise<ArticleDetails 
 export async function getAllArticleDetailsPlatforms(): Promise<string[]> {
   const result = await query('SELECT DISTINCT platform FROM article_details');
   return result.rows.map(r => r.platform);
+}
+
+export async function getArticlePlatformSummaries(): Promise<ArticlePlatformSummary[]> {
+  const result = await query(`
+    SELECT platform,
+           COUNT(*)::integer AS article_count,
+           COALESCE(SUM(views), 0)::bigint AS total_views,
+           MAX(COALESCE(published_date, date)) AS data_date,
+           MAX(updated_at) AS updated_at
+    FROM article_details
+    GROUP BY platform
+    ORDER BY platform
+  `);
+  return result.rows.map(row => ({
+    ...row,
+    total_views: Number(row.total_views || 0),
+    updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
+  }));
+}
+
+export async function getPagedArticleDetails(options: {
+  platform: string;
+  page: number;
+  pageSize: number;
+  search?: string;
+  category?: string;
+}): Promise<PagedArticleDetails> {
+  const conditions = ['platform = $1'];
+  const values: unknown[] = [options.platform];
+  if (options.search) {
+    values.push(`%${options.search}%`);
+    conditions.push(`article_title ILIKE $${values.length}`);
+  }
+  if (options.category) {
+    values.push(options.category);
+    conditions.push(`content_category = $${values.length}`);
+  }
+  const where = conditions.join(' AND ');
+  const countResult = await query(`SELECT COUNT(*)::integer AS total FROM article_details WHERE ${where}`, values);
+  values.push(options.pageSize, (options.page - 1) * options.pageSize);
+  const rows = await query(
+    `SELECT * FROM article_details WHERE ${where}
+     ORDER BY COALESCE(published_date, date) DESC, id DESC
+     LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    values,
+  );
+  return { items: rows.rows, total: Number(countResult.rows[0]?.total || 0) };
+}
+
+export async function getAllArticleDetailsForExport(platform?: string): Promise<ArticleDetails[]> {
+  const result = platform
+    ? await query(`SELECT * FROM article_details WHERE platform = $1 ORDER BY COALESCE(published_date, date) DESC, id DESC`, [platform])
+    : await query(`SELECT * FROM article_details ORDER BY platform, COALESCE(published_date, date) DESC, id DESC`);
+  return result.rows;
 }
 
 export async function saveReminderSettings(settings: ReminderSettings): Promise<void> {
