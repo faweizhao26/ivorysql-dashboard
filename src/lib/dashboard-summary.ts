@@ -1,5 +1,9 @@
 export type DashboardRow = Record<string, unknown>;
 
+export function selectDashboardContributor(row: DashboardRow | null, includeDetails: boolean): DashboardRow | null {
+  return includeDetails ? row : toDashboardContributorSummary(row);
+}
+
 export function toDashboardGitHubSummary(row: DashboardRow | null): DashboardRow | null {
   if (!row) return null;
   return {

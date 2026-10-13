@@ -147,7 +147,8 @@ export default function GitHubPage() {
       try {
         const params = new URLSearchParams({
           start: dateRange.start,
-          end: dateRange.end
+          end: dateRange.end,
+          include: 'contributors',
         });
         const res = await fetch(`/api/dashboard?${params}`, {
           credentials: 'include'

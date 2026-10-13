@@ -21,6 +21,7 @@ import { getDataRangeParams } from '@/lib/date-query';
 import {
   toDashboardArticleSummary,
   toDashboardContributorSummary,
+  selectDashboardContributor,
   toDashboardGitHubSummary,
   toDashboardSocialSummary,
   type DashboardRow,
@@ -43,6 +44,7 @@ export async function GET(request: Request) {
       new Date().toISOString().split('T')[0],
     );
     const includeDownloads = searchParams.get('include')?.split(',').includes('downloads') || false;
+    const includeContributors = searchParams.get('include')?.split(',').includes('contributors') || false;
     let githubData: any;
     let contributorData: any;
     let socialData: any[];
@@ -172,7 +174,7 @@ export async function GET(request: Request) {
       },
       contributors: {
         ...contributorData,
-        latest: toDashboardContributorSummary(contributorData.latest),
+        latest: selectDashboardContributor(contributorData.latest, includeContributors),
         history: contributorData.history.map(toDashboardContributorSummary),
       },
       social: socialData.map(toDashboardSocialSummary),
