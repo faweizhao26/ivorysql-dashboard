@@ -223,6 +223,20 @@ async function initializeDb() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS activity_materials (
+        id SERIAL PRIMARY KEY,
+        event_id INTEGER NOT NULL REFERENCES activity_events(id) ON DELETE CASCADE,
+        material_type TEXT NOT NULL CHECK (material_type IN ('photo', 'poster', 'ppt', 'video', 'article', 'other')),
+        title TEXT NOT NULL,
+        url TEXT,
+        thumbnail_url TEXT,
+        access_note TEXT,
+        source_url TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS sync_runs (
         id SERIAL PRIMARY KEY,
         platform TEXT NOT NULL,
@@ -253,6 +267,10 @@ async function initializeDb() {
       CREATE INDEX IF NOT EXISTS idx_article_details_date ON article_details(date);
       CREATE INDEX IF NOT EXISTS idx_article_details_platform ON article_details(platform);
       CREATE INDEX IF NOT EXISTS idx_activity_events_date ON activity_events(event_date);
+      CREATE INDEX IF NOT EXISTS idx_activity_materials_event_order ON activity_materials(event_id, sort_order, id);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_activity_materials_event_url_unique
+        ON activity_materials(event_id, url)
+        WHERE url IS NOT NULL AND url <> '';
       CREATE INDEX IF NOT EXISTS idx_sync_runs_platform_started ON sync_runs(platform, started_at DESC);
 
       CREATE TABLE IF NOT EXISTS download_stats (
