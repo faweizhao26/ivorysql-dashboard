@@ -40,12 +40,12 @@
 - Produces: `ActivityMaterialType`, `ActivityMaterial`, `ActivityMaterialInput`, `listActivityMaterials(eventId)`, `saveActivityMaterial(input)`, `updateActivityMaterial(id, input)`, and `deleteActivityMaterial(id)`.
 - Produces: `validateMaterialInput(input)` accepting `https:` URLs only and types `photo|poster|ppt|video|article|other`.
 
-- [ ] **Step 1: Write failing tests** for all material types, cloud-drive link plus extraction-code note, duplicate event URL, invalid schemes, and cascade behavior.
-- [ ] **Step 2: Run `npm test -- tests/event-materials.test.ts`** and verify missing schema/helpers fail.
-- [ ] **Step 3: Create `activity_materials`** in `initializeDb()` with a foreign key using `ON DELETE CASCADE`, timestamps, sort index, and a partial unique event/url index.
-- [ ] **Step 4: Implement types, validation, and CRUD helpers** with parameterized queries and stable `sort_order, id` ordering.
-- [ ] **Step 5: Run `npm test -- tests/event-materials.test.ts`** and verify all pass.
-- [ ] **Step 6: Commit** with `feat: add activity material records`.
+- [x] **Step 1: Write failing tests** for all material types, cloud-drive link plus extraction-code note, duplicate event URL, invalid schemes, and cascade behavior.
+- [x] **Step 2: Run `npm test -- tests/event-materials.test.ts`** and verify missing schema/helpers fail.
+- [x] **Step 3: Create `activity_materials`** in `initializeDb()` with a foreign key using `ON DELETE CASCADE`, timestamps, sort index, and a partial unique event/url index.
+- [x] **Step 4: Implement types, validation, and CRUD helpers** with parameterized queries and stable `sort_order, id` ordering.
+- [x] **Step 5: Run `npm test -- tests/event-materials.test.ts`** and verify all pass.
+- [x] **Step 6: Commit** with `feat: add activity material records`.
 
 ### Task 2: Paged Event And Detail APIs
 
@@ -62,13 +62,13 @@
 - Produces: `GET /api/events/[id]` with `{ event, materials, material_counts }`.
 - Produces: admin-only material `POST`, `PUT`, and `DELETE` endpoints.
 
-- [ ] **Step 1: Write failing route-helper tests** for filter combinations, page bounds, stable ordering, a missing event, invalid ids, invalid material input, and duplicate URLs.
-- [ ] **Step 2: Run `npm test -- tests/events.test.ts`** and verify current all-rows API fails the contract.
-- [ ] **Step 3: Add paged event/count/facet DB methods** and material-count aggregation without changing existing create/update/delete behavior.
-- [ ] **Step 4: Implement the list, detail, and material handlers** using awaited Next.js 16 route params and shared validation.
-- [ ] **Step 5: Extend `src/proxy.ts` mutation protection** to nested event material routes and test viewer denial.
-- [ ] **Step 6: Run `npm test -- tests/events.test.ts tests/auth.test.ts`** and verify all pass.
-- [ ] **Step 7: Commit** with `feat: add event archive APIs`.
+- [x] **Step 1: Write failing route-helper tests** for filter combinations, page bounds, stable ordering, a missing event, invalid ids, invalid material input, and duplicate URLs.
+- [x] **Step 2: Run `npm test -- tests/events.test.ts`** and verify current all-rows API fails the contract.
+- [x] **Step 3: Add paged event/count/facet DB methods** and material-count aggregation without changing existing create/update/delete behavior.
+- [x] **Step 4: Implement the list, detail, and material handlers** using awaited Next.js 16 route params and shared validation.
+- [x] **Step 5: Extend `src/proxy.ts` mutation protection** to nested event material routes and test viewer denial.
+- [x] **Step 6: Run `npm test -- tests/events.test.ts tests/auth.test.ts`** and verify all pass.
+- [x] **Step 7: Commit** with `feat: add event archive APIs`.
 
 ### Task 3: Searchable Activity List
 
@@ -82,13 +82,13 @@
 - Consumes: paged list contract from Task 2.
 - Produces: filters for year/type/search, fixed page size, pagination controls, and card links to `/events/[id]`.
 
-- [ ] **Step 1: Write failing source tests** for filter query parameters, pagination, material count labels, detail links, and hidden mutation controls for viewers.
-- [ ] **Step 2: Run `npm test -- tests/events-ui.test.ts`** and verify current render-all page fails.
-- [ ] **Step 3: Split focused list components** and fetch only the selected page, resetting to page 1 when a filter changes.
-- [ ] **Step 4: Keep aggregate statistics from the API totals** so pagination does not change total activity/attendance cards.
-- [ ] **Step 5: Use `useAuth()`** so edit/delete/new controls render only for `accessLevel === 'admin'`.
-- [ ] **Step 6: Run `npm test -- tests/events-ui.test.ts` and `npm run build`**.
-- [ ] **Step 7: Commit** with `feat: add searchable event archive`.
+- [x] **Step 1: Write failing source tests** for filter query parameters, pagination, material count labels, detail links, and hidden mutation controls for viewers.
+- [x] **Step 2: Run `npm test -- tests/events-ui.test.ts`** and verify current render-all page fails.
+- [x] **Step 3: Split focused list components** and fetch only the selected page, resetting to page 1 when a filter changes.
+- [x] **Step 4: Keep aggregate statistics from the API totals** so pagination does not change total activity/attendance cards.
+- [x] **Step 5: Use `useAuth()`** so edit/delete/new controls render only for `accessLevel === 'admin'`.
+- [x] **Step 6: Run `npm test -- tests/events-ui.test.ts` and `npm run build`**.
+- [x] **Step 7: Commit** with `feat: add searchable event archive`.
 
 ### Task 4: Activity Detail Page
 
@@ -104,12 +104,12 @@
 - Produces: grouped sections for poster, photo, PPT, video, article, and other materials.
 - Produces: cloud-drive links showing title, extraction code/note, source, and optional thumbnail.
 
-- [ ] **Step 1: Write failing rendering/source tests** for grouped materials, no-thumbnail links, extraction code text, empty materials, official source link, and missing-event handling.
-- [ ] **Step 2: Run `npm test -- tests/event-detail.test.ts`** and verify the route/components do not exist.
-- [ ] **Step 3: Implement the dynamic route** with `await params`, numeric id validation, `notFound()`, and a loading state consistent with Next.js 16 docs.
-- [ ] **Step 4: Implement material sections** so links open in a new tab and notes are visible without exposing an unusable download button.
-- [ ] **Step 5: Run `npm test -- tests/event-detail.test.ts` and `npm run build`**.
-- [ ] **Step 6: Commit** with `feat: add event material detail pages`.
+- [x] **Step 1: Write failing rendering/source tests** for grouped materials, no-thumbnail links, extraction code text, empty materials, official source link, and missing-event handling.
+- [x] **Step 2: Run `npm test -- tests/event-detail.test.ts`** and verify the route/components do not exist.
+- [x] **Step 3: Implement the dynamic route** with `await params`, numeric id validation, `notFound()`, and a loading state consistent with Next.js 16 docs.
+- [x] **Step 4: Implement material sections** so links open in a new tab and notes are visible without exposing an unusable download button.
+- [x] **Step 5: Run `npm test -- tests/event-detail.test.ts` and `npm run build`**.
+- [x] **Step 6: Commit** with `feat: add event material detail pages`.
 
 ### Task 5: Admin Material Editor
 
@@ -123,13 +123,13 @@
 - Consumes: event and material mutation endpoints from Task 2.
 - Produces: an inline editor for type, title, cloud-drive URL, thumbnail URL, extraction code/notes, source URL, and sort order.
 
-- [ ] **Step 1: Write failing source tests** for loading existing materials before editing, add/update/delete flows, extraction-code input, invalid URL feedback, and unsaved-state preservation.
-- [ ] **Step 2: Run `npm test -- tests/event-admin.test.ts`** and verify the editor is absent.
-- [ ] **Step 3: Extract the current `EventsSection`** into `EventManager` without changing existing activity CRUD behavior.
-- [ ] **Step 4: Add `EventMaterialEditor`** beneath the selected activity form and refresh only that activity's materials after a successful mutation.
-- [ ] **Step 5: Keep link and note fields independent** so a record may contain a public URL, an extraction code, a note, or any useful combination allowed by validation.
-- [ ] **Step 6: Run `npm test -- tests/event-admin.test.ts tests/events.test.ts` and `npm run build`**.
-- [ ] **Step 7: Commit** with `feat: manage event cloud links`.
+- [x] **Step 1: Write failing source tests** for loading existing materials before editing, add/update/delete flows, extraction-code input, invalid URL feedback, and unsaved-state preservation.
+- [x] **Step 2: Run `npm test -- tests/event-admin.test.ts`** and verify the editor is absent.
+- [x] **Step 3: Extract the current `EventsSection`** into `EventManager` without changing existing activity CRUD behavior.
+- [x] **Step 4: Add `EventMaterialEditor`** beneath the selected activity form and refresh only that activity's materials after a successful mutation.
+- [x] **Step 5: Keep link and note fields independent** so a record may contain a public URL, an extraction code, a note, or any useful combination allowed by validation.
+- [x] **Step 6: Run `npm test -- tests/event-admin.test.ts tests/events.test.ts` and `npm run build`**.
+- [x] **Step 7: Commit** with `feat: manage event cloud links`.
 
 ### Task 6: Official Activity Synchronization
 
@@ -147,13 +147,13 @@
 - Consumes: tracked sync helper from the data reliability plan when present.
 - Preserves: manual attendance fields and materials where `source_url` is not the official event page.
 
-- [ ] **Step 1: Add minimal sanitized fixtures and failing tests** for list pagination, source-URL upsert, public image/link extraction, rerun idempotency, malformed pages, and manual-field preservation.
-- [ ] **Step 2: Run `npm test -- tests/events-sync.test.ts`** and verify parser/sync cases fail.
-- [ ] **Step 3: Add a stable official source URL column/index** to activities and implement pure list/detail parsers.
-- [ ] **Step 4: Implement idempotent sync** that adds official materials and never removes or overwrites manual cloud-drive records or attendance values.
-- [ ] **Step 5: Add the protected manual/cron route and daily Vercel schedule**; record success/failure through `sync_runs` when available.
-- [ ] **Step 6: Run `npm test -- tests/events-sync.test.ts tests/auth.test.ts`** and verify all pass.
-- [ ] **Step 7: Commit** with `feat: sync official IvorySQL events`.
+- [x] **Step 1: Add minimal sanitized fixtures and failing tests** for list pagination, source-URL upsert, public image/link extraction, rerun idempotency, malformed pages, and manual-field preservation.
+- [x] **Step 2: Run `npm test -- tests/events-sync.test.ts`** and verify parser/sync cases fail.
+- [x] **Step 3: Add a stable official source URL column/index** to activities and implement pure list/detail parsers.
+- [x] **Step 4: Implement idempotent sync** that adds official materials and never removes or overwrites manual cloud-drive records or attendance values.
+- [x] **Step 5: Add the protected manual/cron route and daily Vercel schedule**; record success/failure through `sync_runs` when available.
+- [x] **Step 6: Run `npm test -- tests/events-sync.test.ts tests/auth.test.ts`** and verify all pass.
+- [x] **Step 7: Commit** with `feat: sync official IvorySQL events`.
 
 ### Task 7: End-To-End Verification
 
@@ -165,9 +165,9 @@
 - Consumes: all prior tasks.
 - Produces: documented material workflow and verified responsive archive.
 
-- [ ] **Step 1: Document** how to add a cloud-drive link, extraction code, and note, and how official sync interacts with manual records.
-- [ ] **Step 2: Run `npm test`, `npm run lint`, and `npm run build`** and resolve only failures caused by this work.
-- [ ] **Step 3: Start the app and verify** list filters, pagination, detail groups, external links, admin editing, and viewer read-only behavior at desktop and mobile widths.
-- [ ] **Step 4: Confirm the existing activity count and attendance values** match the pre-change database snapshot.
-- [ ] **Step 5: Commit** with `docs: document event material workflow`.
+- [x] **Step 1: Document** how to add a cloud-drive link, extraction code, and note, and how official sync interacts with manual records.
+- [x] **Step 2: Run `npm test`, `npm run lint`, and `npm run build`** and resolve only failures caused by this work.
+- [x] **Step 3: Start the app and verify** list filters, pagination, detail groups, external links, admin editing, and viewer read-only behavior at desktop and mobile widths.
+- [x] **Step 4: Confirm the existing activity count and attendance values** match the pre-change database snapshot.
+- [x] **Step 5: Commit** with `docs: document event material workflow`.
 
