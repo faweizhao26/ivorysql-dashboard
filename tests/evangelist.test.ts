@@ -64,7 +64,12 @@ test('provides distinct stable defaults and honors manually selected avatars', a
   assert.equal(avatars.getEvangelistAvatar(7).url, avatars.getEvangelistAvatar(7).url);
   assert.equal(avatars.getEvangelistAvatar(7, avatars.EVANGELIST_AVATARS[20].url).index, 20);
   assert.equal(avatars.getEvangelistAvatar(1).position, '0% 0%');
-  assert.equal(avatars.getEvangelistAvatar(36).position, '100% 100%');
+  assert.equal(new Set(avatars.EVANGELIST_AVATARS.map(avatar => avatar.position)).size, 36);
+  for (let start = 0; start < 36; start += 6) {
+    const positions = avatars.EVANGELIST_AVATARS.slice(start, start + 6).map(avatar => avatar.position.split(' '));
+    assert.equal(new Set(positions.map(position => position[0])).size, 6);
+    assert.equal(new Set(positions.map(position => position[1])).size, 6);
+  }
 });
 
 test('new members prefer an avatar unused by legacy or manually configured members', async () => {

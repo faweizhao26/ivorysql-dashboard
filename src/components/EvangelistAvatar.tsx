@@ -10,8 +10,8 @@ interface EvangelistAvatarProps {
 }
 
 const sizeClasses = {
-  small: 'h-8 w-8',
-  large: 'h-16 w-16',
+  small: 'h-10 w-10',
+  large: 'h-20 w-20',
   picker: 'h-12 w-12',
 };
 

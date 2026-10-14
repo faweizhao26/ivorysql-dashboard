@@ -4,7 +4,8 @@ export const EVANGELIST_AVATARS = Array.from({ length: 36 }, (_, index) => ({
   index,
   label: `头像 ${String(index + 1).padStart(2, '0')}`,
   url: `${EVANGELIST_AVATAR_ATLAS}#${String(index + 1).padStart(2, '0')}`,
-  position: `${(index % 6) * 20}% ${Math.floor(index / 6) * 20}%`,
+  // Interleave the atlas's hairstyle rows and face-shape columns.
+  position: `${((Math.floor(index / 6) + index % 6) % 6) * 20}% ${(index % 6) * 20}%`,
 }));
 
 export interface EvangelistAvatarMember {
