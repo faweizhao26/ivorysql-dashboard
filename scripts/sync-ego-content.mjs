@@ -83,11 +83,20 @@ const dryRun = process.env.EGO_SYNC_DRY_RUN === '1'
   || await fs.access(path.join(PROJECT_DIR, '.ego-sync-dry-run')).then(() => true, () => false);
 
 const task = await taskSpace(Number(process.env.EGO_TASK_SPACE_ID || 28));
-const zhihuPage = task.page('p1');
-const oschinaPage = task.page('p2');
-const ctoPage = task.page('p3');
-const toutiaoPage = task.page('p4');
-const dashboardPage = task.page('p5');
+const { resolveEgoContentPages } = await import(path.join(PROJECT_DIR, 'scripts/ego-content-pages.mjs'));
+const {
+  zhihu: zhihuPage,
+  oschina: oschinaPage,
+  cto: ctoPage,
+  toutiao: toutiaoPage,
+  dashboard: dashboardPage,
+} = await resolveEgoContentPages(task, [
+  { key: 'zhihu', url: 'https://www.zhihu.com/creator/manage/creation/article' },
+  { key: 'oschina', url: `https://my.oschina.net/u/${OSCHINA_USER_ID}` },
+  { key: 'cto', url: `https://blog.51cto.com/u_${CTO_USER_ID}` },
+  { key: 'toutiao', url: `https://www.toutiao.com/c/user/token/${TOUTIAO_TOKEN}/` },
+  { key: 'dashboard', url: `${DASHBOARD_BASE}/content` },
+]);
 
 if (!(await dashboardPage.url()).startsWith(DASHBOARD_BASE)) {
   await dashboardPage.goto(`${DASHBOARD_BASE}/content`);
