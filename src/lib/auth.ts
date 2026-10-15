@@ -1,5 +1,7 @@
 export type AccessLevel = 'admin' | 'viewer';
 
+export const ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+
 function base64Url(bytes: ArrayBuffer): string {
   const byteArray = new Uint8Array(bytes);
   let binary = '';
@@ -42,14 +44,27 @@ export function getAccessTokenSecret(accessPassword: string, adminPassword: stri
 }
 
 export async function createAccessToken(level: AccessLevel, secret: string): Promise<string> {
-  return `${level}.${await sign(level, secret)}`;
+  const issuedAt = Math.floor(Date.now() / 1000);
+  const expiresAt = issuedAt + ACCESS_TOKEN_MAX_AGE_SECONDS;
+  const payload = `${level}.${issuedAt}.${expiresAt}`;
+  return `${payload}.${await sign(payload, secret)}`;
 }
 
 export async function readAccessToken(value: string | undefined, secret: string): Promise<AccessLevel | null> {
   if (!value) return null;
-  const [level, signature, extra] = value.split('.');
+  const [level, issuedAtValue, expiresAtValue, signature, extra] = value.split('.');
   if (extra !== undefined || !level || !signature || !isAccessLevel(level)) return null;
+  if (!/^(0|[1-9]\d*)$/.test(issuedAtValue) || !/^(0|[1-9]\d*)$/.test(expiresAtValue)) return null;
 
-  const expected = await sign(level, secret);
+  const issuedAt = Number(issuedAtValue);
+  const expiresAt = Number(expiresAtValue);
+  const now = Math.floor(Date.now() / 1000);
+  if (
+    !Number.isSafeInteger(issuedAt) || !Number.isSafeInteger(expiresAt) ||
+    issuedAt > now || expiresAt <= now || expiresAt <= issuedAt ||
+    expiresAt - issuedAt > ACCESS_TOKEN_MAX_AGE_SECONDS
+  ) return null;
+
+  const expected = await sign(`${level}.${issuedAtValue}.${expiresAtValue}`, secret);
   return timingSafeEqual(signature, expected) ? level : null;
 }

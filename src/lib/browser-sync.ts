@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { SyncedArticle } from './content-sync';
+import { isArticleDate, normalizeMetric } from './content-values.mjs';
 
 export const BROWSER_SYNC_PLATFORMS = [
   'oschina',
@@ -16,9 +17,7 @@ function isPlatform(value: unknown): value is BrowserSyncPlatform {
 }
 
 function readMetric(value: unknown): number | undefined {
-  if (value === undefined || value === null || value === '') return undefined;
-  const parsed = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : undefined;
+  return normalizeMetric(value);
 }
 
 export function parseBrowserSyncPayload(input: unknown): {
@@ -43,7 +42,8 @@ export function parseBrowserSyncPayload(input: unknown): {
     const title = typeof article.title === 'string' ? article.title.trim() : '';
     const url = typeof article.url === 'string' ? article.url.trim() : '';
     const date = typeof article.date === 'string' ? article.date.trim() : '';
-    if (!title || !url || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return [];
+    if (!title || !url) return [];
+    if (!isArticleDate(date)) throw new RangeError(`Invalid publication date for ${url}`);
 
     return [{
       title,

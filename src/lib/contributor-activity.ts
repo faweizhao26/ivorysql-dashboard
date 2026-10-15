@@ -225,6 +225,46 @@ export function aggregateMonthlyContributorActivity(
   }).sort((a, b) => a.month.localeCompare(b.month));
 }
 
+export function aggregateContributorSummary(
+  items: ContributorActivityItem[],
+  since: string,
+  until: string,
+  year: number,
+) {
+  const firstSeen = new Map<string, string>();
+  for (const item of items) {
+    if (!item.author || item.created_at.slice(0, 10) < since) continue;
+    // Unlike legacy monthly display data, a summary needs the actual merge date.
+    if (item.type === 'pr' && item.status === 'merged' && !item.merged_at) {
+      throw new Error(`Missing merge date for PR #${item.number}`);
+    }
+    const date = getValidContributionDate(item);
+    if (!date || date > until) continue;
+    const previous = firstSeen.get(item.author);
+    if (!previous || date < previous) firstSeen.set(item.author, date);
+  }
+
+  const firstDates = Array.from(firstSeen.values());
+  const yearStart = `${year}-01-01`;
+  const yearEnd = `${year}-12-31`;
+  // Rolling UTC windows include the snapshot day: 1, 7, 30 and 90 days.
+  const countNew = (days: number) => {
+    const start = new Date(`${until}T00:00:00Z`);
+    start.setUTCDate(start.getUTCDate() - days + 1);
+    const startDate = start.toISOString().slice(0, 10);
+    return firstDates.filter(date => date >= startDate).length;
+  };
+
+  return {
+    contributors_before_2026: firstDates.filter(date => date < yearStart).length,
+    new_contributors_daily: countNew(1),
+    new_contributors_weekly: countNew(7),
+    new_contributors_monthly: countNew(30),
+    new_contributors_quarterly: countNew(90),
+    cumulative_2026: firstDates.filter(date => date >= yearStart && date <= yearEnd).length,
+  };
+}
+
 function getValidContributionDate(item: ContributorActivityItem): string | null {
   if (item.type === 'issue') return item.created_at.slice(0, 10);
   if (item.status === 'merged') return (item.merged_at || item.created_at).slice(0, 10);

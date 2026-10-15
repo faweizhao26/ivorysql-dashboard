@@ -1,3 +1,7 @@
+import { isArticleDate } from './content-values.mjs';
+export { normalizeMetric } from './content-values.mjs';
+import { normalizeMetric } from './content-values.mjs';
+
 export const ARTICLE_SYNC_LIMIT = 50;
 
 export interface SyncedArticle {
@@ -45,26 +49,6 @@ function firstMatch(value: string, patterns: RegExp[]): string | undefined {
   return undefined;
 }
 
-export function normalizeMetric(value: unknown): number | undefined {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : undefined;
-  }
-  if (typeof value !== 'string') return undefined;
-
-  const normalized = value.trim().toLowerCase().replace(/,/g, '');
-  const match = normalized.match(/([\d.]+)\s*(万|w|k)?/i);
-  if (!match) return undefined;
-
-  const number = Number(match[1]);
-  if (!Number.isFinite(number)) return undefined;
-  const multiplier = match[2] === '万' || match[2] === 'w'
-    ? 10_000
-    : match[2] === 'k'
-      ? 1_000
-      : 1;
-  return Math.max(0, Math.round(number * multiplier));
-}
-
 export function prepareRecentArticles(
   articles: SyncedArticle[],
   limit: number = ARTICLE_SYNC_LIMIT,
@@ -76,6 +60,7 @@ export function prepareRecentArticles(
     const url = article.url?.trim();
     const title = article.title?.trim();
     if (!url || !title || seen.has(url)) continue;
+    if (!isArticleDate(article.date)) throw new RangeError(`Invalid publication date for ${url}`);
     seen.add(url);
     result.push({ ...article, title, url });
     if (result.length >= limit) break;

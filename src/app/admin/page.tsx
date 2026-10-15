@@ -6,6 +6,7 @@ import EventManager from '@/components/admin/EventManager';
 import EvangelistAvatar from '@/components/EvangelistAvatar';
 import EvangelistAvatarPicker from '@/components/admin/EvangelistAvatarPicker';
 import { getAvailableEvangelistAvatar, getEvangelistAvatar } from '@/lib/evangelist-avatar';
+import { formatArticleMetric } from '@/lib/content-values.mjs';
 
 type DataCategory = 'social' | 'article' | 'activity';
 type TabType = 'manual' | 'articles' | 'reminders' | 'sync' | 'events' | 'evangelist';
@@ -25,9 +26,9 @@ interface ArticleEntry {
   platform: string;
   article_title: string;
   article_url?: string;
-  views: number;
-  likes: number;
-  comments: number;
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
   content_category?: string;
   content_source?: string;
 }
@@ -490,9 +491,9 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
             platform,
             article_title: articleTitle,
             article_url: articleUrl,
-            views: parseInt(views) || 0,
-            likes: parseInt(likes) || 0,
-            comments: parseInt(comments) || 0,
+            views: views.trim() === '' ? undefined : parseInt(views) || 0,
+            likes: likes.trim() === '' ? undefined : parseInt(likes) || 0,
+            comments: comments.trim() === '' ? undefined : parseInt(comments) || 0,
             content_category: contentCategory || null,
             content_source: contentSource || null
           })
@@ -548,9 +549,9 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
     setDate(article.date);
     setArticleTitle(article.article_title);
     setArticleUrl(article.article_url || '');
-    setViews(article.views.toString());
-    setLikes(article.likes.toString());
-    setComments(article.comments.toString());
+    setViews(article.views?.toString() ?? '');
+    setLikes(article.likes?.toString() ?? '');
+    setComments(article.comments?.toString() ?? '');
     setContentCategory(article.content_category || '');
     setContentSource(article.content_source || '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -773,7 +774,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                           </span>
                         )}
                       </td>
-                      <td className="py-2 px-3 text-right font-medium">{article.views.toLocaleString()}</td>
+                      <td className="py-2 px-3 text-right font-medium">{formatArticleMetric(article.views)}</td>
                       <td className="py-2 px-3 text-slate-400 text-xs">{article.content_category || '-'}</td>
                       <td className="py-2 px-3 text-slate-400 text-xs">{article.content_source || '-'}</td>
                       <td className="py-2 px-3">
@@ -1139,7 +1140,11 @@ function EvangelistSection() {
   const [contributions, setContributions] = useState<any[]>([]);
   const [contributionParticipantId, setContributionParticipantId] = useState<number | null>(null);
   const [loadingContributions, setLoadingContributions] = useState(false);
+  const [savingPerson, setSavingPerson] = useState(false);
+  const [savingContribution, setSavingContribution] = useState(false);
   const [drawerTab, setDrawerTab] = useState<'form' | 'history'>('form');
+  const savingPersonRef = useRef(false);
+  const savingContributionRef = useRef(false);
   const contributionRequestRef = useRef(0);
   const personFormRef = useRef<HTMLDivElement>(null);
 
@@ -1232,29 +1237,69 @@ function EvangelistSection() {
 
   async function savePerson(e: React.FormEvent) {
     e.preventDefault();
-    const m = editingPerson.id ? 'PUT' : 'POST';
-    const res = await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingPerson), credentials: 'include' });
-    if (!res.ok) { const err = await res.json(); alert('保存失败: ' + (err.error || '未知错误')); return; }
-    setEditingPerson(null); fetchParticipants();
+    if (savingPersonRef.current || !editingPerson) return;
+    savingPersonRef.current = true;
+    setSavingPerson(true);
+    try {
+      const m = editingPerson.id ? 'PUT' : 'POST';
+      const res = await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingPerson), credentials: 'include' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || '请稍后重试');
+      }
+      setEditingPerson(null);
+      await fetchParticipants().catch(() => alert('保存成功，但成员列表刷新失败，请刷新页面'));
+    } catch (error) {
+      alert('保存失败: ' + (error instanceof Error ? error.message : '请稍后重试'));
+    } finally {
+      savingPersonRef.current = false;
+      setSavingPerson(false);
+    }
   }
 
   async function saveContribution(e: React.FormEvent) {
     e.preventDefault();
-    if (!editingCont) return;
+    if (savingContributionRef.current || !editingCont) return;
     if (!editingCont.participant_id) { alert('请先选择成员'); return; }
     if (!editingCont.category || !editingCont.type) { alert('请选择类别和类型'); return; }
-    const m = editingCont.id ? 'PUT' : 'POST';
-    const res = await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingCont), credentials: 'include' });
-    if (!res.ok) { const err = await res.json(); alert('保存失败: ' + (err.error || '未知错误')); return; }
-    await Promise.all([
-      fetchContributions(editingCont.participant_id),
-      fetchParticipants(),
-    ]);
-    closeContributionDrawer();
+    savingContributionRef.current = true;
+    setSavingContribution(true);
+    try {
+      const m = editingCont.id ? 'PUT' : 'POST';
+      const res = await fetch('/api/evangelist', { method: m, headers: {'Content-Type':'application/json'}, body: JSON.stringify(editingCont), credentials: 'include' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || '请稍后重试');
+      }
+      closeContributionDrawer();
+      await Promise.all([
+        fetchContributions(editingCont.participant_id),
+        fetchParticipants(),
+      ]).catch(() => alert('保存成功，但贡献或成员列表刷新失败，请刷新页面'));
+    } catch (error) {
+      alert('保存失败: ' + (error instanceof Error ? error.message : '请稍后重试'));
+    } finally {
+      savingContributionRef.current = false;
+      setSavingContribution(false);
+    }
   }
 
-  async function deletePerson(id: number) { if (!confirm('确定删除？')) return;
-    await fetch('/api/evangelist?id=' + id, { method: 'DELETE', credentials: 'include' }); fetchParticipants(); clearContributionSelection(); }
+  async function deletePerson(id: number) {
+    if (!confirm('确定删除？')) return;
+    try {
+      const res = await fetch('/api/evangelist?id=' + id, { method: 'DELETE', credentials: 'include' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || '请稍后重试');
+      }
+      if (selectedId === id) clearContributionSelection();
+      if (editingPerson?.id === id) setEditingPerson(null);
+      if (editingCont?.participant_id === id) closeContributionDrawer();
+      await fetchParticipants().catch(() => alert('删除成功，但成员列表刷新失败，请刷新页面'));
+    } catch (error) {
+      alert('删除失败: ' + (error instanceof Error ? error.message : '请稍后重试'));
+    }
+  }
 
   async function deleteContribution(id: number) { if (!confirm('确定删除？')) return;
     await fetch('/api/evangelist?id=' + id + '&type=contribution', { method: 'DELETE', credentials: 'include' });
@@ -1299,7 +1344,7 @@ function EvangelistSection() {
           </div>
           <input placeholder="简介" value={editingPerson?.bio || ''} onChange={e => setEditingPerson({...editingPerson, bio: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
           <EvangelistAvatarPicker value={editingPerson.avatar_url} onChange={avatar_url => setEditingPerson({ ...editingPerson, avatar_url })} members={participants} participantId={editingPerson.id} />
-          <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500">{editingPerson?.id ? '更新' : '添加'}</button>
+          <button type="submit" disabled={savingPerson} aria-busy={savingPerson} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50">{savingPerson ? '保存中...' : editingPerson?.id ? '更新' : '添加'}</button>
         </form>
         )}
       </div>
@@ -1564,9 +1609,11 @@ function EvangelistSection() {
                   </button>
                   <button
                     type="submit"
-                    className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500"
+                    disabled={savingContribution}
+                    aria-busy={savingContribution}
+                    className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {editingCont.id ? '更新贡献' : '添加贡献'}
+                    {savingContribution ? '保存中...' : editingCont.id ? '更新贡献' : '添加贡献'}
                   </button>
                 </footer>
               </form>

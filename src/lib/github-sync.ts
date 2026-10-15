@@ -6,6 +6,7 @@ import {
 } from '@/lib/db';
 import {
   aggregateContributorActivity,
+  aggregateContributorSummary,
   aggregateMonthlyContributorActivity,
   type ContributorStatus,
   type MainRepoContributorStats,
@@ -112,6 +113,9 @@ async function fetchMainRepoContributorActivity(
       const data = await requireGitHubApi<GitHubActivityItem[]>(
         `/repos/${owner}/${repo}/${kind}?page=${page}&per_page=${PAGE_SIZE}&state=all&sort=created&direction=desc`,
       );
+      if (!Array.isArray(data)) {
+        throw new Error(`GitHub API returned an invalid collection: ${kind}`);
+      }
       if (data.length === 0) break;
 
       for (const item of data) {
@@ -207,6 +211,12 @@ export async function syncGitHubData(): Promise<{
       repo,
       mainStats.repository_created_at,
     );
+    const contributorSummary = aggregateContributorSummary(
+      mainRepoActivity.items,
+      mainStats.repository_created_at,
+      today,
+      CONTRIBUTION_YEAR,
+    );
 
     await saveGitHubStats({
       date: today,
@@ -223,12 +233,7 @@ export async function syncGitHubData(): Promise<{
     await saveContributorStats({
       date: today,
       total_contributors: mainStats.contributors,
-      contributors_before_2026: 0,
-      new_contributors_daily: 0,
-      new_contributors_weekly: 0,
-      new_contributors_monthly: 0,
-      new_contributors_quarterly: 0,
-      cumulative_2026: 0,
+      ...contributorSummary,
     });
     await saveMainRepoContributorStats(today, {
       ...mainRepoActivity.stats,

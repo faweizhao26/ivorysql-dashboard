@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PlatformIcon } from '@/components/PlatformIcon';
 import { useAuth } from '@/app/auth-provider';
 import LastUpdated from '@/components/LastUpdated';
+import { formatArticleMetric } from '@/lib/content-values.mjs';
 
 interface ArticleDetail {
   id?: number;
@@ -11,7 +12,7 @@ interface ArticleDetail {
   platform: string;
   article_title: string;
   article_url?: string;
-  views: number;
+  views: number | null;
   likes: number;
   comments: number;
   content_category?: string;
@@ -183,7 +184,7 @@ export default function ContentPage() {
                   <td className="px-4 py-3 text-slate-400">{article.date}</td>
                   <td className="max-w-md px-4 py-3"><a href={article.article_url || '#'} target={article.article_url ? '_blank' : undefined} rel="noreferrer" className="text-indigo-400 hover:underline">{article.article_title}</a></td>
                   <td className="px-4 py-3 text-slate-400">{article.content_category || '-'}</td><td className="px-4 py-3 text-slate-400">{article.content_source || '-'}</td>
-                  <td className="px-4 py-3 text-right text-slate-200">{article.views.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-right text-slate-200">{formatArticleMetric(article.views)}</td>
                   {isAdmin && <td className="px-4 py-3"><button onClick={() => setEditingArticle({ ...article })} className="mr-3 text-indigo-400">编辑</button><button onClick={() => deleteArticle(article)} className="text-red-400">删除</button></td>}
                 </tr>
               ))}
@@ -203,8 +204,8 @@ export default function ContentPage() {
             <h3 className="text-lg font-semibold text-slate-100">编辑文章</h3>
             <input value={editingArticle.article_title} onChange={event => setEditingArticle({ ...editingArticle, article_title: event.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <select value={editingArticle.content_category || ''} onChange={event => setEditingArticle({ ...editingArticle, content_category: event.target.value || undefined })} className="px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200"><option value="">未分类</option>{categories.map(item => <option key={item}>{item}</option>)}</select>
-              <input value={editingArticle.content_source || ''} onChange={event => setEditingArticle({ ...editingArticle, content_source: event.target.value || undefined })} placeholder="内容来源" className="px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200" />
+              <select value={editingArticle.content_category || ''} onChange={event => setEditingArticle({ ...editingArticle, content_category: event.target.value })} className="px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200"><option value="">未分类</option>{categories.map(item => <option key={item}>{item}</option>)}</select>
+              <input value={editingArticle.content_source || ''} onChange={event => setEditingArticle({ ...editingArticle, content_source: event.target.value })} placeholder="内容来源" className="px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200" />
             </div>
             <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingArticle(null)} className="px-4 py-2 text-slate-300">取消</button><button type="submit" className="px-4 py-2 rounded bg-indigo-600 text-white">保存</button></div>
           </form>

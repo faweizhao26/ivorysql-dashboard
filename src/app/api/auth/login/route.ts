@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createAccessToken, getAccessTokenSecret } from '@/lib/auth';
+import { ACCESS_TOKEN_MAX_AGE_SECONDS, createAccessToken, getAccessTokenSecret } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7
+        maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS
       });
       return NextResponse.json({ level: 'admin', message: 'Admin access granted' });
     }
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 60 * 60 * 24 * 7
+        maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS
       });
       return NextResponse.json({ level: 'viewer', message: 'Access granted' });
     }

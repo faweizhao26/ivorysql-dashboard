@@ -106,7 +106,6 @@ export async function DELETE(request: Request) {
     if (type === 'contribution') {
       await pool.query('DELETE FROM evangelist_contributions WHERE id=$1', [id]);
     } else {
-      await pool.query('DELETE FROM evangelist_contributions WHERE participant_id=$1', [id]);
       await pool.query('DELETE FROM evangelist_participants WHERE id=$1', [id]);
     }
     return NextResponse.json({ success: true });

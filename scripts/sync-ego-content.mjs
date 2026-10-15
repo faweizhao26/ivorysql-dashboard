@@ -7,6 +7,8 @@ const OSCHINA_USER_ID = '5729420';
 const CTO_USER_ID = '17240866';
 const TOUTIAO_TOKEN = 'MS4wLjABAAAAj4gckR1Jz9y9WQtlx3iFa1V2YOpOaBP4GWTeqq_lWTNHRU_x9JgDQTGWEh2WPteh';
 const LIMIT = 50;
+const { normalizeMetric, isArticleDate, localArticleDate: localDate, parseArticleDate: parseDateLabel } =
+  await import(path.join(PROJECT_DIR, 'src/lib/content-values.mjs'));
 
 async function loadLocalEnv() {
   try {
@@ -31,39 +33,9 @@ function responseJson(response) {
   }
 }
 
-function localDate(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function parseDateLabel(value, fallback) {
-  if (fallback) return fallback;
-  const label = String(value || '').trim();
-  const now = new Date();
-  const exact = label.match(/(\d{4})[-/.年](\d{1,2})[-/.月](\d{1,2})/);
-  if (exact) {
-    return `${exact[1]}-${exact[2].padStart(2, '0')}-${exact[3].padStart(2, '0')}`;
-  }
-
-  const monthDay = label.match(/(\d{1,2})[-月](\d{1,2})/);
-  if (monthDay) {
-    let year = now.getFullYear();
-    if (Number(monthDay[1]) > now.getMonth() + 1) year -= 1;
-    return `${year}-${monthDay[1].padStart(2, '0')}-${monthDay[2].padStart(2, '0')}`;
-  }
-
-  let days = 0;
-  if (label.includes('前天')) days = 2;
-  else if (label.includes('昨天')) days = 1;
-  else days = Number(label.match(/(\d+)天前/)?.[1] || 0);
-  const date = new Date(now);
-  date.setDate(date.getDate() - days);
-  return localDate(date);
-}
-
 function uniqueRecent(articles) {
+  const undated = articles.find(article => article.title && article.url && !isArticleDate(article.date));
+  if (undated) throw new Error(`无法确认文章发布日期，未写入本平台数据: ${undated.url}`);
   const seen = new Set();
   return articles
     .filter(article => article.title && article.url && article.date)
@@ -73,7 +45,8 @@ function uniqueRecent(articles) {
       seen.add(article.url);
       return true;
     })
-    .slice(0, LIMIT);
+    .slice(0, LIMIT)
+    .map(article => ({ ...article, views: normalizeMetric(article.views), likes: normalizeMetric(article.likes), comments: normalizeMetric(article.comments) }));
 }
 
 await loadLocalEnv();
@@ -199,7 +172,7 @@ async function collect51Cto() {
         title: card.querySelector('.title a')?.textContent?.trim() || '',
         url: card.querySelector('.title a')?.href || '',
         dateLabel: card.querySelector('.actions')?.textContent?.trim() || '',
-        views: Number(card.querySelector('.nums b')?.textContent?.replace(/,/g, '') || 0),
+        views: card.querySelector('.nums b')?.textContent,
       }))
     ));
     articles.push(...pageArticles);
@@ -240,8 +213,8 @@ async function collectToutiao() {
       title: card.querySelector('a.title')?.textContent?.trim() || '',
       url: card.querySelector('a.title')?.href || '',
       dateLabel: card.querySelector('.feed-card-footer-time-cmp')?.textContent?.trim() || '',
-      views: Number(card.querySelector('.profile-feed-card-tools-text')?.textContent?.match(/[\d,]+/)?.[0]?.replace(/,/g, '') || 0),
-      comments: Number(card.querySelector('a[aria-label^="评论数"]')?.getAttribute('aria-label')?.match(/\d+/)?.[0] || 0),
+      views: card.querySelector('.profile-feed-card-tools-text')?.textContent,
+      comments: card.querySelector('a[aria-label^="评论数"]')?.getAttribute('aria-label'),
     }))
   ));
 
