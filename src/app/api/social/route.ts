@@ -6,10 +6,7 @@ import { getDataRangeParams } from '@/lib/date-query';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const { startDate, endDate, isSingleDay } = getDataRangeParams(
-      searchParams,
-      new Date().toISOString().split('T')[0],
-    );
+    const { startDate, endDate, isSingleDay } = getDataRangeParams(searchParams);
     const platform = searchParams.get('platform');
 
     if (platform) {

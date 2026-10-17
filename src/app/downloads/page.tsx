@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { TrendChart } from '@/components/Charts';
+import { Download, GitFork, Container, Package } from 'lucide-react';
+import type { DownloadSummary } from '@/lib/download-stats';
 
 interface DownloadHistoryRow {
   date: string;
@@ -9,51 +11,40 @@ interface DownloadHistoryRow {
   docker_total: number;
 }
 
-interface DownloadRelease {
-  tag: string;
-  date?: string;
-  total: number;
-  assets?: Array<{ name: string; downloads: number }>;
-}
-
-interface DockerRepo {
-  name: string;
-  pulls: number;
-}
-
-interface DownloadStats {
-  github: {
-    total: number;
-    releases: DownloadRelease[];
-  };
-  docker: {
-    total: number;
-    repos: DockerRepo[];
-  };
-}
-
 interface DashboardDownloadsResponse {
   downloads?: DownloadHistoryRow[];
 }
 
 export default function DownloadsPage() {
-  const [downloads, setDownloads] = useState<DownloadStats | null>(null);
+  const [downloads, setDownloads] = useState<DownloadSummary | null>(null);
   const [history, setHistory] = useState<DownloadHistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
-        const [liveRes, histRes] = await Promise.all([
-          fetch('/api/downloads', { credentials: 'include' }),
-          fetch('/api/dashboard?start=2025-01-01&end=2099-12-31&days=730&include=downloads', { credentials: 'include' }),
-        ]);
-        if (liveRes.ok) setDownloads(await liveRes.json() as DownloadStats);
-        if (histRes.ok) {
-          const d = await histRes.json() as DashboardDownloadsResponse;
-          setHistory(d.downloads || []);
+        async function readJSON(url: string) {
+          const response = await fetch(url, { credentials: 'include' });
+          return { ok: response.ok, data: await response.json() };
         }
-      } catch (e) { console.error(e); }
+        const [live, historical] = await Promise.allSettled([
+          readJSON('/api/downloads'),
+          readJSON('/api/dashboard?start=2025-01-01&end=2099-12-31&days=730&include=downloads'),
+        ]);
+        if (live.status === 'fulfilled') {
+          const value = live.value.data;
+          if (value?.github && value?.docker) setDownloads(value as DownloadSummary);
+          else setError('下载统计暂时不可用，请稍后重试');
+        } else setError('下载统计暂时不可用，请稍后重试');
+        if (historical.status === 'fulfilled' && historical.value.ok) {
+          const d = historical.value.data as DashboardDownloadsResponse;
+          setHistory(d.downloads || []);
+        } else {
+          setHistoryError(true);
+        }
+      } catch (e) { console.error(e); setError('下载统计加载失败，请稍后重试'); }
       finally { setLoading(false); }
     }
     load();
@@ -67,46 +58,53 @@ export default function DownloadsPage() {
   const dk = downloads?.docker;
   const dockerRepos = dk?.repos ?? [];
   const githubReleases = gh?.releases ?? [];
+  const combinedTotal = typeof gh?.total === 'number' && typeof dk?.total === 'number' ? gh.total + dk.total : null;
+  function sourceLabel(source: typeof gh | typeof dk) {
+    if (!source || source.status === 'unavailable') return '暂无可用数据';
+    return source.status === 'stale' ? `获取失败，显示 ${source.data_date} 历史统计` : '实时统计';
+  }
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-indigo-500/10 border border-indigo-500/10 p-6">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-            <svg className="w-5 h-5 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-          </div>
-          <div>
+      <div className="flex items-center gap-3">
+          <Download size={24} className="shrink-0 text-indigo-400" />
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-slate-100">下载统计</h1>
             <p className="text-slate-500 text-sm">GitHub Release + Docker Hub</p>
           </div>
-        </div>
       </div>
 
+      {(error || downloads?.partial) && <p role="alert" className="rounded border border-amber-600/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">{error || '部分下载统计获取失败，历史数据已保留。'}</p>}
+
       {/* Totals */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card p-6 text-center">
-          <div className="text-slate-400 text-sm mb-2">🐙 GitHub Release</div>
+          <div className="text-slate-400 text-sm mb-2 inline-flex items-center gap-2"><GitFork size={16} />GitHub Release</div>
           <div className="text-3xl font-bold text-slate-900 dark:bg-gradient-to-r dark:from-slate-100 dark:to-slate-300 dark:bg-clip-text dark:[-webkit-background-clip:text] dark:[-webkit-text-fill-color:transparent] dark:text-transparent">
-            {gh?.total?.toLocaleString() || '—'}
+            {gh?.total?.toLocaleString() ?? '-'}
           </div>
+          <p className="mt-2 text-xs text-slate-400">{sourceLabel(gh)}</p>
+          {gh?.error && <p className="mt-1 break-words text-xs text-amber-400">{gh.error}</p>}
         </div>
         <div className="card p-6 text-center">
-          <div className="text-slate-400 text-sm mb-2">🐳 Docker Hub</div>
+          <div className="text-slate-400 text-sm mb-2 inline-flex items-center gap-2"><Container size={16} />Docker Hub</div>
           <div className="text-3xl font-bold text-slate-900 dark:bg-gradient-to-r dark:from-slate-100 dark:to-slate-300 dark:bg-clip-text dark:[-webkit-background-clip:text] dark:[-webkit-text-fill-color:transparent] dark:text-transparent">
-            {dk?.total?.toLocaleString() || '—'}
+            {dk?.total?.toLocaleString() ?? '-'}
           </div>
+          <p className="mt-2 text-xs text-slate-400">{sourceLabel(dk)}</p>
+          {dk?.error && <p className="mt-1 break-words text-xs text-amber-400">{dk.error}</p>}
         </div>
         <div className="card p-6 text-center">
-          <div className="text-slate-400 text-sm mb-2">📦 合计</div>
+          <div className="text-slate-400 text-sm mb-2 inline-flex items-center gap-2"><Package size={16} />合计</div>
           <div className="text-3xl font-bold text-slate-900 dark:bg-gradient-to-r dark:from-slate-100 dark:to-slate-300 dark:bg-clip-text dark:[-webkit-background-clip:text] dark:[-webkit-text-fill-color:transparent] dark:text-transparent">
-            {((gh?.total || 0) + (dk?.total || 0)).toLocaleString()}
+            {combinedTotal?.toLocaleString() ?? '-'}
           </div>
+          {downloads?.partial && combinedTotal !== null && <p className="mt-2 text-xs text-amber-400">包含历史统计</p>}
         </div>
       </div>
 
       {/* Trend Chart */}
+      {historyError && <p role="status" className="text-sm text-amber-400">历史趋势加载失败，请稍后重试</p>}
       {history.length > 1 && (
         <TrendChart
           title="下载趋势"

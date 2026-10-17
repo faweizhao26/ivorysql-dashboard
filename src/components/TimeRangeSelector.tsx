@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { getBeijingDate, shiftDate } from '@/lib/date';
 
 type PresetRange = 'today' | '7d' | '30d' | '90d' | '180d' | '365d' | 'custom';
 
@@ -30,50 +31,23 @@ const presetOptions = [
   { key: 'custom' as const, label: '自定义' },
 ];
 
-function getDateRange(preset: PresetRange): DateRange {
-  const end = new Date();
-  const start = new Date();
-  
-  switch (preset) {
-    case 'today':
-      return {
-        start: start.toISOString().split('T')[0],
-        end: end.toISOString().split('T')[0],
-        isSingleDay: true
-      };
-    case '7d':
-      start.setDate(start.getDate() - 7);
-      break;
-    case '30d':
-      start.setDate(start.getDate() - 30);
-      break;
-    case '90d':
-      start.setDate(start.getDate() - 90);
-      break;
-    case '180d':
-      start.setDate(start.getDate() - 180);
-      break;
-    case '365d':
-      start.setDate(start.getDate() - 365);
-      break;
-    default:
-      start.setDate(start.getDate() - 30);
+export function getDateRange(preset: PresetRange): DateRange {
+  const end = getBeijingDate();
+  if (preset === 'today') {
+    return { start: end, end, isSingleDay: true };
   }
-  
-  return {
-    start: start.toISOString().split('T')[0],
-    end: end.toISOString().split('T')[0]
-  };
+  const days = preset === 'custom' ? 30 : Number.parseInt(preset, 10);
+  return { start: shiftDate(end, -days), end };
 }
 
-function getComparisonRange(range: DateRange, mode: Comparison['mode']): DateRange | null {
+export function getComparisonRange(range: DateRange, mode: Comparison['mode']): DateRange | null {
   if (mode === 'previous') {
-    const start = new Date(range.start);
-    const end = new Date(range.end);
+    const start = new Date(`${range.start}T00:00:00Z`);
+    const end = new Date(`${range.end}T00:00:00Z`);
     const diff = end.getTime() - start.getTime();
     
     const prevEnd = new Date(start);
-    prevEnd.setDate(prevEnd.getDate() - 1);
+    prevEnd.setUTCDate(prevEnd.getUTCDate() - 1);
     const prevStart = new Date(prevEnd);
     prevStart.setTime(prevEnd.getTime() - diff);
     
@@ -84,10 +58,10 @@ function getComparisonRange(range: DateRange, mode: Comparison['mode']): DateRan
   }
   
   if (mode === 'year-over-year') {
-    const start = new Date(range.start);
-    const end = new Date(range.end);
-    start.setFullYear(start.getFullYear() - 1);
-    end.setFullYear(end.getFullYear() - 1);
+    const start = new Date(`${range.start}T00:00:00Z`);
+    const end = new Date(`${range.end}T00:00:00Z`);
+    start.setUTCFullYear(start.getUTCFullYear() - 1);
+    end.setUTCFullYear(end.getUTCFullYear() - 1);
     return {
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]

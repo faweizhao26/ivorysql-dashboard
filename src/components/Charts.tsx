@@ -1,5 +1,6 @@
 'use client';
 
+import { getBeijingDate } from '@/lib/date';
 import {
   LineChart,
   Line,
@@ -20,10 +21,11 @@ interface ChartDataPoint {
   [key: string]: string | number;
 }
 
-function formatDateTick(value: string): string {
+export function formatDateTick(value: string): string {
   const date = new Date(value);
   if (isNaN(date.getTime())) return value;
-  return `${date.getMonth() + 1}/${date.getDate()}`;
+  const day = getBeijingDate(date);
+  return `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}`;
 }
 
 interface LineChartProps {

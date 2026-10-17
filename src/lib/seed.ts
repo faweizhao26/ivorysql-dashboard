@@ -3,7 +3,6 @@ import {
   saveContributorStats,
   saveSocialStats,
   saveArticleStats,
-  saveWebsiteStats,
   saveCommunityEvent
 } from './db';
 import { isSampleSeedAllowed } from './data-safeguards';
@@ -123,20 +122,6 @@ export function seedSampleData() {
       });
     });
 
-    saveWebsiteStats({
-      date,
-      pageviews: 12000 + Math.floor(Math.random() * 5000),
-      unique_visitors: 4000 + Math.floor(Math.random() * 2000),
-      top_pages: [
-        '/zh-cn/',
-        '/zh-cn/docs-installation',
-        '/zh-cn/releases-page',
-        '/zh-cn/blog',
-        '/zh-cn/community-page'
-      ],
-      sources: ['Google:35', 'Direct:25', 'Baidu:20', 'GitHub:12', 'Other:8'],
-      keywords: ['IvorySQL', 'PostgreSQL', 'Oracle兼容', '数据库迁移', '开源数据库']
-    });
   });
 
   const sampleEvents = [
@@ -168,7 +153,6 @@ export function seedSampleData() {
   console.log(`  - ${dates.length} days of contributor stats`);
   console.log(`  - ${dates.length} days × ${socialPlatforms.length} social platforms`);
   console.log(`  - ${dates.length} days × ${articlePlatforms.length} article platforms`);
-  console.log(`  - ${dates.length} days of website stats`);
   console.log(`  - ${Math.floor(dates.length / 2)} community events`);
 }
 

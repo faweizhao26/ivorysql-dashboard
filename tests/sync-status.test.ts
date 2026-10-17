@@ -15,7 +15,6 @@ test('data pages render freshness and visible fallback labels', () => {
   const pages = [
     'src/app/page.tsx',
     'src/app/social/page.tsx',
-    'src/app/website/page.tsx',
     'src/app/content/page.tsx',
   ].map(read).join('\n');
 

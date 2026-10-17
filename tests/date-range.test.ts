@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createCustomDateRange } from '../src/components/TimeRangeSelector';
+import { createCustomDateRange, getComparisonRange, getDateRange } from '../src/components/TimeRangeSelector';
 import { createDataSlice, createPlatformFreshness } from '../src/lib/data-slices';
 import { getDataRangeParams } from '../src/lib/date-query';
 
@@ -9,6 +9,39 @@ test('custom date ranges use the new input values', () => {
     createCustomDateRange('2026-07-01', '2026-07-22'),
     { start: '2026-07-01', end: '2026-07-22', isSingleDay: false }
   );
+});
+
+test('preset ranges anchor to Beijing midnight across years', (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-12-31T16:00:00Z') });
+  assert.deepEqual(getDateRange('today'), { start: '2027-01-01', end: '2027-01-01', isSingleDay: true });
+  for (const [preset, start] of [
+    ['7d', '2026-12-25'], ['30d', '2026-12-02'], ['90d', '2026-10-03'],
+    ['180d', '2026-07-05'], ['365d', '2026-01-01'], ['custom', '2026-12-02'],
+  ] as const) {
+    assert.deepEqual(getDateRange(preset), { start, end: '2027-01-01' });
+  }
+});
+
+test('comparisons use date-only arithmetic regardless of server daylight saving time', () => {
+  const range = { start: '2026-11-02', end: '2026-11-08' };
+  assert.deepEqual(getComparisonRange(range, 'previous'), { start: '2026-10-26', end: '2026-11-01' });
+  assert.deepEqual(getComparisonRange(range, 'year-over-year'), { start: '2025-11-02', end: '2025-11-08' });
+  assert.deepEqual(getComparisonRange({ start: '2027-01-01', end: '2027-01-01' }, 'previous'), {
+    start: '2026-12-31', end: '2026-12-31',
+  });
+  assert.deepEqual(getComparisonRange({ start: '2024-02-29', end: '2024-03-01' }, 'year-over-year'), {
+    start: '2023-03-01', end: '2023-03-01',
+  });
+  assert.equal(getComparisonRange(range, 'custom'), null);
+});
+
+test('explicit query ranges do not move with Beijing today', () => {
+  assert.deepEqual(getDataRangeParams(new URLSearchParams('end=2024-03-01&days=2'), '2026-11-01'), {
+    startDate: '2024-02-28', endDate: '2024-03-01', isSingleDay: false,
+  });
+  assert.deepEqual(getDataRangeParams(new URLSearchParams('start=2025-12-31&end=2026-01-01'), '2026-11-01'), {
+    startDate: '2025-12-31', endDate: '2026-01-01', isSingleDay: false,
+  });
 });
 
 test('reports exact and historical fallback dates without relabeling data', () => {

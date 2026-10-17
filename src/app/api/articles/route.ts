@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getBeijingDate, shiftDate } from '@/lib/date';
 import { 
   getArticleDetailsByPlatform, 
   getArticleDetailsForDate,
@@ -44,7 +45,7 @@ export function parseArticleDetailsInput(body: unknown): ArticleDetails {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   
-  const endDate = searchParams.get('end') || new Date().toISOString().split('T')[0];
+  const endDate = searchParams.get('end') || getBeijingDate();
   const startDateParam = searchParams.get('start');
   
   let startDate: string;
@@ -52,9 +53,7 @@ export async function GET(request: Request) {
     startDate = startDateParam;
   } else {
     const days = parseInt(searchParams.get('days') || '30', 10);
-    const d = new Date();
-    d.setDate(d.getDate() - days);
-    startDate = d.toISOString().split('T')[0];
+    startDate = shiftDate(endDate, -days);
   }
 
   const platform = searchParams.get('platform');

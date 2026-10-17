@@ -39,10 +39,7 @@ function projectFreshnessMap(
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const { startDate, endDate, isSingleDay } = getDataRangeParams(
-      searchParams,
-      new Date().toISOString().split('T')[0],
-    );
+    const { startDate, endDate, isSingleDay } = getDataRangeParams(searchParams);
     const includeDownloads = searchParams.get('include')?.split(',').includes('downloads') || false;
     const includeContributors = searchParams.get('include')?.split(',').includes('contributors') || false;
     let githubData: {

@@ -1,3 +1,5 @@
+import { getBeijingDate, shiftDate } from './date';
+
 export interface DataRangeParams {
   startDate: string;
   endDate: string;
@@ -10,7 +12,7 @@ function isIsoDate(value: string): boolean {
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
 
-export function getDataRangeParams(searchParams: URLSearchParams, today: string): DataRangeParams {
+export function getDataRangeParams(searchParams: URLSearchParams, today: string = getBeijingDate()): DataRangeParams {
   const endDate = searchParams.get('end') || today;
   const startParam = searchParams.get('start');
   if (!isIsoDate(endDate) || (startParam && !isIsoDate(startParam))) {
@@ -26,9 +28,7 @@ export function getDataRangeParams(searchParams: URLSearchParams, today: string)
     if (!Number.isInteger(days) || days < 1 || days > 3650) {
       throw new RangeError('Invalid days; expected an integer from 1 to 3650');
     }
-    const date = new Date(`${endDate}T00:00:00Z`);
-    date.setUTCDate(date.getUTCDate() - days);
-    startDate = date.toISOString().slice(0, 10);
+    startDate = shiftDate(endDate, -days);
   }
 
   if (startDate > endDate) throw new RangeError('start must be before or equal to end');

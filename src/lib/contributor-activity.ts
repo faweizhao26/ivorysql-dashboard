@@ -1,3 +1,5 @@
+import { getBeijingDate } from './date';
+
 export type ContributorStatus = 'open' | 'closed' | 'merged';
 
 export interface ContributorActivityItem {
@@ -49,7 +51,7 @@ export interface MainRepoMonthlyActivity {
 }
 
 export function isCurrentContributionMonth(month: string, today: Date = new Date()): boolean {
-  return month === today.toISOString().slice(0, 7);
+  return month === getBeijingDate(today).slice(0, 7);
 }
 
 export function aggregateContributorActivity(

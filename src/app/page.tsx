@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getBeijingDate } from '@/lib/date';
 import { ComparisonStatCard, PlatformCard } from '@/components/StatCard';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { TrendChart } from '@/components/Charts';
@@ -97,7 +98,7 @@ const contentPlatforms: Record<string, { name: string }> = {
 
 export default function HomePage() {
   const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getBeijingDate();
     return {
       start: today,
       end: today,

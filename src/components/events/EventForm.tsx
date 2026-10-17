@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { Save, X } from 'lucide-react';
 import type { ActivityEventParsed } from '@/lib/db';
 import { EVENT_TYPES } from '@/lib/events-ui';
-export const newEvent = (): ActivityEventParsed => ({ event_name: '', event_date: new Date().toISOString().slice(0, 10), event_type: 'conference', participants: 0, registrations: 0, online_viewers: 0, collected_data: {} });
+import { getBeijingDate } from '@/lib/date';
+export const newEvent = (): ActivityEventParsed => ({ event_name: '', event_date: getBeijingDate(), event_type: 'conference', participants: 0, registrations: 0, online_viewers: 0, collected_data: {} });
 export function EventForm({ initial, onSaved, onCancel, onDirtyChange }: { initial: ActivityEventParsed; onSaved: (id?: number) => void; onCancel: () => void; onDirtyChange?: (dirty: boolean) => void }) {
   const [draft, setDraft] = useState(initial);
   const [saving, setSaving] = useState(false);

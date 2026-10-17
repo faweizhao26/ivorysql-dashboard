@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { syncGitHubData } from '@/lib/github-sync';
-import { saveCommunityEvent, saveDownloadStats } from '@/lib/db';
+import { saveCommunityEvent } from '@/lib/db';
 import { runTrackedSync } from '@/lib/tracked-sync';
+import { recordDownloadSnapshot } from '@/lib/download-stats';
+import { getBeijingDate } from '@/lib/date';
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_REPO = process.env.GITHUB_REPO || 'IvorySQL/IvorySQL';
@@ -80,36 +82,6 @@ async function translateToChinese(text: string): Promise<string> {
   }
 }
 
-async function recordDownloadStats(today: string): Promise<void> {
-  const [ghRes, dockerRes] = await Promise.all([
-    fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=100`, {
-      headers: { Authorization: `Bearer ${GITHUB_TOKEN}`, 'User-Agent': 'IvorySQL' }
-    }),
-    fetch('https://hub.docker.com/v2/repositories/ivorysql/?page_size=50')
-  ]);
-
-  let githubDownloads = 0;
-  if (ghRes.ok) {
-    const releases = await ghRes.json();
-    for (const release of (releases || [])) {
-      for (const asset of (release.assets || [])) {
-        githubDownloads += asset.download_count || 0;
-      }
-    }
-  }
-
-  let dockerPulls = 0;
-  if (dockerRes.ok) {
-    const docker = await dockerRes.json();
-    for (const repository of (docker.results || [])) {
-      dockerPulls += repository.pull_count || 0;
-    }
-  }
-
-  await saveDownloadStats(today, githubDownloads, dockerPulls);
-  console.log(`Download stats: GitHub=${githubDownloads}, Docker=${dockerPulls}`);
-}
-
 export async function POST() {
   if (!GITHUB_TOKEN) {
     return NextResponse.json({ error: 'GitHub token not configured' }, { status: 500 });
@@ -173,11 +145,7 @@ export async function POST() {
 
       await Promise.all(summaryPromises);
 
-      try {
-        await recordDownloadStats(new Date().toISOString().split('T')[0]);
-      } catch (e) {
-        console.error('Failed to record download stats:', e);
-      }
+      await recordDownloadSnapshot(getBeijingDate());
 
       const count = summaryPromises.length + 2;
       return { value: result, recordsSeen: count, recordsWritten: count };
@@ -195,10 +163,10 @@ export async function GET() {
   }
   try {
     const tracked = await runTrackedSync({ platform: 'github', trigger: 'vercel_cron' }, async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getBeijingDate();
       const result = await syncGitHubData();
       if (!result.success) throw new Error(result.error || 'GitHub sync failed');
-      await recordDownloadStats(today);
+      await recordDownloadSnapshot(today);
       return { value: result, recordsSeen: 2, recordsWritten: 2 };
     });
     return NextResponse.json({

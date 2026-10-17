@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getBeijingDate } from '@/lib/date';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { PlatformIcon } from '@/components/PlatformIcon';
 import { downloadCSV } from '@/lib/csv-utils';
@@ -40,7 +41,7 @@ const socialPlatforms: PlatformCardData[] = [
 
 export default function SocialPage() {
   const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getBeijingDate();
     return { start: today, end: today, isSingleDay: true };
   });
   const [, setComparison] = useState<Comparison | undefined>(undefined);

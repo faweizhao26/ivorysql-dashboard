@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { getBeijingDate } from '@/lib/date';
 import SyncStatusPanel from '@/components/admin/SyncStatusPanel';
 import EventManager from '@/components/admin/EventManager';
 import EvangelistAvatar from '@/components/EvangelistAvatar';
@@ -255,7 +256,7 @@ function ManualDataSection() {
   const [category, setCategory] = useState<DataCategory>('social');
   const [platform, setPlatform] = useState('wechat');
   const [metric, setMetric] = useState('followers');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getBeijingDate);
   const [value, setValue] = useState('');
   const [notes, setNotes] = useState('');
   const [records, setRecords] = useState<DataEntry[]>([]);
@@ -451,7 +452,7 @@ function ManualDataSection() {
 
 function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
   const [platform, setPlatform] = useState('wechat');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getBeijingDate);
   const [articleTitle, setArticleTitle] = useState('');
   const [articleUrl, setArticleUrl] = useState('');
   const [views, setViews] = useState('');
@@ -547,7 +548,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
     setComments('');
     setContentCategory('');
     setContentSource('');
-    setDate(new Date().toISOString().split('T')[0]);
+    setDate(getBeijingDate());
     setIsEditing(false);
     setEditingArticle(null);
   }

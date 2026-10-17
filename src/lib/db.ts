@@ -1,4 +1,5 @@
 import { Pool, type PoolClient } from 'pg';
+import { getBeijingDate, shiftDate } from './date';
 import type { MainRepoContributor, MainRepoMonthlyActivity } from './contributor-activity';
 
 let pool: Pool | null = null;
@@ -341,7 +342,7 @@ export async function withDbTransaction<T>(operation: (client: PoolClient) => Pr
 }
 
 export function getToday(): string {
-  return new Date().toISOString().split('T')[0];
+  return getBeijingDate();
 }
 
 export interface GitHubStats {
@@ -404,15 +405,6 @@ export interface ArticleStats {
   comments: number;
   followers: number;
   new_articles: number;
-}
-
-export interface WebsiteStats {
-  date: string;
-  pageviews: number;
-  unique_visitors: number;
-  top_pages: string[];
-  sources: string[];
-  keywords: string[];
 }
 
 export interface CommunityEvent {
@@ -610,22 +602,6 @@ export async function saveArticleStats(stats: ArticleStats): Promise<void> {
       stats.likes, stats.bookmarks, stats.comments, stats.followers, stats.new_articles]);
 }
 
-export async function saveWebsiteStats(stats: WebsiteStats): Promise<void> {
-  await query(`
-    INSERT INTO website_stats 
-    (date, pageviews, unique_visitors, top_pages, sources, keywords)
-    VALUES ($1, $2, $3, $4, $5, $6)
-    ON CONFLICT (date) DO UPDATE SET
-      pageviews = EXCLUDED.pageviews,
-      unique_visitors = EXCLUDED.unique_visitors,
-      top_pages = EXCLUDED.top_pages,
-      sources = EXCLUDED.sources,
-      keywords = EXCLUDED.keywords,
-      updated_at = CURRENT_TIMESTAMP
-  `, [stats.date, stats.pageviews, stats.unique_visitors,
-      JSON.stringify(stats.top_pages), JSON.stringify(stats.sources), JSON.stringify(stats.keywords)]);
-}
-
 export async function saveCommunityEvent(event: CommunityEvent): Promise<void> {
   await query(`
     INSERT INTO community_events 
@@ -649,11 +625,10 @@ export async function getLatestGitHubStats(endDate?: string): Promise<GitHubStat
 }
 
 export async function getGitHubStatsHistory(days: number = 30): Promise<GitHubStats[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = shiftDate(getToday(), -days);
   const result = await query(
     'SELECT * FROM github_stats WHERE date >= $1 ORDER BY date ASC',
-    [since.toISOString().split('T')[0]]
+    [since]
   );
   return result.rows;
 }
@@ -666,21 +641,19 @@ export async function getLatestContributorStats(endDate?: string): Promise<Contr
 }
 
 export async function getContributorStatsHistory(days: number = 365): Promise<ContributorStatsData[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = shiftDate(getToday(), -days);
   const result = await query(
     'SELECT * FROM contributor_stats WHERE date >= $1 ORDER BY date ASC',
-    [since.toISOString().split('T')[0]]
+    [since]
   );
   return result.rows;
 }
 
 export async function getSocialStatsByPlatform(platform: string, days: number = 30): Promise<SocialStats[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = shiftDate(getToday(), -days);
   const result = await query(
     'SELECT * FROM social_stats WHERE platform = $1 AND date >= $2 ORDER BY date ASC',
-    [platform, since.toISOString().split('T')[0]]
+    [platform, since]
   );
   return result.rows;
 }
@@ -701,11 +674,10 @@ export async function getAllSocialPlatforms(): Promise<string[]> {
 }
 
 export async function getArticleStatsByPlatform(platform: string, days: number = 30): Promise<ArticleStats[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = shiftDate(getToday(), -days);
   const result = await query(
     'SELECT * FROM article_stats WHERE platform = $1 AND date >= $2 ORDER BY date ASC',
-    [platform, since.toISOString().split('T')[0]]
+    [platform, since]
   );
   return result.rows;
 }
@@ -725,58 +697,27 @@ export async function getAllArticlePlatforms(): Promise<string[]> {
   return result.rows.map(r => r.platform);
 }
 
-export async function getWebsiteStatsHistory(days: number = 30): Promise<WebsiteStats[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
-  const result = await query(
-    'SELECT * FROM website_stats WHERE date >= $1 ORDER BY date ASC',
-    [since.toISOString().split('T')[0]]
-  );
-  return result.rows.map(row => ({
-    ...row,
-    top_pages: JSON.parse(row.top_pages || '[]'),
-    sources: JSON.parse(row.sources || '[]'),
-    keywords: JSON.parse(row.keywords || '[]')
-  }));
-}
-
-export async function getLatestWebsiteStats(endDate?: string): Promise<WebsiteStats | null> {
-  const result = endDate
-    ? await query('SELECT * FROM website_stats WHERE date <= $1 ORDER BY date DESC LIMIT 1', [endDate])
-    : await query('SELECT * FROM website_stats ORDER BY date DESC LIMIT 1');
-  if (!result.rows[0]) return null;
-  const row = result.rows[0];
-  return {
-    ...row,
-    top_pages: JSON.parse(row.top_pages || '[]'),
-    sources: JSON.parse(row.sources || '[]'),
-    keywords: JSON.parse(row.keywords || '[]')
-  };
-}
-
 export async function getRecentEvents(days: number = 7, limit: number = 20): Promise<CommunityEvent[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = shiftDate(getToday(), -days);
   const result = await query(
     'SELECT * FROM community_events WHERE date >= $1 ORDER BY date DESC LIMIT $2',
-    [since.toISOString().split('T')[0], limit]
+    [since, limit]
   );
   return result.rows;
 }
 
 export async function getManualData(category?: string, days: number = 90): Promise<ManualData[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = shiftDate(getToday(), -days);
   if (category) {
     const result = await query(
       'SELECT * FROM manual_data WHERE category = $1 AND date >= $2 ORDER BY date DESC',
-      [category, since.toISOString().split('T')[0]]
+      [category, since]
     );
     return result.rows;
   }
   const result = await query(
     'SELECT * FROM manual_data WHERE date >= $1 ORDER BY date DESC',
-    [since.toISOString().split('T')[0]]
+    [since]
   );
   return result.rows;
 }
@@ -845,31 +786,6 @@ export async function getArticleStatsByDateRange(startDate: string, endDate: str
 export async function getArticleStatsForDate(date: string): Promise<ArticleStats[]> {
   const result = await query('SELECT * FROM article_stats WHERE date = $1', [date]);
   return result.rows;
-}
-
-export async function getWebsiteStatsByDateRange(startDate: string, endDate: string): Promise<WebsiteStats[]> {
-  const result = await query(
-    'SELECT * FROM website_stats WHERE date >= $1 AND date <= $2 ORDER BY date ASC',
-    [startDate, endDate]
-  );
-  return result.rows.map(row => ({
-    ...row,
-    top_pages: JSON.parse(row.top_pages || '[]'),
-    sources: JSON.parse(row.sources || '[]'),
-    keywords: JSON.parse(row.keywords || '[]')
-  }));
-}
-
-export async function getWebsiteStatsForDate(date: string): Promise<WebsiteStats | null> {
-  const result = await query('SELECT * FROM website_stats WHERE date = $1', [date]);
-  if (!result.rows[0]) return null;
-  const row = result.rows[0];
-  return {
-    ...row,
-    top_pages: JSON.parse(row.top_pages || '[]'),
-    sources: JSON.parse(row.sources || '[]'),
-    keywords: JSON.parse(row.keywords || '[]')
-  };
 }
 
 export async function getEventsByDateRange(startDate: string, endDate: string, limit: number = 50): Promise<CommunityEvent[]> {
@@ -984,21 +900,19 @@ export async function saveDownloadStats(date: string, githubTotal: number, docke
 }
 
 export async function getDownloadStatsHistory(days: number = 90): Promise<DownloadStatsHistory[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = shiftDate(getToday(), -days);
   const result = await query(
     'SELECT * FROM download_stats WHERE date >= $1 ORDER BY date ASC',
-    [since.toISOString().split('T')[0]]
+    [since]
   );
   return result.rows;
 }
 
 export async function getArticleDetailsByPlatform(platform: string, days: number = 30): Promise<ArticleDetails[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = shiftDate(getToday(), -days);
   const result = await query(
     'SELECT * FROM article_details WHERE platform = $1 AND date >= $2 ORDER BY date DESC, views DESC',
-    [platform, since.toISOString().split('T')[0]]
+    [platform, since]
   );
   return result.rows;
 }
@@ -1440,11 +1354,10 @@ export async function deleteActivityEvent(id: number): Promise<void> {
 }
 
 export async function getActivityEvents(days: number = 365): Promise<ActivityEventParsed[]> {
-  const since = new Date();
-  since.setDate(since.getDate() - days);
+  const since = shiftDate(getToday(), -days);
   const result = await query(
     'SELECT * FROM activity_events WHERE event_date >= $1 ORDER BY event_date DESC',
-    [since.toISOString().split('T')[0]]
+    [since]
   );
   return result.rows.map(row => ({
     ...row,
@@ -1498,7 +1411,6 @@ export async function getDashboardUpdatedAt(): Promise<string | null> {
       UNION ALL SELECT MAX(updated_at) FROM contributor_stats
       UNION ALL SELECT MAX(updated_at) FROM social_stats
       UNION ALL SELECT MAX(updated_at) FROM article_stats
-      UNION ALL SELECT MAX(updated_at) FROM website_stats
       UNION ALL SELECT MAX(updated_at) FROM download_stats
       UNION ALL SELECT MAX(updated_at) FROM activity_events
     ) freshness
