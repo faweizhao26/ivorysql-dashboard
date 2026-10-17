@@ -4,7 +4,8 @@ import {
   saveReminderSettings, 
   getStalePlatforms,
   updateReminderLastSent,
-  logReminderSent
+  logReminderSent,
+  type ReminderSettings,
 } from '@/lib/db';
 import { isReminderEligible } from '@/lib/data-safeguards';
 
@@ -14,11 +15,11 @@ export async function GET(request: Request) {
 
   try {
     if (platform) {
-      const settings = await getReminderSettings(platform) as any;
+      const settings = await getReminderSettings(platform) as ReminderSettings | null;
       return NextResponse.json(settings);
     }
 
-    const settings = (await getReminderSettings() as any[]).filter(setting => isReminderEligible(setting.platform));
+    const settings = (await getReminderSettings() as ReminderSettings[]).filter(setting => isReminderEligible(setting.platform));
     const stalePlatforms = await getStalePlatforms();
 
     return NextResponse.json({
@@ -68,7 +69,7 @@ export async function PUT(request: Request) {
     }
 
     if (action === 'send_reminder') {
-      const settings = await getReminderSettings(platform) as any;
+      const settings = await getReminderSettings(platform) as ReminderSettings | null;
       
       if (settings?.webhook_url) {
         try {
@@ -88,7 +89,7 @@ export async function PUT(request: Request) {
             await logReminderSent(platform, 'failed');
             return NextResponse.json({ error: 'Failed to send webhook' }, { status: 500 });
           }
-        } catch (webhookError) {
+        } catch {
           await logReminderSent(platform, 'error');
           return NextResponse.json({ error: 'Webhook error' }, { status: 500 });
         }

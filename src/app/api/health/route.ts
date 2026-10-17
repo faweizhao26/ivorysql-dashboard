@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const data = await getLatestSocialStats();
     return NextResponse.json({ ok: true, count: data.length });
-  } catch (error: any) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : undefined }, { status: 500 });
   }
 }

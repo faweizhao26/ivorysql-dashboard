@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import SyncStatusPanel from '@/components/admin/SyncStatusPanel';
 import EventManager from '@/components/admin/EventManager';
 import EvangelistAvatar from '@/components/EvangelistAvatar';
@@ -118,11 +118,7 @@ export default function AdminPage() {
   const [stalePlatforms, setStalePlatforms] = useState<StalePlatform[]>([]);
   const [hasStaleData, setHasStaleData] = useState(false);
 
-  useEffect(() => {
-    fetchReminderStatus();
-  }, []);
-
-  async function fetchReminderStatus() {
+  const fetchReminderStatus = useCallback(async () => {
     try {
       const res = await fetch('/api/reminders');
       if (res.ok) {
@@ -133,7 +129,20 @@ export default function AdminPage() {
     } catch (err) {
       console.error(err);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/reminders', { signal: controller.signal })
+      .then(response => response.ok ? response.json() : null)
+      .then(data => {
+        if (!data || controller.signal.aborted) return;
+        setStalePlatforms(data.stalePlatforms || []);
+        setHasStaleData(data.hasStaleData || false);
+      })
+      .catch(error => { if (!controller.signal.aborted) console.error(error); });
+    return () => controller.abort();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -165,7 +174,7 @@ export default function AdminPage() {
 
       <div className="bg-slate-800/50 rounded-xl border border-slate-700/50">
         <div className="border-b border-slate-700">
-          <nav className="flex -mb-px overflow-x-auto">
+          <nav className="flex -mb-px overflow-x-auto [&>button]:shrink-0 [&>button]:whitespace-nowrap">
             <button
               onClick={() => setActiveTab('manual')}
               className={`px-6 py-3 text-sm font-medium border-b-2 ${
@@ -254,14 +263,10 @@ function ManualDataSection() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
-    fetchRecords();
-  }, [category]);
-
-  useEffect(() => {
     setMetric(metricsByCategory[category][0]?.value || '');
   }, [category]);
 
-  async function fetchRecords() {
+  const fetchRecords = useCallback(async () => {
     try {
       const res = await fetch(`/api/manual?category=${category}`);
       if (!res.ok) throw new Error('Failed to fetch');
@@ -270,7 +275,11 @@ function ManualDataSection() {
     } catch (err) {
       console.error(err);
     }
-  }
+  }, [category]);
+
+  useEffect(() => {
+    fetchRecords();
+  }, [fetchRecords]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -297,7 +306,7 @@ function ManualDataSection() {
       setValue('');
       setNotes('');
       fetchRecords();
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: '保存失败，请重试' });
     } finally {
       setLoading(false);
@@ -458,12 +467,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
   const [isEditing, setIsEditing] = useState(false);
   const ARTICLES_PER_PAGE = 5;
 
-  useEffect(() => {
-    fetchArticles();
-    setPage(1);
-  }, [platform]);
-
-  async function fetchArticles() {
+  const fetchArticles = useCallback(async () => {
     try {
       const res = await fetch(`/api/articles?platform=${platform}&all=true`);
       if (res.ok) {
@@ -473,7 +477,12 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
     } catch (err) {
       console.error(err);
     }
-  }
+  }, [platform]);
+
+  useEffect(() => {
+    fetchArticles();
+    setPage(1);
+  }, [fetchArticles]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -523,7 +532,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
       resetForm();
       fetchArticles();
       onDataChange();
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: '保存失败，请重试' });
     } finally {
       setLoading(false);
@@ -871,7 +880,7 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
       setMessage({ type: 'success', text: '设置保存成功！' });
       fetchSettings();
       onSettingsChange();
-    } catch (err) {
+    } catch {
       setMessage({ type: 'error', text: '保存失败，请重试' });
     } finally {
       setLoading(false);
@@ -897,7 +906,7 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
       } else {
         alert(data.error || '发送失败');
       }
-    } catch (err) {
+    } catch {
       alert('发送失败，请重试');
     }
   }
@@ -1102,6 +1111,24 @@ interface EvangelistContributionRecord extends ContributionLimitRecord {
   notes?: string;
 }
 
+interface EvangelistParticipantDraft {
+  id?: number;
+  name: string;
+  avatar_url?: string | null;
+  title?: string | null;
+  bio?: string | null;
+  joined_date?: string | null;
+}
+
+interface EvangelistParticipant extends EvangelistParticipantDraft {
+  id: number;
+  total_points?: number | string;
+}
+
+interface SavedEvangelistContribution extends EvangelistContributionRecord {
+  id: number;
+}
+
 export function calculateEvangelistContributionLimit(
   contributions: ContributionLimitRecord[],
   draft: ContributionLimitRecord,
@@ -1133,11 +1160,11 @@ export function calculateEvangelistContributionLimit(
 }
 
 function EvangelistSection() {
-  const [participants, setParticipants] = useState<any[]>([]);
-  const [editingPerson, setEditingPerson] = useState<any>(null);
-  const [editingCont, setEditingCont] = useState<any>(null);
+  const [participants, setParticipants] = useState<EvangelistParticipant[]>([]);
+  const [editingPerson, setEditingPerson] = useState<EvangelistParticipantDraft | null>(null);
+  const [editingCont, setEditingCont] = useState<EvangelistContributionRecord | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [contributions, setContributions] = useState<any[]>([]);
+  const [contributions, setContributions] = useState<SavedEvangelistContribution[]>([]);
   const [contributionParticipantId, setContributionParticipantId] = useState<number | null>(null);
   const [loadingContributions, setLoadingContributions] = useState(false);
   const [savingPerson, setSavingPerson] = useState(false);
@@ -1148,7 +1175,7 @@ function EvangelistSection() {
   const contributionRequestRef = useRef(0);
   const personFormRef = useRef<HTMLDivElement>(null);
 
-  function openPerson(person?: { id: number; name: string; avatar_url?: string | null }) {
+  function openPerson(person?: EvangelistParticipant) {
     setEditingPerson(person ? { ...person, avatar_url: getEvangelistAvatar(person.id, person.avatar_url).url } : { name: '', title: '', bio: '', avatar_url: getAvailableEvangelistAvatar(participants) });
     requestAnimationFrame(() => personFormRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
   }
@@ -1314,7 +1341,7 @@ function EvangelistSection() {
     return opts;
   }
   function getTypeOptions() {
-    const opts = [...(evangelistContributionTypes[editingCont?.category] || [])];
+    const opts = [...(evangelistContributionTypes[editingCont?.category ?? ''] || [])];
     if (editingCont?.type && !opts.includes(editingCont.type)) opts.push(editingCont.type);
     return opts;
   }
@@ -1343,7 +1370,7 @@ function EvangelistSection() {
             <input placeholder="头衔" value={editingPerson?.title || ''} onChange={e => setEditingPerson({...editingPerson, title: e.target.value})} className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
           </div>
           <input placeholder="简介" value={editingPerson?.bio || ''} onChange={e => setEditingPerson({...editingPerson, bio: e.target.value})} className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 text-sm" />
-          <EvangelistAvatarPicker value={editingPerson.avatar_url} onChange={avatar_url => setEditingPerson({ ...editingPerson, avatar_url })} members={participants} participantId={editingPerson.id} />
+          <EvangelistAvatarPicker value={editingPerson.avatar_url || ''} onChange={avatar_url => setEditingPerson({ ...editingPerson, avatar_url })} members={participants} participantId={editingPerson.id} />
           <button type="submit" disabled={savingPerson} aria-busy={savingPerson} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50">{savingPerson ? '保存中...' : editingPerson?.id ? '更新' : '添加'}</button>
         </form>
         )}
@@ -1359,7 +1386,7 @@ function EvangelistSection() {
             <th className="text-right py-2 px-2 text-slate-400 w-32">操作</th>
           </tr></thead>
           <tbody>
-            {participants.map((p: any) => (
+            {participants.map((p) => (
               <tr key={p.id} className={`border-b border-slate-700/50 ${selectedId === p.id ? 'bg-indigo-500/10' : 'hover:bg-slate-700/30'}`}>
                 <td className="py-2 px-2">
                   <button onClick={() => { if (selectedId === p.id) { clearContributionSelection(); } else void fetchContributions(p.id); }} className="text-slate-200 hover:text-indigo-400 text-left">
@@ -1393,7 +1420,7 @@ function EvangelistSection() {
               <th className="text-right py-2 px-2 text-slate-400 w-16">操作</th>
             </tr></thead>
             <tbody>
-              {contributions.map((c: any) => (
+              {contributions.map((c) => (
                 <tr key={c.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
                   <td className="py-2 px-2 text-slate-400">{c.date || '-'}</td>
                   <td className="py-2 px-2 text-slate-300">{c.category}</td>

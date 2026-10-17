@@ -1,7 +1,6 @@
 const fs = await import('node:fs/promises');
 const path = await import('node:path');
 
-const DASHBOARD_BASE = 'https://ivorysql-dashboard.vercel.app';
 const PROJECT_DIR = '/Users/felixzhao/ivorysql-dashboard';
 const OSCHINA_USER_ID = '5729420';
 const CTO_USER_ID = '17240866';
@@ -51,60 +50,34 @@ function uniqueRecent(articles) {
 
 await loadLocalEnv();
 
-const cronSecret = process.env.CRON_SECRET;
+const DASHBOARD_BASE = process.env.EGO_DASHBOARD_BASE || 'https://ivorysql-dashboard.vercel.app';
 const dryRun = process.env.EGO_SYNC_DRY_RUN === '1'
   || await fs.access(path.join(PROJECT_DIR, '.ego-sync-dry-run')).then(() => true, () => false);
+const { createDashboardClient, runCollectors } = await import(path.join(PROJECT_DIR, 'scripts/ego-dashboard-client.mjs'));
+const dashboard = createDashboardClient({ baseUrl: DASHBOARD_BASE, adminPassword: process.env.ADMIN_PASSWORD, cronSecret: process.env.CRON_SECRET });
+await dashboard.preflight();
 
-const task = await taskSpace(Number(process.env.EGO_TASK_SPACE_ID || 28));
 const { resolveEgoContentPages } = await import(path.join(PROJECT_DIR, 'scripts/ego-content-pages.mjs'));
-const {
-  zhihu: zhihuPage,
-  oschina: oschinaPage,
-  cto: ctoPage,
-  toutiao: toutiaoPage,
-  dashboard: dashboardPage,
-} = await resolveEgoContentPages(task, [
-  { key: 'zhihu', url: 'https://www.zhihu.com/creator/manage/creation/article' },
-  { key: 'oschina', url: `https://my.oschina.net/u/${OSCHINA_USER_ID}` },
-  { key: 'cto', url: `https://blog.51cto.com/u_${CTO_USER_ID}` },
-  { key: 'toutiao', url: `https://www.toutiao.com/c/user/token/${TOUTIAO_TOKEN}/` },
-  { key: 'dashboard', url: `${DASHBOARD_BASE}/content` },
-]);
-
-if (!(await dashboardPage.url()).startsWith(DASHBOARD_BASE)) {
-  await dashboardPage.goto(`${DASHBOARD_BASE}/content`);
+let taskPromise;
+async function contentPage(key, url) {
+  taskPromise ||= Promise.resolve().then(() => taskSpace(Number(process.env.EGO_TASK_SPACE_ID || 28)));
+  const task = await taskPromise;
+  const pages = await resolveEgoContentPages(task, [{ key, url }]);
+  return pages[key];
 }
 
 async function existingDates(platform) {
-  const response = await dashboardPage.fetch(
-    `${DASHBOARD_BASE}/api/articles?platform=${platform}&all=true`,
-  );
-  if (!response.ok) throw new Error(`${platform} article lookup returned ${response.status}`);
-  const payload = responseJson(response);
-  return new Map((payload.data || []).map(article => [article.article_url, article.date]));
+  return dashboard.existingDates(platform);
 }
 
 async function upload(platform, articles) {
   const prepared = uniqueRecent(articles);
   if (prepared.length === 0) throw new Error(`${platform} returned no articles`);
   if (dryRun) {
-    console.log(JSON.stringify({ platform, articles: prepared.length, sample: prepared.slice(0, 2) }));
-    return;
+    return { articles: prepared.length, dryRun: true, sample: prepared.slice(0, 2) };
   }
-
-  const response = await dashboardPage.fetch(`${DASHBOARD_BASE}/api/browser-content/sync`, {
-    method: 'POST',
-    headers: {
-      ...(cronSecret ? { Authorization: `Bearer ${cronSecret}` } : {}),
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ platform, articles: prepared }),
-  });
-  const payload = responseJson(response);
-  if (!response.ok || !payload.success) {
-    throw new Error(`${platform} upload failed: ${payload.error || response.status}`);
-  }
-  console.log(JSON.stringify({ platform, articles: payload.articles, success: true }));
+  const payload = await dashboard.upload(platform, prepared);
+  return { articles: payload.articles };
 }
 
 async function resolvePublishedDates(page, articles, knownDates, pattern) {
@@ -130,6 +103,7 @@ async function resolvePublishedDates(page, articles, knownDates, pattern) {
 }
 
 async function collectOsChina() {
+  const oschinaPage = await contentPage('oschina', `https://my.oschina.net/u/${OSCHINA_USER_ID}`);
   await oschinaPage.goto(`https://my.oschina.net/u/${OSCHINA_USER_ID}`);
   const articles = [];
   const cursor = new Date();
@@ -154,6 +128,7 @@ async function collectOsChina() {
 }
 
 async function collect51Cto() {
+  const ctoPage = await contentPage('cto', `https://blog.51cto.com/u_${CTO_USER_ID}`);
   const knownDates = await existingDates('ctoutiao');
   const articles = [];
 
@@ -196,6 +171,7 @@ async function collect51Cto() {
 }
 
 async function collectToutiao() {
+  const toutiaoPage = await contentPage('toutiao', `https://www.toutiao.com/c/user/token/${TOUTIAO_TOKEN}/`);
   const knownDates = await existingDates('toutiao');
   await toutiaoPage.goto(`https://www.toutiao.com/c/user/token/${TOUTIAO_TOKEN}/`);
 
@@ -231,6 +207,7 @@ async function collectToutiao() {
 }
 
 async function collectZhihu() {
+  const zhihuPage = await contentPage('zhihu', 'https://www.zhihu.com/creator/manage/creation/article');
   await zhihuPage.goto('https://www.zhihu.com/creator/manage/creation/article');
   if (!(await zhihuPage.url()).includes('/creator/manage/creation')) {
     throw new Error('Zhihu login expired in ego-lite');
@@ -263,11 +240,8 @@ const collectors = [
   ['zhihu', collectZhihu],
 ];
 
-for (const [platform, collect] of collectors) {
-  try {
-    await upload(platform, await collect());
-  } catch (error) {
-    console.error(JSON.stringify({ platform, success: false, error: String(error) }));
-    process.exitCode = 1;
-  }
-}
+const results = await runCollectors(collectors, upload,
+  async (platform, error) => { if (dryRun) return false; await dashboard.reportFailure(platform, error); },
+  result => (result.success ? console.log : console.error)(JSON.stringify(result)),
+);
+if (results.some(result => !result.success)) process.exitCode = 1;

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/app/auth-provider';
 import type { AccessLevel } from '@/lib/auth';
 import type { SyncPlatformStatus } from '@/lib/sync-runs';
+import { syncFreshness } from '@/lib/sync-freshness';
 
 const retryRoutes: Record<string, string> = {
   github: '/api/github/sync',
@@ -99,13 +100,14 @@ export default function SyncStatusPanel() {
         <p className="py-8 text-center text-sm text-slate-500">暂无同步记录</p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-slate-700">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full min-w-[960px] whitespace-nowrap text-sm">
             <thead className="bg-slate-900/60 text-slate-400">
               <tr>
                 <th className="px-4 py-3 text-left">平台</th>
                 <th className="px-4 py-3 text-left">状态</th>
                 <th className="px-4 py-3 text-left">最近运行</th>
                 <th className="px-4 py-3 text-left">最近成功</th>
+                <th className="px-4 py-3 text-left">数据时效</th>
                 <th className="px-4 py-3 text-right">读取 / 写入</th>
                 <th className="px-4 py-3 text-left">详情</th>
                 <th className="px-4 py-3 text-right">操作</th>
@@ -114,6 +116,7 @@ export default function SyncStatusPanel() {
             <tbody>
               {items.map(item => {
                 const retryable = canRetrySync(accessLevel, item.platform);
+                const freshness = syncFreshness(item.platform, item.last_success_at);
                 return (
                   <tr key={item.platform} className="border-t border-slate-700/70">
                     <td className="px-4 py-3 font-medium text-slate-200">{platformNames[item.platform] || item.platform}</td>
@@ -124,8 +127,11 @@ export default function SyncStatusPanel() {
                     </td>
                     <td className="px-4 py-3 text-slate-400">{formatTime(item.finished_at || item.started_at)}</td>
                     <td className="px-4 py-3 text-slate-400">{formatTime(item.last_success_at)}</td>
+                    <td className={`whitespace-nowrap px-4 py-3 ${freshness === 'fresh' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {freshness === 'fresh' ? '正常' : freshness === 'stale' ? '已过期' : '尚未成功同步'}
+                    </td>
                     <td className="px-4 py-3 text-right text-slate-400">{item.records_seen} / {item.records_written}</td>
-                    <td className="max-w-xs px-4 py-3 text-slate-400">
+                    <td className="max-w-xs whitespace-normal break-words px-4 py-3 text-slate-400">
                       {item.error_message || (retryable ? '可在此手动执行' : '通过 ego-lite 更新')}
                     </td>
                     <td className="px-4 py-3 text-right">

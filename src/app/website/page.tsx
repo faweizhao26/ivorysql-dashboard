@@ -16,6 +16,7 @@ interface WebsiteData {
       unique_visitors: number;
       top_pages: string[];
       sources: string[];
+      keywords?: string[];
     } | null;
     history: Array<{
       date: string;
@@ -35,7 +36,7 @@ export default function WebsitePage() {
       isSingleDay: true
     };
   });
-  const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
+  const [, setComparison] = useState<Comparison | undefined>(undefined);
   const [data, setData] = useState<WebsiteData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -214,16 +215,16 @@ export default function WebsitePage() {
   );
 }
 
-function exportWebsiteData(website: any, history: any[], period: string) {
+function exportWebsiteData(website: WebsiteData['website'] | undefined, history: WebsiteData['website']['history'], period: string) {
   if (!website) return;
-  const rows: Record<string, any>[] = [];
+  const rows: Record<string, unknown>[] = [];
   if (website.latest) {
     rows.push({
       指标: '网站概况',
       PV: website.latest.pageviews,
       UV: website.latest.unique_visitors,
       热门页面: website.latest.top_pages?.join('; '),
-      流量来源: website.latest.sources?.map((s: { name: string; value: number }) => `${s.name}:${s.value}%`).join('; '),
+      流量来源: website.latest.sources?.join('; '),
       关键词: website.latest.keywords?.join('; '),
       时间段: period,
     });

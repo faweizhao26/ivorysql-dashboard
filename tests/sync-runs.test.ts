@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import { Pool } from 'pg';
 import { getDashboardUpdatedAt, getStalePlatforms } from '../src/lib/db';
 import {
@@ -23,7 +23,6 @@ test('accepts only supported sync statuses and triggers', () => {
 
 test('starts and finishes a successful sync with counts', async () => {
   const originalConnect = Pool.prototype.connect;
-  const originalQuery = Pool.prototype.query;
   const calls: Array<{ sql: string; values?: unknown[] }> = [];
 
   Pool.prototype.connect = async function () {
@@ -32,11 +31,11 @@ test('starts and finishes a successful sync with counts', async () => {
       release: () => undefined,
     } as never;
   };
-  Pool.prototype.query = async function (sql: string, values?: unknown[]) {
+  const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string, values?: unknown[]) {
     calls.push({ sql, values });
-    if (/INSERT INTO sync_runs/.test(sql)) return { rows: [{ id: 41 }] } as never;
-    return { rows: [] } as never;
-  };
+    if (/INSERT INTO sync_runs/.test(sql)) return { rows: [{ id: 41 }] };
+    return { rows: [] };
+  });
 
   try {
     const id = await startSyncRun('sf', 'vercel_cron');
@@ -49,17 +48,16 @@ test('starts and finishes a successful sync with counts', async () => {
     assert.deepEqual(calls[1].values, ['success', 50, 48, null, 41]);
   } finally {
     Pool.prototype.connect = originalConnect;
-    Pool.prototype.query = originalQuery;
+    queryMock.mock.restore();
   }
 });
 
 test('records partial counts and bounds a failed sync error', async () => {
-  const originalQuery = Pool.prototype.query;
   let values: unknown[] = [];
-  Pool.prototype.query = async function (_sql: string, queryValues?: unknown[]) {
+  const queryMock = mock.method(Pool.prototype, 'query', async function (_sql: string, queryValues?: unknown[]) {
     values = queryValues || [];
-    return { rows: [] } as never;
-  };
+    return { rows: [] };
+  });
 
   try {
     await finishSyncRun(9, {
@@ -75,13 +73,12 @@ test('records partial counts and bounds a failed sync error', async () => {
     assert.equal((values[3] as string).length, 1000);
     assert.equal(values[4], 9);
   } finally {
-    Pool.prototype.query = originalQuery;
+    queryMock.mock.restore();
   }
 });
 
 test('returns latest status per platform and page-level update time', async () => {
-  const originalQuery = Pool.prototype.query;
-  Pool.prototype.query = async function (sql: string) {
+  const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string) {
     if (/DISTINCT ON \(platform\)/.test(sql)) {
       return {
         rows: [{
@@ -95,10 +92,10 @@ test('returns latest status per platform and page-level update time', async () =
           error_message: null,
           trigger: 'vercel_cron',
         }],
-      } as never;
+      };
     }
-    return { rows: [{ updated_at: '2026-10-12T08:30:00.000Z' }] } as never;
-  };
+    return { rows: [{ updated_at: '2026-10-12T08:30:00.000Z' }] };
+  });
 
   try {
     const statuses = await getLatestSyncStatus();
@@ -108,38 +105,36 @@ test('returns latest status per platform and page-level update time', async () =
     assert.equal(statuses[0].status, 'success');
     assert.equal(updatedAt, '2026-10-12T08:30:00.000Z');
   } finally {
-    Pool.prototype.query = originalQuery;
+    queryMock.mock.restore();
   }
 });
 
 test('keeps the last successful time separate from a newer failed run', async () => {
-  const originalQuery = Pool.prototype.query;
-  Pool.prototype.query = async function (sql: string) {
-    assert.match(sql, /MAX\(finished_at\).*FILTER\s*\(WHERE status = 'success'\)/s);
-    return { rows: [{ platform: 'zhihu', status: 'failed', started_at: new Date('2026-10-13T01:00:00Z'), finished_at: new Date('2026-10-13T01:01:00Z'), last_success_at: new Date('2026-10-12T01:01:00Z') }] } as never;
-  };
+  const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string) {
+    assert.match(sql, /MAX\(finished_at\)[\s\S]*FILTER\s*\(WHERE status = 'success'\)/);
+    return { rows: [{ platform: 'zhihu', status: 'failed', started_at: new Date('2026-10-13T01:00:00Z'), finished_at: new Date('2026-10-13T01:01:00Z'), last_success_at: new Date('2026-10-12T01:01:00Z') }] };
+  });
   try {
     const [status] = await getLatestSyncStatus();
     assert.equal(status.status, 'failed');
     assert.equal(status.last_success_at, '2026-10-12T01:01:00.000Z');
-  } finally { Pool.prototype.query = originalQuery; }
+  } finally { queryMock.mock.restore(); }
 });
 
 test('stale reminders use successful runs and retain manual-only timestamps', async () => {
-  const originalQuery = Pool.prototype.query;
   const old = new Date(Date.now() - 12 * 86400000);
-  Pool.prototype.query = async function (sql: string) {
+  const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string) {
     assert.match(sql, /status = 'success'/);
     assert.match(sql, /last_data_updated/);
     return { rows: [
       { platform: 'zhihu', update_frequency_days: 7, last_data_updated: new Date(), effective_updated_at: old },
       { platform: 'wechat', update_frequency_days: 7, effective_updated_at: new Date() },
       { platform: 'ctoutiao', update_frequency_days: 7, effective_updated_at: null },
-    ] } as never;
-  };
+    ] };
+  });
   try {
     const stale = await getStalePlatforms();
     assert.deepEqual(stale.map(item => item.platform), ['zhihu', 'ctoutiao']);
     assert.equal(stale[0].daysSinceUpdate, 12);
-  } finally { Pool.prototype.query = originalQuery; }
+  } finally { queryMock.mock.restore(); }
 });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { safeReturnPath } from '@/lib/session-response';
 
 export default function AuthPage() {
   const [password, setPassword] = useState('');
@@ -22,11 +23,11 @@ export default function AuthPage() {
       const data = await res.json();
 
       if (res.ok) {
-        window.location.href = '/';
+        window.location.href = safeReturnPath(new URLSearchParams(window.location.search).get('redirect'));
       } else {
         setError(data.error || '密码错误');
       }
-    } catch (err) {
+    } catch {
       setError('发生错误，请重试');
     } finally {
       setLoading(false);

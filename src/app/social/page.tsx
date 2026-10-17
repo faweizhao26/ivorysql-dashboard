@@ -43,7 +43,7 @@ export default function SocialPage() {
     const today = new Date().toISOString().split('T')[0];
     return { start: today, end: today, isSingleDay: true };
   });
-  const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
+  const [, setComparison] = useState<Comparison | undefined>(undefined);
   const [data, setData] = useState<SocialData | null>(null);
   const [articleStats, setArticleStats] = useState<Record<string, { count: number; views: number }>>({});
   const [loading, setLoading] = useState(true);
@@ -101,7 +101,7 @@ export default function SocialPage() {
     const latest = platformItems[platformItems.length - 1];
     acc[key] = { current: latest, history: platformItems };
     return acc;
-  }, {} as Record<string, { current: any; history: any[] }>);
+  }, {} as Record<string, { current: SocialData['social'][number] | undefined; history: SocialData['social'] }>);
 
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
   const displayDate = dateRange.start === dateRange.end ? dateRange.start : null;

@@ -11,7 +11,7 @@ export const BROWSER_SYNC_PLATFORMS = [
 
 type BrowserSyncPlatform = typeof BROWSER_SYNC_PLATFORMS[number];
 
-function isPlatform(value: unknown): value is BrowserSyncPlatform {
+export function isBrowserSyncPlatform(value: unknown): value is BrowserSyncPlatform {
   return typeof value === 'string'
     && BROWSER_SYNC_PLATFORMS.includes(value as BrowserSyncPlatform);
 }
@@ -29,7 +29,7 @@ export function parseBrowserSyncPayload(input: unknown): {
   }
 
   const payload = input as Record<string, unknown>;
-  if (!isPlatform(payload.platform)) {
+  if (!isBrowserSyncPlatform(payload.platform)) {
     throw new Error('Unsupported browser sync platform');
   }
   if (!Array.isArray(payload.articles)) {
@@ -60,6 +60,15 @@ export function parseBrowserSyncPayload(input: unknown): {
   }
 
   return { platform: payload.platform, articles };
+}
+
+export function parseBrowserSyncFailure(input: unknown): { platform: BrowserSyncPlatform; error: string } {
+  const payload = input && typeof input === 'object' ? input as Record<string, unknown> : {};
+  if (!isBrowserSyncPlatform(payload.platform) || payload.status !== 'failed'
+    || typeof payload.error !== 'string' || !payload.error.trim()) {
+    throw new Error('Invalid browser sync failure');
+  }
+  return { platform: payload.platform, error: payload.error.trim().slice(0, 1000) };
 }
 
 export function isBrowserSyncAuthorized(

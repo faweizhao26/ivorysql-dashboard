@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAccessTokenSecret, readAccessToken } from '@/lib/auth';
+import { isMachineSyncAuthorized } from '@/lib/browser-sync-auth.mjs';
 
 const STATIC_PATTERN = /\.(js|css|png|ico|svg|woff2?|map|json|txt)$/;
 
@@ -42,6 +43,12 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (pathname === '/api/browser-content/sync'
+    && (request.method === 'GET' || request.method === 'POST')
+    && await isMachineSyncAuthorized(request.headers.get('authorization'), process.env.ADMIN_PASSWORD, process.env.CRON_SECRET)) {
+    return NextResponse.next();
+  }
+
   const accessPassword = process.env.ACCESS_PASSWORD;
   const adminPassword = process.env.ADMIN_PASSWORD;
 
@@ -76,8 +83,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.json({ error: '登录已失效，请重新登录', code: 'AUTH_REQUIRED' }, { status: 401 });
+  }
   const loginUrl = new URL('/auth', request.url);
-  loginUrl.searchParams.set('redirect', pathname);
+  loginUrl.searchParams.set('redirect', pathname + request.nextUrl.search);
   return NextResponse.redirect(loginUrl);
 }
 

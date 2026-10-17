@@ -26,8 +26,8 @@ export async function GET(request: Request) {
       ORDER BY total_points DESC, p.name ASC
     `);
     return NextResponse.json(result.rows);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : undefined }, { status: 500 });
   }
 }
 
@@ -60,8 +60,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: error instanceof RangeError ? 400 : 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : undefined }, { status: error instanceof RangeError ? 400 : 500 });
   }
 }
 
@@ -90,8 +90,8 @@ export async function PUT(request: Request) {
     }
 
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: error instanceof RangeError ? 400 : 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : undefined }, { status: error instanceof RangeError ? 400 : 500 });
   }
 }
 
@@ -109,7 +109,7 @@ export async function DELETE(request: Request) {
       await pool.query('DELETE FROM evangelist_participants WHERE id=$1', [id]);
     }
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : undefined }, { status: 500 });
   }
 }

@@ -10,7 +10,12 @@ export async function GET(request: Request) {
       searchParams,
       new Date().toISOString().split('T')[0],
     );
-    let websiteData: any;
+    let websiteData: {
+      latest: Awaited<ReturnType<typeof getLatestWebsiteStats>>;
+      history: Awaited<ReturnType<typeof getWebsiteStatsByDateRange>>;
+      isArchive: boolean;
+      archiveDate?: string | null;
+    };
     let freshness;
 
     if (isSingleDay) {

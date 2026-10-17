@@ -4,8 +4,7 @@ import {
   saveSocialStats,
   saveArticleStats,
   saveWebsiteStats,
-  saveCommunityEvent,
-  getToday
+  saveCommunityEvent
 } from './db';
 import { isSampleSeedAllowed } from './data-safeguards';
 
@@ -54,7 +53,7 @@ export function seedSampleData() {
     ifclub: { articles: 8, views: 18000, followers: 950 },
   };
 
-  dates.forEach((date, index) => {
+  dates.forEach((date) => {
     stars += Math.floor(Math.random() * 15) - 3;
     forks += Math.floor(Math.random() * 5) - 1;
     watchers += Math.floor(Math.random() * 3);

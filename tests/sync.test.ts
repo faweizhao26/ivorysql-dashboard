@@ -3,7 +3,8 @@ import test from 'node:test';
 import { getSyncHttpStatus, mergeGithubCronStats } from '../src/lib/sync-utils';
 
 test('failed sync results return an HTTP error status', () => {
-  assert.equal(getSyncHttpStatus({ success: false, error: 'upstream unavailable' }), 500);
+  const failedResult = { success: false, error: 'upstream unavailable' };
+  assert.equal(getSyncHttpStatus(failedResult), 500);
   assert.equal(getSyncHttpStatus({ success: true }), 200);
 });
 

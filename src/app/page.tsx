@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { ComparisonStatCard, PlatformCard, calculateChange } from '@/components/StatCard';
+import { ComparisonStatCard, PlatformCard } from '@/components/StatCard';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { TrendChart } from '@/components/Charts';
 import { ActivityTimeline } from '@/components/Timeline';
-import { PlatformIcon } from '@/components/PlatformIcon';
 import { downloadCSV } from '@/lib/csv-utils';
 import LastUpdated from '@/components/LastUpdated';
 import { formatFreshnessLabel, getLatestUpdatedAt, type DataSlice } from '@/lib/data-slices';
@@ -307,7 +305,7 @@ export default function HomePage() {
 
 function exportDashboardData(data: DashboardData | null, period: string) {
   if (!data) return;
-  const rows: Record<string, any>[] = [];
+  const rows: Record<string, unknown>[] = [];
 
   if (data.github.latest) {
     rows.push({ 指标: 'GitHub 概况', Stars: data.github.latest.stars, Forks: data.github.latest.forks, Watchers: data.github.latest.watchers, 'Open Issues': data.github.latest.open_issues, 'Open PRs': data.github.latest.open_prs, 贡献者: data.github.latest.contributors, Releases: data.github.latest.releases_count, 时间段: period });

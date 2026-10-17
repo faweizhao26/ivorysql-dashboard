@@ -45,11 +45,21 @@ export async function GET(request: Request) {
     );
     const includeDownloads = searchParams.get('include')?.split(',').includes('downloads') || false;
     const includeContributors = searchParams.get('include')?.split(',').includes('contributors') || false;
-    let githubData: any;
-    let contributorData: any;
-    let socialData: any[];
-    let articleData: any[];
-    let events: any[];
+    let githubData: {
+      latest: Awaited<ReturnType<typeof getLatestGitHubStats>>;
+      history: Awaited<ReturnType<typeof getGitHubStatsByDateRange>>;
+      isArchive: boolean;
+      archiveDate?: string | null;
+    };
+    let contributorData: {
+      latest: Awaited<ReturnType<typeof getLatestContributorStats>>;
+      history: Awaited<ReturnType<typeof getContributorStatsByDateRange>>;
+      isArchive: boolean;
+      archiveDate?: string | null;
+    };
+    let socialData: Awaited<ReturnType<typeof getLatestSocialStats>>;
+    let articleData: Awaited<ReturnType<typeof getLatestArticleStats>>;
+    let events: Awaited<ReturnType<typeof getEventsForDate>>;
     let freshness: Record<string, unknown>;
 
     if (isSingleDay) {
@@ -166,19 +176,19 @@ export async function GET(request: Request) {
       articles: Record<string, DataSlice<DashboardRow>>;
     };
 
-    const response: Record<string, any> = {
+    const response: Record<string, unknown> = {
       github: {
         ...githubData,
-        latest: toDashboardGitHubSummary(githubData.latest),
-        history: githubData.history.map(toDashboardGitHubSummary),
+        latest: toDashboardGitHubSummary(githubData.latest ? { ...githubData.latest } : null),
+        history: githubData.history.map(row => toDashboardGitHubSummary({ ...row })),
       },
       contributors: {
         ...contributorData,
-        latest: selectDashboardContributor(contributorData.latest, includeContributors),
-        history: contributorData.history.map(toDashboardContributorSummary),
+        latest: selectDashboardContributor(contributorData.latest ? { ...contributorData.latest } : null, includeContributors),
+        history: contributorData.history.map(row => toDashboardContributorSummary({ ...row })),
       },
-      social: socialData.map(toDashboardSocialSummary),
-      articles: articleData.map(toDashboardArticleSummary),
+      social: socialData.map(row => toDashboardSocialSummary({ ...row })),
+      articles: articleData.map(row => toDashboardArticleSummary({ ...row })),
       events: events,
       freshness: {
         github: projectDataSlice(typedFreshness.github, row => toDashboardGitHubSummary(row) || {}),

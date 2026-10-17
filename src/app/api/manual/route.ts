@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { saveManualData, getManualData, saveSocialStats, saveArticleStats, getToday, getSocialStatsForDate, getArticleStatsForDate } from '@/lib/db';
+import { saveManualData, getManualData, saveSocialStats, saveArticleStats, getSocialStatsForDate, getArticleStatsForDate } from '@/lib/db';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

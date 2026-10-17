@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import { Pool } from 'pg';
 import {
   getDb,
@@ -53,7 +53,7 @@ test('shares database initialization across concurrent queries', async () => {
 
     assert.equal(connectCalls, 1);
     assert.match(initializationQueries.join('\n'), /DROP CONSTRAINT IF EXISTS unique_article/);
-    assert.match(initializationQueries.join('\n'), /UNIQUE INDEX[^;]+article_details[^;]+platform[^;]+article_url/is);
+    assert.match(initializationQueries.join('\n'), /UNIQUE INDEX[^;]+article_details[^;]+platform[^;]+article_url/i);
   } finally {
     Pool.prototype.connect = originalConnect;
     Pool.prototype.query = originalQuery;
@@ -61,13 +61,12 @@ test('shares database initialization across concurrent queries', async () => {
 });
 
 test('upserts linked articles by platform and URL', async () => {
-  const originalQuery = Pool.prototype.query;
   const queries: string[] = [];
 
-  Pool.prototype.query = async function (sql: string) {
+  const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string) {
     queries.push(sql);
-    return { rows: [] } as never;
-  };
+    return { rows: [] };
+  });
 
   try {
     await saveArticleDetails({
@@ -82,18 +81,17 @@ test('upserts linked articles by platform and URL', async () => {
 
     assert.match(queries.at(-1) || '', /ON CONFLICT \(platform, article_url\)/);
   } finally {
-    Pool.prototype.query = originalQuery;
+    queryMock.mock.restore();
   }
 });
 
 test('keeps the legacy identity for articles without a URL', async () => {
-  const originalQuery = Pool.prototype.query;
   const queries: string[] = [];
 
-  Pool.prototype.query = async function (sql: string) {
+  const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string) {
     queries.push(sql);
-    return { rows: [] } as never;
-  };
+    return { rows: [] };
+  });
 
   try {
     await saveArticleDetails({
@@ -107,18 +105,17 @@ test('keeps the legacy identity for articles without a URL', async () => {
 
     assert.match(queries.at(-1) || '', /ON CONFLICT \(date, platform, article_title\)/);
   } finally {
-    Pool.prototype.query = originalQuery;
+    queryMock.mock.restore();
   }
 });
 
 test('automatic sync does not replace existing metrics when a source omits them', async () => {
-  const originalQuery = Pool.prototype.query;
   const queries: string[] = [];
 
-  Pool.prototype.query = async function (sql: string) {
+  const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string) {
     queries.push(sql);
-    return { rows: [] } as never;
-  };
+    return { rows: [] };
+  });
 
   try {
     await saveSyncedArticleDetails({
@@ -134,18 +131,17 @@ test('automatic sync does not replace existing metrics when a source omits them'
     assert.match(sql, /likes = COALESCE\(EXCLUDED\.likes, article_details\.likes\)/);
     assert.match(sql, /comments = COALESCE\(EXCLUDED\.comments, article_details\.comments\)/);
   } finally {
-    Pool.prototype.query = originalQuery;
+    queryMock.mock.restore();
   }
 });
 
 test('automatic sync writes an article collection in one query', async () => {
-  const originalQuery = Pool.prototype.query;
   const queries: string[] = [];
 
-  Pool.prototype.query = async function (sql: string) {
+  const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string) {
     queries.push(sql);
-    return { rows: [] } as never;
-  };
+    return { rows: [] };
+  });
 
   try {
     await saveSyncedArticleDetailsBatch([
@@ -169,18 +165,17 @@ test('automatic sync writes an article collection in one query', async () => {
     assert.match(sql, /views = COALESCE\(EXCLUDED\.views, article_details\.views\)/);
     assert.equal(queries.filter(query => /INSERT INTO article_details/.test(query)).length, 1);
   } finally {
-    Pool.prototype.query = originalQuery;
+    queryMock.mock.restore();
   }
 });
 
 test('automatic sync recalculates all affected dates in one query', async () => {
-  const originalQuery = Pool.prototype.query;
   const queries: string[] = [];
 
-  Pool.prototype.query = async function (sql: string) {
+  const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string) {
     queries.push(sql);
-    return { rows: [] } as never;
-  };
+    return { rows: [] };
+  });
 
   try {
     await recalculateArticleStatsForDates('zhihu', ['2026-10-11', '2026-10-12']);
@@ -190,6 +185,6 @@ test('automatic sync recalculates all affected dates in one query', async () => 
     assert.match(sql, /GROUP BY date, platform/);
     assert.equal(queries.filter(query => /INSERT INTO article_stats/.test(query)).length, 1);
   } finally {
-    Pool.prototype.query = originalQuery;
+    queryMock.mock.restore();
   }
 });

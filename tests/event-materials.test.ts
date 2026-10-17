@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import { Pool } from 'pg';
 import {
   deleteActivityMaterial,
@@ -65,16 +65,15 @@ test('schema cascades event deletion and deduplicates non-empty event URLs', () 
 
 test('material CRUD uses parameterized queries and stable ordering', async () => {
   const originalConnect = Pool.prototype.connect;
-  const originalQuery = Pool.prototype.query;
   const calls: Array<{ sql: string; values?: unknown[] }> = [];
 
   Pool.prototype.connect = async function () {
     return { query: async () => ({ rows: [] }), release: () => undefined } as never;
   };
-  Pool.prototype.query = async function (sql: string, values?: unknown[]) {
+  const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string, values?: unknown[]) {
     calls.push({ sql, values });
-    return { rows: [{ id: 3, event_id: 7, material_type: 'photo', title: '现场照片', url: 'https://pan.example.com/a', sort_order: 0 }] } as never;
-  };
+    return { rows: [{ id: 3, event_id: 7, material_type: 'photo', title: '现场照片', url: 'https://pan.example.com/a', sort_order: 0 }] };
+  });
 
   try {
     await listActivityMaterials(7);
@@ -89,6 +88,6 @@ test('material CRUD uses parameterized queries and stable ordering', async () =>
     assert.deepEqual(calls.at(-1)?.values, [3]);
   } finally {
     Pool.prototype.connect = originalConnect;
-    Pool.prototype.query = originalQuery;
+    queryMock.mock.restore();
   }
 });
