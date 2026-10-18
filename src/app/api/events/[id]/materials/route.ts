@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getActivityEventById } from '@/lib/db';
-import { saveActivityMaterial, validateMaterialInput } from '@/lib/activity-materials';
+import { createActivityMaterial, validateMaterialInput } from '@/lib/activity-materials';
 import { parseEventId } from '../../route';
 
 function isUniqueViolation(error: unknown): boolean {
@@ -21,7 +21,7 @@ export async function POST(
       throw new RangeError('Material input must be an object');
     }
     const input = validateMaterialInput({ ...body, event_id: eventId });
-    const material = await saveActivityMaterial(input);
+    const material = await createActivityMaterial(input);
     return NextResponse.json({ material }, { status: 201 });
   } catch (error) {
     if (error instanceof RangeError || error instanceof SyntaxError) {

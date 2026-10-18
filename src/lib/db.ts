@@ -633,17 +633,20 @@ export async function getGitHubStatsHistory(days: number = 30): Promise<GitHubSt
   return result.rows;
 }
 
-export async function getLatestContributorStats(endDate?: string): Promise<ContributorStatsData | null> {
+const contributorSummaryColumns = 'date, total_contributors, contributors_before_2026, new_contributors_daily, new_contributors_weekly, new_contributors_monthly, new_contributors_quarterly, cumulative_2026, main_repo_code_contributors, updated_at';
+
+export async function getLatestContributorStats(endDate?: string, includeDetails: boolean = true): Promise<ContributorStatsData | null> {
+  const columns = includeDetails ? '*' : contributorSummaryColumns;
   const result = endDate
-    ? await query('SELECT * FROM contributor_stats WHERE date <= $1 ORDER BY date DESC LIMIT 1', [endDate])
-    : await query('SELECT * FROM contributor_stats ORDER BY date DESC LIMIT 1');
+    ? await query(`SELECT ${columns} FROM contributor_stats WHERE date <= $1 ORDER BY date DESC LIMIT 1`, [endDate])
+    : await query(`SELECT ${columns} FROM contributor_stats ORDER BY date DESC LIMIT 1`);
   return result.rows[0] || null;
 }
 
 export async function getContributorStatsHistory(days: number = 365): Promise<ContributorStatsData[]> {
   const since = shiftDate(getToday(), -days);
   const result = await query(
-    'SELECT * FROM contributor_stats WHERE date >= $1 ORDER BY date ASC',
+    `SELECT ${contributorSummaryColumns} FROM contributor_stats WHERE date >= $1 ORDER BY date ASC`,
     [since]
   );
   return result.rows;
@@ -737,14 +740,15 @@ export async function getGitHubStatsForDate(date: string): Promise<GitHubStats |
 
 export async function getContributorStatsByDateRange(startDate: string, endDate: string): Promise<ContributorStatsData[]> {
   const result = await query(
-    'SELECT * FROM contributor_stats WHERE date >= $1 AND date <= $2 ORDER BY date ASC',
+    `SELECT ${contributorSummaryColumns} FROM contributor_stats WHERE date >= $1 AND date <= $2 ORDER BY date ASC`,
     [startDate, endDate]
   );
   return result.rows;
 }
 
-export async function getContributorStatsForDate(date: string): Promise<ContributorStatsData | null> {
-  const result = await query('SELECT * FROM contributor_stats WHERE date = $1', [date]);
+export async function getContributorStatsForDate(date: string, includeDetails: boolean = true): Promise<ContributorStatsData | null> {
+  const columns = includeDetails ? '*' : contributorSummaryColumns;
+  const result = await query(`SELECT ${columns} FROM contributor_stats WHERE date = $1`, [date]);
   return result.rows[0] || null;
 }
 

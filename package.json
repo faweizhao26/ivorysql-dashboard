@@ -16,6 +16,7 @@
     "@dicebear/core": "^10.7.0",
     "@dicebear/styles": "^10.6.0",
     "@octokit/rest": "^22.0.1",
+    "acorn": "^8.19.0",
     "better-sqlite3": "^12.8.0",
     "cheerio": "^1.2.0",
     "date-fns": "^4.1.0",

@@ -14,7 +14,9 @@ async function loadLocalEnv() {
     const content = await fs.readFile(path.join(PROJECT_DIR, '.env.local'), 'utf8');
     for (const line of content.split(/\r?\n/)) {
       const match = line.match(/^([A-Z0-9_]+)=(.*)$/);
-      if (!match || process.env[match[1]]) continue;
+      if (!match) continue;
+      const workspaceSetting = match[1] === 'EGO_TASK_SPACE_ID' || match[1] === 'EGO_TASK_SPACE_NAME';
+      if (process.env[match[1]] && !workspaceSetting) continue;
       const value = match[2].trim().replace(/^(['"])(.*)\1$/, '$2');
       process.env[match[1]] = value;
     }
@@ -57,10 +59,14 @@ const { createDashboardClient, runCollectors } = await import(path.join(PROJECT_
 const dashboard = createDashboardClient({ baseUrl: DASHBOARD_BASE, adminPassword: process.env.ADMIN_PASSWORD, cronSecret: process.env.CRON_SECRET });
 await dashboard.preflight();
 
-const { resolveEgoContentPages } = await import(path.join(PROJECT_DIR, 'scripts/ego-content-pages.mjs'));
+const { resolveEgoContentPages, openEgoContentTask } = await import(path.join(PROJECT_DIR, 'scripts/ego-content-pages.mjs'));
 let taskPromise;
 async function contentPage(key, url) {
-  taskPromise ||= Promise.resolve().then(() => taskSpace(Number(process.env.EGO_TASK_SPACE_ID || 28)));
+  taskPromise ||= Promise.resolve().then(() => openEgoContentTask(Number(process.env.EGO_TASK_SPACE_ID || 28), {
+    taskSpace,
+    listTaskSpaces: typeof listTaskSpaces === 'function' ? listTaskSpaces : undefined,
+    claimTaskSpace: typeof claimTaskSpace === 'function' ? claimTaskSpace : undefined,
+  }, process.env.EGO_TASK_SPACE_NAME));
   const task = await taskPromise;
   const pages = await resolveEgoContentPages(task, [{ key, url }]);
   return pages[key];
@@ -245,3 +251,7 @@ const results = await runCollectors(collectors, upload,
   result => (result.success ? console.log : console.error)(JSON.stringify(result)),
 );
 if (results.some(result => !result.success)) process.exitCode = 1;
+if (taskPromise) {
+  const task = await taskPromise.catch(() => null);
+  if (typeof task?.handOff === 'function') await task.handOff();
+}

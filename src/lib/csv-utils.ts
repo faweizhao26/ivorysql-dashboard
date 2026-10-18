@@ -1,21 +1,19 @@
 export function downloadCSV(rows: Record<string, unknown>[], filename: string) {
   if (!rows || rows.length === 0) return;
 
-  const headers = Object.keys(rows[0]);
+  const headers = [...new Set(rows.flatMap(row => Object.keys(row)))];
   const BOM = '\uFEFF';
 
+  function escapeCell(value: unknown): string {
+    if (value === null || value === undefined) return '';
+    const str = String(value);
+    return /[,"\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+  }
+
   const csvContent = [
-    BOM + headers.join(','),
+    BOM + headers.map(escapeCell).join(','),
     ...rows.map(row =>
-      headers.map(h => {
-        const val = row[h];
-        if (val === null || val === undefined) return '';
-        const str = String(val);
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-          return `"${str.replace(/"/g, '""')}"`;
-        }
-        return str;
-      }).join(',')
+      headers.map(h => escapeCell(row[h])).join(',')
     )
   ].join('\n');
 

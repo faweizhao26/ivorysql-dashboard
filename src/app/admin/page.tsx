@@ -8,8 +8,8 @@ import EvangelistAvatar from '@/components/EvangelistAvatar';
 import EvangelistAvatarPicker from '@/components/admin/EvangelistAvatarPicker';
 import { getAvailableEvangelistAvatar, getEvangelistAvatar } from '@/lib/evangelist-avatar';
 import { formatArticleMetric } from '@/lib/content-values.mjs';
+import { getManualSelection, isDataCategory, MAX_STATS_VALUE, metricsByCategory, platforms } from '@/lib/manual-data';
 
-type DataCategory = 'social' | 'article' | 'activity';
 type TabType = 'manual' | 'articles' | 'reminders' | 'sync' | 'events' | 'evangelist';
 
 interface DataEntry {
@@ -48,56 +48,6 @@ interface StalePlatform {
   daysSinceUpdate: number;
   updateFrequency: number;
 }
-
-const platforms = {
-  social: [
-    { value: 'wechat', label: '公众号' },
-    { value: 'shipinhao', label: '视频号' },
-    { value: 'twitter', label: 'Twitter' },
-    { value: 'bilibili', label: 'B站' },
-    { value: 'youtube', label: 'YouTube' },
-  ],
-  article: [
-    { value: 'csdn', label: 'CSDN' },
-    { value: 'juejin', label: '掘金' },
-    { value: 'modb', label: '墨天轮' },
-    { value: 'oschina', label: '开源中国' },
-    { value: 'sf', label: '思否' },
-    { value: 'ctoutiao', label: '51CTO' },
-    { value: 'itpub', label: 'ITPUB' },
-    { value: 'toutiao', label: '头条号' },
-    { value: 'ifclub', label: 'IFCLUB' },
-  ],
-  activity: [
-    { value: 'conference', label: '技术大会' },
-    { value: 'meetup', label: '线下活动' },
-    { value: 'webinar', label: '线上活动' },
-  ],
-};
-
-const metricsByCategory = {
-  social: [
-    { value: 'followers', label: '粉丝数' },
-    { value: 'posts', label: '发帖数' },
-    { value: 'views', label: '阅读/播放量' },
-    { value: 'likes', label: '点赞数' },
-    { value: 'shares', label: '分享数' },
-    { value: 'comments', label: '评论数' },
-  ],
-  article: [
-    { value: 'followers', label: '粉丝数' },
-    { value: 'article_count', label: '文章总数' },
-    { value: 'total_views', label: '总阅读量' },
-    { value: 'avg_views', label: '篇均阅读量' },
-    { value: 'new_articles', label: '本月新增文章' },
-    { value: 'likes', label: '点赞数' },
-    { value: 'bookmarks', label: '收藏数' },
-  ],
-  activity: [
-    { value: 'registrations', label: '报名人数' },
-    { value: 'participants', label: '实际参与人数' },
-  ],
-};
 
 const articlePlatforms = [
   { value: 'wechat', label: '公众号' },
@@ -253,19 +203,14 @@ export default function AdminPage() {
 }
 
 function ManualDataSection() {
-  const [category, setCategory] = useState<DataCategory>('social');
-  const [platform, setPlatform] = useState('wechat');
-  const [metric, setMetric] = useState('followers');
+  const [selection, setSelection] = useState(() => getManualSelection('social'));
+  const { category, platform, metric } = selection;
   const [date, setDate] = useState(getBeijingDate);
   const [value, setValue] = useState('');
   const [notes, setNotes] = useState('');
   const [records, setRecords] = useState<DataEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  useEffect(() => {
-    setMetric(metricsByCategory[category][0]?.value || '');
-  }, [category]);
 
   const fetchRecords = useCallback(async () => {
     try {
@@ -296,7 +241,7 @@ function ManualDataSection() {
           category,
           platform,
           metric,
-          value: parseFloat(value),
+          value: Number(value),
           notes
         })
       });
@@ -333,7 +278,9 @@ function ManualDataSection() {
               <label className="block text-sm font-medium text-slate-300 mb-1">数据类型</label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as DataCategory)}
+                onChange={(e) => {
+                  if (isDataCategory(e.target.value)) setSelection(getManualSelection(e.target.value));
+                }}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="social">社交媒体</option>
@@ -346,7 +293,7 @@ function ManualDataSection() {
               <label className="block text-sm font-medium text-slate-300 mb-1">平台</label>
               <select
                 value={platform}
-                onChange={(e) => setPlatform(e.target.value)}
+                onChange={(e) => setSelection({ ...selection, platform: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 {(platforms[category] || []).map((p) => (
@@ -359,7 +306,7 @@ function ManualDataSection() {
               <label className="block text-sm font-medium text-slate-300 mb-1">指标</label>
               <select
                 value={metric}
-                onChange={(e) => setMetric(e.target.value)}
+                onChange={(e) => setSelection({ ...selection, metric: e.target.value })}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 {(metricsByCategory[category] || []).map((m) => (
@@ -384,6 +331,9 @@ function ManualDataSection() {
               <label className="block text-sm font-medium text-slate-300 mb-1">数值</label>
               <input
                 type="number"
+                min={0}
+                step={1}
+                max={category === 'activity' ? Number.MAX_SAFE_INTEGER : MAX_STATS_VALUE}
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="输入数值"

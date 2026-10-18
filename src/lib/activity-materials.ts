@@ -28,6 +28,18 @@ export async function getActivityMaterialById(id: number): Promise<ActivityMater
   return result.rows[0] ? mapMaterial(result.rows[0]) : null;
 }
 
+export async function createActivityMaterial(input: ActivityMaterialInput): Promise<ActivityMaterial> {
+  const value = validateMaterialInput(input);
+  const result = await queryDb(
+    `INSERT INTO activity_materials
+       (event_id, material_type, title, url, thumbnail_url, access_note, source_url, sort_order)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING *`,
+    [value.event_id, value.material_type, value.title, value.url, value.thumbnail_url, value.access_note, value.source_url, value.sort_order],
+  );
+  return mapMaterial(result.rows[0]);
+}
+
 export async function saveActivityMaterial(input: ActivityMaterialInput): Promise<ActivityMaterial> {
   const value = validateMaterialInput(input);
   const result = await queryDb(

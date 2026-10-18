@@ -117,6 +117,7 @@ export default function GitHubPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [syncVer, setSyncVer] = useState(0);
 
   const isSingleDay = dateRange.start === dateRange.end;
@@ -144,7 +145,9 @@ export default function GitHubPage() {
   }
 
   useEffect(() => {
+    const controller = new AbortController();
     async function fetchData() {
+      setLoading(true); setLoadError(null);
       try {
         const params = new URLSearchParams({
           start: dateRange.start,
@@ -152,18 +155,19 @@ export default function GitHubPage() {
           include: 'contributors',
         });
         const res = await fetch(`/api/dashboard?${params}`, {
-          credentials: 'include'
+          credentials: 'include', signal: controller.signal,
         });
         if (!res.ok) throw new Error('Failed to fetch data');
         const json = await res.json();
-        setData(json);
+        if (!controller.signal.aborted) setData(json);
       } catch (err) {
-        console.error(err);
+        if (!controller.signal.aborted) setLoadError(err instanceof Error ? err.message : 'GitHub 数据加载失败');
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
     fetchData();
+    return () => controller.abort();
   }, [dateRange, syncVer]);
 
   if (loading) {
@@ -199,6 +203,8 @@ export default function GitHubPage() {
       </div>
     );
   }
+
+  if (loadError) return <div className="space-y-4"><h1 className="text-2xl font-bold">GitHub 数据</h1><p role="alert" className="text-red-400">{loadError}</p><button onClick={() => setSyncVer(value => value + 1)} className="rounded border border-slate-600 px-3 py-2">重试</button></div>;
 
   const github = data?.github;
   const contributors = data?.contributors;
@@ -287,7 +293,7 @@ export default function GitHubPage() {
         </div>
       </div>
 
-      <TimeRangeSelector onRangeChange={(range) => {
+      <TimeRangeSelector allowComparison={false} onRangeChange={(range) => {
         setDateRange({ start: range.start, end: range.end, isSingleDay: range.isSingleDay });
       }} />
 

@@ -1,23 +1,23 @@
 import {
-  recalculateArticleStatsForDates,
   getRecentArticleDetailsByPlatform,
-  saveSyncedArticleDetailsBatch,
-  updateReminderLastUpdated,
   type SyncedArticleDetails,
 } from './db';
+import { persistArticleSyncBatch } from './article-sync-store';
 import { prepareRecentArticles, type SyncedArticle } from './content-sync';
 import { fetchSyncHtml } from './content-sync';
 
-interface ArticleSyncDependencies {
+interface LegacyArticleSyncDependencies {
   saveBatch: (articles: SyncedArticleDetails[]) => Promise<void>;
   recalculateBatch: (platform: string, dates: string[]) => Promise<void>;
   markUpdated: (platform: string) => Promise<void>;
 }
 
+type ArticleSyncDependencies = LegacyArticleSyncDependencies | {
+  persistBatch: (platform: string, articles: SyncedArticleDetails[]) => Promise<void>;
+};
+
 const defaultDependencies: ArticleSyncDependencies = {
-  saveBatch: saveSyncedArticleDetailsBatch,
-  recalculateBatch: recalculateArticleStatsForDates,
-  markUpdated: updateReminderLastUpdated,
+  persistBatch: persistArticleSyncBatch,
 };
 
 export async function persistSyncedArticles(
@@ -39,11 +39,15 @@ export async function persistSyncedArticles(
     likes: article.likes,
     comments: article.comments,
   }));
-  const dates = Array.from(new Set(prepared.map(article => article.date)));
-
-  await dependencies.saveBatch(syncedArticles);
-  await dependencies.recalculateBatch(platform, dates);
-  await dependencies.markUpdated(platform);
+  if ('persistBatch' in dependencies) {
+    await dependencies.persistBatch(platform, syncedArticles);
+  } else {
+    // Keep the original injected test adapter; production uses the atomic store.
+    const dates = Array.from(new Set(prepared.map(article => article.date)));
+    await dependencies.saveBatch(syncedArticles);
+    await dependencies.recalculateBatch(platform, dates);
+    await dependencies.markUpdated(platform);
+  }
 
   return { success: true, articles: prepared.length };
 }

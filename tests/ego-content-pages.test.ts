@@ -9,6 +9,23 @@ const targets = [
   { key: 'dashboard', url: 'https://ivorysql-dashboard.vercel.app/content' },
 ];
 
+test('reuses the approved retained workspace without creating another space', async () => {
+  const helpers = await import('../scripts/ego-content-pages.mjs');
+  assert.equal(typeof helpers.openEgoContentTask, 'function');
+  const calls: string[] = [];
+  const api = {
+    listTaskSpaces: async () => [{ id: 11, name: 'IvorySQL collection', ownership: 'user' }],
+    claimTaskSpace: async (id: number) => { calls.push(`claim:${id}`); return { spaceId: id }; },
+    taskSpace: async (id: number) => { calls.push(`open:${id}`); return { spaceId: id }; },
+  };
+  assert.deepEqual(await helpers.openEgoContentTask(11, api, 'IvorySQL collection'), { spaceId: 11 });
+  assert.deepEqual(calls, ['claim:11']);
+  calls.length = 0;
+  await assert.rejects(helpers.openEgoContentTask(12, api), /不存在/);
+  await assert.rejects(helpers.openEgoContentTask(11, api, 'another workspace'), /名称/);
+  assert.deepEqual(calls, []);
+});
+
 async function resolver() {
   const helpers = await import('../scripts/ego-content-pages.mjs').catch(() => null);
   assert.equal(typeof helpers?.resolveEgoContentPages, 'function');

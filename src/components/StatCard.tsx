@@ -71,7 +71,7 @@ export function ComparisonStatCard({
       </div>
       {previous !== undefined && (
         <div className="text-sm text-slate-500 mb-2">
-          上期: {typeof previous === 'number' ? previous.toLocaleString() : previous}
+          对比期: {typeof previous === 'number' ? previous.toLocaleString() : previous}
           {periodLabel && <span className="ml-2 text-xs opacity-70">({periodLabel})</span>}
         </div>
       )}

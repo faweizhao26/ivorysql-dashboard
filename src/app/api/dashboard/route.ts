@@ -72,12 +72,12 @@ export async function GET(request: Request) {
         articleLatest
       ] = await Promise.all([
         getGitHubStatsForDate(startDate),
-        getContributorStatsForDate(startDate),
+        getContributorStatsForDate(startDate, includeContributors),
         getSocialStatsForDate(startDate),
         getArticleStatsForDate(startDate),
         getEventsForDate(startDate),
         getLatestGitHubStats(endDate),
-        getLatestContributorStats(endDate),
+        getLatestContributorStats(endDate, includeContributors),
         getLatestSocialStats(endDate),
         getLatestArticleStats(endDate)
       ]);
@@ -122,7 +122,7 @@ export async function GET(request: Request) {
       ] = await Promise.all([
         getLatestGitHubStats(endDate),
         getGitHubStatsByDateRange(startDate, endDate),
-        getLatestContributorStats(endDate),
+        getLatestContributorStats(endDate, includeContributors),
         getContributorStatsByDateRange(startDate, endDate),
         getSocialStatsByDateRange(startDate, endDate),
         getArticleStatsByDateRange(startDate, endDate),

@@ -1,5 +1,7 @@
 import { saveSocialStats, getToday } from '@/lib/db';
 import { fetchSyncHtml } from '@/lib/content-sync';
+import { parse, type Expression, type ObjectExpression, type Property } from 'acorn';
+import { load } from 'cheerio';
 
 const PLATFORM = 'modb';
 
@@ -14,32 +16,110 @@ export interface ModbUserStats {
   video_views: number;
 }
 
-export function parseModbAuthorState(html: string): ModbUserStats | null {
-  const totalMatch = html.match(/userTotal:\{([^}]+)\}/);
-  if (!totalMatch) return null;
-  const totalBody = totalMatch[1];
+function propertyName(property: Property): string | undefined {
+  if (property.computed || property.kind !== 'init' || property.method) return undefined;
+  if (property.key.type === 'Identifier') return property.key.name;
+  if (property.key.type === 'Literal' && typeof property.key.value === 'string') return property.key.value;
+  return undefined;
+}
 
-  const invocation = html.match(/window\.__NUXT__=\(function\(([^)]*)\)\{[\s\S]*?\}\(([^)]*)\)\);/);
-  const aliases = new Map<string, number>();
-  if (invocation) {
-    const names = invocation[1].split(',').map(value => value.trim());
-    const values = invocation[2].split(',').map(value => value.trim());
-    names.forEach((name, index) => {
-      const parsed = Number(values[index]);
-      if (Number.isFinite(parsed)) aliases.set(name, parsed);
+function findUserTotal(node: Expression): ObjectExpression | null {
+  if (node.type === 'ObjectExpression') {
+    for (const property of node.properties) {
+      if (property.type !== 'Property' || propertyName(property) === undefined) continue;
+      if (propertyName(property) === 'userTotal') {
+        if (property.value.type !== 'ObjectExpression') throw new Error('Invalid Modb userTotal state');
+        return property.value;
+      }
+      const nested = findUserTotal(property.value);
+      if (nested) return nested;
+    }
+  } else if (node.type === 'ArrayExpression') {
+    for (const element of node.elements) {
+      if (!element || element.type === 'SpreadElement') continue;
+      const nested = findUserTotal(element);
+      if (nested) return nested;
+    }
+  }
+  return null;
+}
+
+function nuxtAssignment(expression: Expression): Expression | null {
+  if (expression.type === 'SequenceExpression') {
+    for (const item of expression.expressions) {
+      const state = nuxtAssignment(item);
+      if (state) return state;
+    }
+  }
+  if (expression.type !== 'AssignmentExpression' || expression.operator !== '=') return null;
+  const target = expression.left;
+  if (target.type !== 'MemberExpression' || target.object.type !== 'Identifier' || target.object.name !== 'window') return null;
+  const name = target.computed
+    ? target.property.type === 'Literal' && target.property.value
+    : target.property.type === 'Identifier' && target.property.name;
+  return name === '__NUXT__' ? expression.right : null;
+}
+
+export function parseModbAuthorState(html: string): ModbUserStats | null {
+  const $ = load(html);
+  let state: Expression | null = null;
+  for (const script of $('script').toArray()) {
+    const source = $(script).html() || '';
+    if (!source.includes('__NUXT__')) continue;
+    let program;
+    try {
+      program = parse(source, { ecmaVersion: 'latest' });
+    } catch {
+      throw new Error('Could not parse Modb Nuxt state');
+    }
+    for (const statement of program.body) {
+      if (statement.type === 'ExpressionStatement') state = nuxtAssignment(statement.expression) || state;
+    }
+  }
+  if (!state) return null;
+
+  const aliases = new Map<string, Expression>();
+  if (state.type === 'CallExpression') {
+    const invocation = state;
+    const fn = invocation.callee;
+    if (fn.type !== 'FunctionExpression' || fn.body.body.length !== 1 || fn.body.body[0].type !== 'ReturnStatement') {
+      throw new Error('Unsupported Modb Nuxt state function');
+    }
+    const returned = fn.body.body[0].argument;
+    if (!returned) throw new Error('Missing Modb Nuxt return value');
+    fn.params.forEach((parameter, index) => {
+      const argument = invocation.arguments[index];
+      if (parameter.type !== 'Identifier' || argument?.type === 'SpreadElement') {
+        throw new Error('Unsupported Modb Nuxt arguments');
+      }
+      if (argument) aliases.set(parameter.name, argument);
     });
+    state = returned;
+  }
+  const total = findUserTotal(state);
+  if (!total) return null;
+  const fields = new Map<string, Expression>();
+  for (const property of total.properties) {
+    if (property.type !== 'Property') throw new Error('Unsupported Modb userTotal spread');
+    const name = propertyName(property);
+    if (name === undefined) throw new Error('Unsupported Modb userTotal property');
+    fields.set(name, property.value);
   }
 
+  // Read numeric literals only. Never evaluate functions, coercions, or upstream JS.
   function numberField(name: string): number {
-    const raw = totalBody.match(new RegExp(`(?:^|,)${name}:([^,}]+)`))?.[1]?.trim();
-    if (!raw) return 0;
-    const direct = Number(raw);
-    return Number.isFinite(direct) ? direct : aliases.get(raw) || 0;
+    let node = fields.get(name);
+    if (node?.type === 'Identifier') node = aliases.get(node.name);
+    const value = node?.type === 'Literal' ? node.value : undefined;
+    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
+      throw new Error(`Invalid or missing Modb metric: ${name}`);
+    }
+    return value;
   }
 
   return {
     followers: numberField('follows'),
-    posts: numberField('knowledges') || numberField('contents'),
+    posts: numberField(fields.has('knowledges') ? 'knowledges' : 'contents'),
     views: numberField('totalViews'),
     likes: numberField('likeds'),
     shares: numberField('stars'),

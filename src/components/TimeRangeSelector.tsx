@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { getBeijingDate, shiftDate } from '@/lib/date';
+import { isArticleDate } from '@/lib/content-values.mjs';
 
 type PresetRange = 'today' | '7d' | '30d' | '90d' | '180d' | '365d' | 'custom';
 
@@ -19,6 +20,7 @@ interface Comparison {
 
 interface TimeRangeSelectorProps {
   onRangeChange: (range: { start: string; end: string; comparison?: Comparison; isSingleDay?: boolean }) => void;
+  allowComparison?: boolean;
 }
 
 const presetOptions = [
@@ -37,10 +39,11 @@ export function getDateRange(preset: PresetRange): DateRange {
     return { start: end, end, isSingleDay: true };
   }
   const days = preset === 'custom' ? 30 : Number.parseInt(preset, 10);
-  return { start: shiftDate(end, -days), end };
+  return { start: shiftDate(end, 1 - days), end };
 }
 
 export function getComparisonRange(range: DateRange, mode: Comparison['mode']): DateRange | null {
+  if (!createCustomDateRange(range.start, range.end)) return null;
   if (mode === 'previous') {
     const start = new Date(`${range.start}T00:00:00Z`);
     const end = new Date(`${range.end}T00:00:00Z`);
@@ -72,16 +75,17 @@ export function getComparisonRange(range: DateRange, mode: Comparison['mode']): 
 }
 
 export function createCustomDateRange(start: string, end: string): DateRange | null {
-  if (!start || !end) return null;
+  if (!isArticleDate(start) || !isArticleDate(end) || start > end) return null;
   return { start, end, isSingleDay: start === end };
 }
 
-export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
+export function TimeRangeSelector({ onRangeChange, allowComparison = true }: TimeRangeSelectorProps) {
   const [preset, setPreset] = useState<PresetRange>('today');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [comparisonEnabled, setComparisonEnabled] = useState(false);
   const [comparisonMode, setComparisonMode] = useState<Comparison['mode']>('previous');
+  const validCustomRange = createCustomDateRange(customStart, customEnd);
 
   const handlePresetChange = (newPreset: PresetRange) => {
     setPreset(newPreset);
@@ -110,6 +114,7 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
   };
 
   const handleComparisonChange = () => {
+    if (preset === 'custom' && !validCustomRange) return;
     const newEnabled = !comparisonEnabled;
     setComparisonEnabled(newEnabled);
     
@@ -131,7 +136,7 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
       ? { start: customStart, end: customEnd } 
       : getDateRange(preset);
     
-    if (comparisonEnabled) {
+    if (comparisonEnabled && (preset !== 'custom' || validCustomRange)) {
       const comparison = { enabled: true, mode, customRange: getComparisonRange(range, mode) ?? undefined };
       onRangeChange({ ...range, comparison });
     }
@@ -140,14 +145,14 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
   return (
     <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium text-slate-300">时间范围:</span>
-          <div className="flex bg-slate-900/80 rounded-lg p-1">
+          <div className="flex flex-wrap bg-slate-900/80 rounded-lg p-1">
             {presetOptions.map(opt => (
               <button
                 key={opt.key}
                 onClick={() => handlePresetChange(opt.key)}
-                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                className={`whitespace-nowrap px-3 py-1 text-sm rounded-md transition-colors ${
                   preset === opt.key
                     ? 'bg-indigo-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-slate-200'
@@ -160,7 +165,7 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
         </div>
 
         {preset === 'custom' && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="date"
               value={customStart}
@@ -185,11 +190,12 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
           </div>
         )}
 
-        <div className="flex items-center gap-3 border-l border-slate-600 pl-4">
+        {allowComparison && <div className="flex items-center gap-3 border-l border-slate-600 pl-4">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={comparisonEnabled}
+              disabled={preset === 'custom' && !validCustomRange}
               onChange={handleComparisonChange}
               className="w-4 h-4 text-indigo-600 rounded border-slate-600 bg-slate-900 focus:ring-indigo-500"
             />
@@ -220,10 +226,14 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
               </button>
             </div>
           )}
-        </div>
+        </div>}
       </div>
 
-      {comparisonEnabled && comparisonMode === 'previous' && (
+      {preset === 'custom' && customStart && customEnd && !validCustomRange && (
+        <p role="alert" className="mt-2 text-sm text-red-400">开始日期不能晚于结束日期</p>
+      )}
+
+      {allowComparison && comparisonEnabled && comparisonMode === 'previous' && (
         <div className="mt-3 text-sm text-slate-400">
           对比时间段: 
           {(() => {
@@ -236,7 +246,7 @@ export function TimeRangeSelector({ onRangeChange }: TimeRangeSelectorProps) {
         </div>
       )}
 
-      {comparisonEnabled && comparisonMode === 'year-over-year' && (
+      {allowComparison && comparisonEnabled && comparisonMode === 'year-over-year' && (
         <div className="mt-3 text-sm text-slate-400">
           对比时间段: 
           {(() => {

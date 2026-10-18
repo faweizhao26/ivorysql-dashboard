@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getBeijingDate } from '@/lib/date';
+import { fetchMetricPeriods, metricChange } from '@/lib/metric-periods';
 import { ComparisonStatCard, PlatformCard } from '@/components/StatCard';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { TrendChart } from '@/components/Charts';
@@ -107,36 +108,38 @@ export default function HomePage() {
   });
   const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
   const [data, setData] = useState<DashboardData | null>(null);
+  const [previous, setPrevious] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [comparisonError, setComparisonError] = useState<string | null>(null);
 
   const isSingleDay = dateRange.start === dateRange.end;
 
   useEffect(() => {
+    const controller = new AbortController();
     async function fetchData() {
+      setLoading(true);
+      setError(null);
+      setPrevious(null);
+      setComparisonError(null);
       try {
-        const params = new URLSearchParams({
-          start: dateRange.start,
-          end: dateRange.end
-        });
-        if (comparison?.enabled) {
-          params.set('compare', 'true');
-        }
-        const res = await fetch(`/api/dashboard?${params}`, {
-          credentials: 'include'
-        });
-        if (!res.ok) throw new Error('Failed to fetch data');
-        const json = await res.json();
-        setData(json);
+        const result = await fetchMetricPeriods<DashboardData>('/api/dashboard', dateRange,
+          comparison?.enabled ? comparison.customRange : undefined, controller.signal);
+        if (controller.signal.aborted) return;
+        setData(result.current);
+        setPrevious(result.previous);
+        setComparisonError(result.comparisonError);
       } catch (err) {
-        console.error(err);
+        if (!controller.signal.aborted) setError(err instanceof Error ? err.message : '数据加载失败');
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
     fetchData();
+    return () => controller.abort();
   }, [dateRange, comparison]);
 
-  if (loading) {
+  if (loading && !data) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-slate-400">加载中...</div>
@@ -144,23 +147,24 @@ export default function HomePage() {
     );
   }
 
-  const github = data?.github;
-  const contributors = data?.contributors;
-  const social = data?.social || [];
-  const articles = data?.articles || [];
-  const events = data?.events || [];
+  const visible = loading || error ? null : data;
+  const github = visible?.github;
+  const contributors = visible?.contributors;
+  const social = visible?.social || [];
+  const articles = visible?.articles || [];
+  const events = visible?.events || [];
 
   const githubHistory = github?.history || [];
   const contributorHistory = contributors?.history || [];
 
   const latestGitHub = github?.latest;
   const displayDate = isSingleDay ? dateRange.start : null;
-  const freshnessSlices = data?.freshness
+  const freshnessSlices = visible?.freshness
     ? [
-        data.freshness.github,
-        data.freshness.contributors,
-        ...Object.values(data.freshness.social),
-        ...Object.values(data.freshness.articles),
+        visible.freshness.github,
+        visible.freshness.contributors,
+        ...Object.values(visible.freshness.social),
+        ...Object.values(visible.freshness.articles),
       ]
     : [];
   const lastUpdated = getLatestUpdatedAt(freshnessSlices);
@@ -180,6 +184,11 @@ export default function HomePage() {
     acc[item.platform] = item;
     return acc;
   }, {} as Record<string, { article_count: number; total_views: number }>);
+  const previousSocial = Object.fromEntries((previous?.social || []).map(item => [item.platform, item]));
+  const previousArticles = Object.fromEntries((previous?.articles || []).map(item => [item.platform, item]));
+  const previousGitHub = previous?.github.latest;
+  const previousContributors = previous?.contributors.latest?.main_repo_code_contributors ?? previousGitHub?.contributors;
+  const currentContributors = contributors?.latest?.main_repo_code_contributors ?? latestGitHub?.contributors;
 
   return (
     <div className="space-y-6">
@@ -199,7 +208,8 @@ export default function HomePage() {
               </span>
             )}
             <button
-              onClick={() => exportDashboardData(data, currentPeriod)}
+              disabled={loading || Boolean(error) || !data}
+              onClick={() => exportDashboardData(visible, currentPeriod)}
               className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors hidden md:block"
             >
               导出 CSV
@@ -224,21 +234,26 @@ export default function HomePage() {
         )}
       </div>
 
-      {isSingleDay && data?.freshness && (
+      {loading && <p role="status" className="text-sm text-slate-400">正在更新数据…</p>}
+      {(error || comparisonError) && <p role="alert" className="text-sm text-amber-400">{error || comparisonError}</p>}
+
+      {isSingleDay && visible?.freshness && (
         <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-500">
-          <span>GitHub：{formatFreshnessLabel(data.freshness.github)}</span>
-          <span>贡献者：{formatFreshnessLabel(data.freshness.contributors)}</span>
+          <span>GitHub：{formatFreshnessLabel(visible.freshness.github)}</span>
+          <span>贡献者：{formatFreshnessLabel(visible.freshness.contributors)}</span>
         </div>
       )}
+
+      {!loading && previous?.freshness && <p className="text-xs text-slate-500">对比期 GitHub：{formatFreshnessLabel(previous.freshness.github)}；贡献者：{formatFreshnessLabel(previous.freshness.contributors)}</p>}
 
       <div>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">核心指标</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="animate-fade-in stagger-1"><ComparisonStatCard title="GitHub Stars" current={latestGitHub?.stars || 0} icon="⭐" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
-          <div className="animate-fade-in stagger-2"><ComparisonStatCard title="GitHub Forks" current={latestGitHub?.forks || 0} icon="🍴" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
-          <div className="animate-fade-in stagger-3"><ComparisonStatCard title="公众号关注" current={socialData.wechat?.followers || 0} icon="💚" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
-          <div className="animate-fade-in stagger-4"><ComparisonStatCard title="Twitter 粉丝" current={socialData.twitter?.followers || 0} icon="🐦" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
-          <div className="animate-fade-in stagger-5"><ComparisonStatCard title="贡献者数" current={contributors?.latest?.main_repo_code_contributors ?? latestGitHub?.contributors ?? 0} icon="👥" periodLabel={comparePeriod ? 'vs 上期' : undefined} /></div>
+          <div className="animate-fade-in stagger-1"><ComparisonStatCard title="GitHub Stars" current={latestGitHub?.stars ?? '-'} previous={previousGitHub?.stars} change={metricChange(latestGitHub?.stars, previousGitHub?.stars)} icon="⭐" /></div>
+          <div className="animate-fade-in stagger-2"><ComparisonStatCard title="GitHub Forks" current={latestGitHub?.forks ?? '-'} previous={previousGitHub?.forks} change={metricChange(latestGitHub?.forks, previousGitHub?.forks)} icon="🍴" /></div>
+          <div className="animate-fade-in stagger-3"><ComparisonStatCard title="公众号关注" current={socialData.wechat?.followers ?? '-'} previous={previousSocial.wechat?.followers} change={metricChange(socialData.wechat?.followers, previousSocial.wechat?.followers)} icon="💚" /></div>
+          <div className="animate-fade-in stagger-4"><ComparisonStatCard title="Twitter 粉丝" current={socialData.twitter?.followers ?? '-'} previous={previousSocial.twitter?.followers} change={metricChange(socialData.twitter?.followers, previousSocial.twitter?.followers)} icon="🐦" /></div>
+          <div className="animate-fade-in stagger-5"><ComparisonStatCard title="贡献者数" current={currentContributors ?? '-'} previous={previousContributors} change={metricChange(currentContributors, previousContributors)} icon="👥" /></div>
         </div>
       </div>
 
@@ -271,9 +286,11 @@ export default function HomePage() {
                 platform={key}
                 followers={socialData[key]?.followers}
                 views={socialData[key]?.views}
-                changePeriod={comparePeriod ? 'vs 上期' : undefined}
+                change={metricChange(socialData[key]?.followers, previousSocial[key]?.followers)}
+                changePeriod={comparePeriod ? comparison?.mode === 'year-over-year' ? 'vs 去年同期' : 'vs 上期' : undefined}
               />
               <p className="px-1 text-xs text-slate-500">{formatFreshnessLabel(data?.freshness?.social[key])}</p>
+              {!loading && comparison?.enabled && <p className="px-1 text-xs text-slate-500">对比期：{formatFreshnessLabel(previous?.freshness?.social[key])}</p>}
             </div>
           ))}
         </div>
@@ -289,9 +306,11 @@ export default function HomePage() {
                 platform={key}
                 articles={articleData[key]?.article_count}
                 views={articleData[key]?.total_views}
-                changePeriod={comparePeriod ? 'vs 上期' : undefined}
+                change={metricChange(articleData[key]?.total_views, previousArticles[key]?.total_views)}
+                changePeriod={comparePeriod ? comparison?.mode === 'year-over-year' ? 'vs 去年同期' : 'vs 上期' : undefined}
               />
               <p className="px-1 text-xs text-slate-500">{formatFreshnessLabel(data?.freshness?.articles[key])}</p>
+              {!loading && comparison?.enabled && <p className="px-1 text-xs text-slate-500">对比期：{formatFreshnessLabel(previous?.freshness?.articles[key])}</p>}
             </div>
           ))}
         </div>

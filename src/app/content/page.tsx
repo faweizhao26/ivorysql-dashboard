@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { PlatformIcon } from '@/components/PlatformIcon';
 import { useAuth } from '@/app/auth-provider';
 import LastUpdated from '@/components/LastUpdated';
@@ -57,12 +57,21 @@ export default function ContentPage() {
   const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
   const [editingArticle, setEditingArticle] = useState<ArticleDetail | null>(null);
+  const [summaryError, setSummaryError] = useState('');
+  const [listError, setListError] = useState('');
+  const [writeError, setWriteError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [listVersion, setListVersion] = useState(0);
+  const articleController = useRef<AbortController | null>(null);
+  const mutationPending = useRef(false);
   const pageSize = 10;
 
-  const loadSummaries = useCallback(async () => {
-    const response = await fetch('/api/content', { credentials: 'include' });
+  const loadSummaries = useCallback(async (signal?: AbortSignal) => {
+    const response = await fetch('/api/content', { credentials: 'include', signal });
     if (!response.ok) throw new Error('Failed to load content summaries');
     const data = await response.json();
+    if (signal?.aborted) return;
+    setSummaryError('');
     setSummaries(data.platforms || []);
     setUpdatedAt(data.updated_at || null);
     const firstAvailable = platforms.find(item => data.platforms?.some((summary: PlatformSummary) => summary.platform === item.key));
@@ -72,28 +81,43 @@ export default function ContentPage() {
   }, []);
 
   const loadArticles = useCallback(async () => {
+    articleController.current?.abort();
+    const controller = new AbortController();
+    articleController.current = controller;
     setListLoading(true);
+    setListError('');
     const query = new URLSearchParams({ platform: selectedPlatform, page: String(page), pageSize: String(pageSize) });
     if (search.trim()) query.set('search', search.trim());
     if (category) query.set('category', category);
     try {
-      const response = await fetch(`/api/content/articles?${query}`, { credentials: 'include' });
+      const response = await fetch(`/api/content/articles?${query}`, { credentials: 'include', signal: controller.signal });
       if (!response.ok) throw new Error('Failed to load articles');
       const data = await response.json();
+      if (controller.signal.aborted) return;
+      const lastPage = Math.max(1, Math.ceil((data.total || 0) / pageSize));
+      if (page > lastPage) { setPage(lastPage); return; }
       setItems(data.items || []);
       setTotal(data.total || 0);
+    } catch {
+      if (!controller.signal.aborted) { setItems([]); setListError('文章加载失败，请重试'); }
     } finally {
-      setListLoading(false);
+      if (!controller.signal.aborted) setListLoading(false);
     }
   }, [selectedPlatform, page, search, category]);
 
   useEffect(() => {
-    loadSummaries().catch(console.error).finally(() => setLoading(false));
+    const controller = new AbortController();
+    loadSummaries(controller.signal).catch(() => {
+      if (!controller.signal.aborted) setSummaryError('平台汇总加载失败，请刷新重试');
+    }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
   }, [loadSummaries]);
 
   useEffect(() => {
-    loadArticles().catch(console.error);
-  }, [loadArticles]);
+    setListLoading(true);
+    const timer = setTimeout(() => { void loadArticles(); }, 200);
+    return () => { clearTimeout(timer); articleController.current?.abort(); };
+  }, [loadArticles, listVersion]);
 
   const summariesByPlatform = useMemo(
     () => new Map(summaries.map(summary => [summary.platform, summary])),
@@ -104,22 +128,32 @@ export default function ContentPage() {
 
   async function saveEdit(event: React.FormEvent) {
     event.preventDefault();
-    if (!editingArticle?.id) return;
-    const response = await fetch('/api/articles', {
+    if (!editingArticle?.id || mutationPending.current) return;
+    mutationPending.current = true; setSaving(true); setWriteError('');
+    try {
+      const response = await fetch('/api/articles', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editingArticle),
     });
-    if (response.ok) {
+      if (!response.ok) throw new Error('文章保存失败，请重试');
       setEditingArticle(null);
-      await Promise.all([loadSummaries(), loadArticles()]);
-    }
+      setListVersion(version => version + 1);
+      await loadSummaries().catch(() => setSummaryError('平台汇总刷新失败，请刷新重试'));
+    } catch { setWriteError('文章保存失败，请重试'); }
+    finally { mutationPending.current = false; setSaving(false); }
   }
 
   async function deleteArticle(article: ArticleDetail) {
-    if (!article.id || !confirm('确定要删除这篇文章吗？')) return;
-    const response = await fetch(`/api/articles?id=${article.id}`, { method: 'DELETE' });
-    if (response.ok) await Promise.all([loadSummaries(), loadArticles()]);
+    if (!article.id || mutationPending.current || !confirm('确定要删除这篇文章吗？')) return;
+    mutationPending.current = true; setSaving(true); setWriteError('');
+    try {
+      const response = await fetch(`/api/articles?id=${article.id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('文章删除失败');
+      setListVersion(version => version + 1);
+      await loadSummaries().catch(() => setSummaryError('平台汇总刷新失败，请刷新重试'));
+    } catch { setWriteError('文章删除失败，请重试'); }
+    finally { mutationPending.current = false; setSaving(false); }
   }
 
   if (loading) return <div className="py-24 text-center text-slate-400">加载中...</div>;
@@ -133,6 +167,7 @@ export default function ContentPage() {
         </div>
         <a href="/api/content/export" className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-800 text-sm">导出全部 CSV</a>
       </header>
+      {(summaryError || writeError) && <p role="alert" className="text-sm text-red-400">{summaryError || writeError}</p>}
 
       <section>
         <h2 className="mb-4 text-lg font-semibold text-slate-100">平台汇总</h2>
@@ -148,8 +183,8 @@ export default function ContentPage() {
                 className={`min-h-32 p-4 text-left rounded-lg border transition-colors ${selected ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 bg-slate-800/50 hover:border-slate-500'}`}
               >
                 <div className="flex items-center gap-2 mb-3"><PlatformIcon platform={key} className="w-7 h-7 text-xs" /><span className="font-medium text-slate-200">{name}</span></div>
-                <div className="text-xl font-semibold text-slate-100">{(summary?.article_count || 0).toLocaleString()}</div>
-                <div className="text-xs text-slate-500">文章 · {(summary?.total_views || 0).toLocaleString()} 阅读</div>
+                <div className="text-xl font-semibold text-slate-100">{summary?.article_count.toLocaleString() ?? '-'}</div>
+                <div className="text-xs text-slate-500">文章 · {summary?.total_views.toLocaleString() ?? '-'} 阅读</div>
               </button>
             );
           })}
@@ -171,6 +206,7 @@ export default function ContentPage() {
           </div>
         </div>
 
+        {listError && <p role="alert" className="mb-3 text-sm text-red-400">{listError}</p>}
         <div className="overflow-x-auto rounded-lg border border-slate-700 bg-slate-800/50">
           <table className="w-full min-w-[760px] text-sm">
             <thead><tr className="border-b border-slate-700 bg-slate-900/50">
@@ -185,7 +221,7 @@ export default function ContentPage() {
                   <td className="max-w-md px-4 py-3"><a href={article.article_url || '#'} target={article.article_url ? '_blank' : undefined} rel="noreferrer" className="text-indigo-400 hover:underline">{article.article_title}</a></td>
                   <td className="px-4 py-3 text-slate-400">{article.content_category || '-'}</td><td className="px-4 py-3 text-slate-400">{article.content_source || '-'}</td>
                   <td className="px-4 py-3 text-right text-slate-200">{formatArticleMetric(article.views)}</td>
-                  {isAdmin && <td className="px-4 py-3"><button onClick={() => setEditingArticle({ ...article })} className="mr-3 text-indigo-400">编辑</button><button onClick={() => deleteArticle(article)} className="text-red-400">删除</button></td>}
+                  {isAdmin && <td className="px-4 py-3"><button disabled={saving} onClick={() => { setWriteError(''); setEditingArticle({ ...article }); }} className="mr-3 text-indigo-400">编辑</button><button disabled={saving} onClick={() => deleteArticle(article)} className="text-red-400">删除</button></td>}
                 </tr>
               ))}
             </tbody>
@@ -199,7 +235,7 @@ export default function ContentPage() {
       </section>
 
       {editingArticle && isAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onMouseDown={() => setEditingArticle(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onMouseDown={() => { if (!saving) setEditingArticle(null); }}>
           <form onSubmit={saveEdit} onMouseDown={event => event.stopPropagation()} className="w-full max-w-2xl rounded-lg border border-slate-700 bg-slate-900 p-5 space-y-4">
             <h3 className="text-lg font-semibold text-slate-100">编辑文章</h3>
             <input value={editingArticle.article_title} onChange={event => setEditingArticle({ ...editingArticle, article_title: event.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200" />
@@ -207,7 +243,8 @@ export default function ContentPage() {
               <select value={editingArticle.content_category || ''} onChange={event => setEditingArticle({ ...editingArticle, content_category: event.target.value })} className="px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200"><option value="">未分类</option>{categories.map(item => <option key={item}>{item}</option>)}</select>
               <input value={editingArticle.content_source || ''} onChange={event => setEditingArticle({ ...editingArticle, content_source: event.target.value })} placeholder="内容来源" className="px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200" />
             </div>
-            <div className="flex justify-end gap-2"><button type="button" onClick={() => setEditingArticle(null)} className="px-4 py-2 text-slate-300">取消</button><button type="submit" className="px-4 py-2 rounded bg-indigo-600 text-white">保存</button></div>
+            {writeError && <p role="alert" className="text-sm text-red-400">{writeError}</p>}
+            <div className="flex justify-end gap-2"><button type="button" disabled={saving} onClick={() => setEditingArticle(null)} className="px-4 py-2 text-slate-300">取消</button><button type="submit" disabled={saving} className="px-4 py-2 rounded bg-indigo-600 text-white disabled:opacity-50">{saving ? '保存中…' : '保存'}</button></div>
           </form>
         </div>
       )}

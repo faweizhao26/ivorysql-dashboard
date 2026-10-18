@@ -16,15 +16,15 @@ function decodeText(value: string): string {
 }
 
 export function parseItpubArticles(html: string) {
-  const articles: { title: string; link: string; views: number; date: string }[] = [];
+  const articles: { title: string; link: string; views?: number; date: string }[] = [];
   const listItems = html.match(/<li[^>]*class=["'][^"']*list-item[^"']*["'][^>]*>[\s\S]*?<\/li>/gi) || [];
   
   for (const item of listItems) {
     const linkMatch = item.match(/href=["']((?:https:\/\/blog\.itpub\.net)?\/\d+\/viewspace-\d+\/)["']/i);
     const titleMatch = item.match(/<p[^>]*class=["'][^"']*title[^"']*["'][^>]*>([\s\S]*?)<\/p>/i)
       || item.match(/<a[^>]*class=["'][^"']*article-title[^"']*["'][^>]*>([\s\S]*?)<\/a>/i);
-    const viewsMatch = item.match(/icon-browse[^>]*>([\d,]+)/i)
-      || item.match(/浏览\s*([\d,]+)/i);
+    const viewsMatch = item.match(/icon-browse[^>]*>([^<]*)</i)
+      || item.match(/浏览\s*([^<]*)</i);
     const dateMatch = item.match(/colorbb[^>]*>([^<]+)<\/span>/i)
       || item.match(/<time[^>]*>([^<]+)<\/time>/i)
       || item.match(/(\d{4}-\d{2}-\d{2})/);
@@ -32,7 +32,10 @@ export function parseItpubArticles(html: string) {
     if (titleMatch && linkMatch) {
       const title = decodeText(titleMatch[1]);
       const link = new URL(linkMatch[1], 'https://blog.itpub.net').toString();
-      const views = viewsMatch ? parseInt(viewsMatch[1].replace(/,/g, '')) : 0;
+      const viewsText = viewsMatch?.[1].trim();
+      const count = viewsText && /^(?:\d+|\d{1,3}(?:,\d{3})+)$/.test(viewsText)
+        ? Number(viewsText.replace(/,/g, '')) : undefined;
+      const views = Number.isSafeInteger(count) ? count : undefined;
       const date = dateMatch ? dateMatch[1].trim().slice(0, 10) : '';
       
       articles.push({ title, link, views, date });

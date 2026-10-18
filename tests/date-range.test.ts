@@ -15,8 +15,8 @@ test('preset ranges anchor to Beijing midnight across years', (t) => {
   t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-12-31T16:00:00Z') });
   assert.deepEqual(getDateRange('today'), { start: '2027-01-01', end: '2027-01-01', isSingleDay: true });
   for (const [preset, start] of [
-    ['7d', '2026-12-25'], ['30d', '2026-12-02'], ['90d', '2026-10-03'],
-    ['180d', '2026-07-05'], ['365d', '2026-01-01'], ['custom', '2026-12-02'],
+    ['7d', '2026-12-26'], ['30d', '2026-12-03'], ['90d', '2026-10-04'],
+    ['180d', '2026-07-06'], ['365d', '2026-01-02'], ['custom', '2026-12-03'],
   ] as const) {
     assert.deepEqual(getDateRange(preset), { start, end: '2027-01-01' });
   }
@@ -33,6 +33,18 @@ test('comparisons use date-only arithmetic regardless of server daylight saving 
     start: '2023-03-01', end: '2023-03-01',
   });
   assert.equal(getComparisonRange(range, 'custom'), null);
+});
+
+test('unfinished, invalid or reversed dates never crash comparison controls', () => {
+  for (const range of [
+    { start: '', end: '' }, { start: '2026-10-01', end: '' },
+    { start: '2026-02-30', end: '2026-03-01' },
+    { start: '2026-10-17', end: '2026-10-01' },
+  ]) {
+    assert.equal(getComparisonRange(range, 'previous'), null);
+    assert.equal(getComparisonRange(range, 'year-over-year'), null);
+    assert.equal(createCustomDateRange(range.start, range.end), null);
+  }
 });
 
 test('explicit query ranges do not move with Beijing today', () => {

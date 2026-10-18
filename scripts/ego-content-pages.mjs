@@ -1,3 +1,17 @@
+export async function openEgoContentTask(id, api, expectedName) {
+  if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Invalid EGO_TASK_SPACE_ID');
+  if (typeof api.listTaskSpaces === 'function') {
+    const space = (await api.listTaskSpaces()).find(entry => entry.id === id);
+    if (!space) throw new Error(`采集工作区 ${id} 不存在，请恢复后再运行`);
+    if (expectedName && space.name !== expectedName) throw new Error('采集工作区名称不匹配，未接管其他工作区');
+    if (space.ownership === 'user') {
+      if (typeof api.claimTaskSpace !== 'function') throw new Error('无法接管已保留的采集工作区');
+      return api.claimTaskSpace(id);
+    }
+  }
+  return api.taskSpace(id);
+}
+
 export async function resolveEgoContentPages(task, targets) {
   const tabs = await task.tabs();
   const selected = targets.map(({ key, url }) => {
