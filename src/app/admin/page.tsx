@@ -451,14 +451,14 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
             platform,
             article_title: articleTitle,
             article_url: articleUrl,
-            views: views.trim() === '' ? undefined : parseInt(views) || 0,
-            likes: likes.trim() === '' ? undefined : parseInt(likes) || 0,
-            comments: comments.trim() === '' ? undefined : parseInt(comments) || 0,
+            views: views.trim() === '' ? undefined : views,
+            likes: likes.trim() === '' ? undefined : likes,
+            comments: comments.trim() === '' ? undefined : comments,
             content_category: contentCategory || null,
             content_source: contentSource || null
           })
         });
-        if (!res.ok) throw new Error('Failed to update');
+        if (!res.ok) throw new Error((await res.json()).error || '文章更新失败，请重试');
         setMessage({ type: 'success', text: '文章更新成功！' });
       } else {
         const res = await fetch('/api/articles', {
@@ -469,22 +469,22 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
             platform,
             article_title: articleTitle,
             article_url: articleUrl,
-            views: parseInt(views) || 0,
-            likes: parseInt(likes) || 0,
-            comments: parseInt(comments) || 0,
+            views: views.trim() === '' ? 0 : views,
+            likes: likes.trim() === '' ? 0 : likes,
+            comments: comments.trim() === '' ? 0 : comments,
             content_category: contentCategory || null,
             content_source: contentSource || null
           })
         });
-        if (!res.ok) throw new Error('Failed to save');
+        if (!res.ok) throw new Error((await res.json()).error || '文章保存失败，请重试');
         setMessage({ type: 'success', text: '文章数据保存成功！' });
       }
 
       resetForm();
       fetchArticles();
       onDataChange();
-    } catch {
-      setMessage({ type: 'error', text: '保存失败，请重试' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : '保存失败，请重试' });
     } finally {
       setLoading(false);
     }
@@ -526,12 +526,11 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
     
     try {
       const res = await fetch(`/api/articles?id=${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchArticles();
-        onDataChange();
-      }
+      if (!res.ok) throw new Error((await res.json()).error || '文章删除失败，请重试');
+      fetchArticles();
+      onDataChange();
     } catch (err) {
-      console.error(err);
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : '文章删除失败，请重试' });
     }
   }
 
@@ -594,6 +593,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                required
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
@@ -629,6 +629,9 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                 type="number"
                 value={views}
                 onChange={(e) => setViews(e.target.value)}
+                min="0"
+                max="2147483647"
+                step="1"
                 placeholder="阅读量"
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />

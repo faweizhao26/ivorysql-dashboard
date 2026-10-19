@@ -134,13 +134,18 @@ export default function ContentPage() {
       const response = await fetch('/api/articles', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editingArticle),
+      body: JSON.stringify({
+        id: editingArticle.id,
+        article_title: editingArticle.article_title,
+        content_category: editingArticle.content_category,
+        content_source: editingArticle.content_source,
+      }),
     });
-      if (!response.ok) throw new Error('文章保存失败，请重试');
+      if (!response.ok) throw new Error((await response.json()).error || '文章保存失败，请重试');
       setEditingArticle(null);
       setListVersion(version => version + 1);
       await loadSummaries().catch(() => setSummaryError('平台汇总刷新失败，请刷新重试'));
-    } catch { setWriteError('文章保存失败，请重试'); }
+    } catch (error) { setWriteError(error instanceof Error ? error.message : '文章保存失败，请重试'); }
     finally { mutationPending.current = false; setSaving(false); }
   }
 
@@ -149,10 +154,10 @@ export default function ContentPage() {
     mutationPending.current = true; setSaving(true); setWriteError('');
     try {
       const response = await fetch(`/api/articles?id=${article.id}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error('文章删除失败');
+      if (!response.ok) throw new Error((await response.json()).error || '文章删除失败');
       setListVersion(version => version + 1);
       await loadSummaries().catch(() => setSummaryError('平台汇总刷新失败，请刷新重试'));
-    } catch { setWriteError('文章删除失败，请重试'); }
+    } catch (error) { setWriteError(error instanceof Error ? error.message : '文章删除失败，请重试'); }
     finally { mutationPending.current = false; setSaving(false); }
   }
 
@@ -238,7 +243,7 @@ export default function ContentPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onMouseDown={() => { if (!saving) setEditingArticle(null); }}>
           <form onSubmit={saveEdit} onMouseDown={event => event.stopPropagation()} className="w-full max-w-2xl rounded-lg border border-slate-700 bg-slate-900 p-5 space-y-4">
             <h3 className="text-lg font-semibold text-slate-100">编辑文章</h3>
-            <input value={editingArticle.article_title} onChange={event => setEditingArticle({ ...editingArticle, article_title: event.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200" />
+            <input required value={editingArticle.article_title} onChange={event => setEditingArticle({ ...editingArticle, article_title: event.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <select value={editingArticle.content_category || ''} onChange={event => setEditingArticle({ ...editingArticle, content_category: event.target.value })} className="px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200"><option value="">未分类</option>{categories.map(item => <option key={item}>{item}</option>)}</select>
               <input value={editingArticle.content_source || ''} onChange={event => setEditingArticle({ ...editingArticle, content_source: event.target.value })} placeholder="内容来源" className="px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200" />

@@ -808,12 +808,12 @@ export async function getEventsForDate(date: string): Promise<CommunityEvent[]> 
   return result.rows;
 }
 
-export async function saveArticleDetails(article: ArticleDetails): Promise<void> {
+export async function saveArticleDetails(article: ArticleDetails, execute = query): Promise<void> {
   const conflictTarget = article.article_url
     ? `(platform, article_url) WHERE article_url IS NOT NULL AND article_url <> ''`
     : `(date, platform, article_title) WHERE article_url IS NULL OR article_url = ''`;
 
-  await query(`
+  await execute(`
     INSERT INTO article_details 
     (date, platform, article_title, article_url, views, likes, comments, content_category, content_source, published_date)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -1092,7 +1092,7 @@ export async function logReminderSent(platform: string, status: string): Promise
   await query('INSERT INTO reminder_log (platform, status) VALUES ($1, $2)', [platform, status]);
 }
 
-export async function updateArticleDetails(id: number, article: Partial<ArticleDetails>): Promise<void> {
+export async function updateArticleDetails(id: number, article: Partial<ArticleDetails>, execute = query): Promise<void> {
   const fields: string[] = [];
   const values: unknown[] = [];
   
@@ -1105,22 +1105,28 @@ export async function updateArticleDetails(id: number, article: Partial<ArticleD
   if (article.comments !== undefined) { fields.push('comments = $' + (fields.length + 1)); values.push(article.comments); }
   if (article.content_category !== undefined) { fields.push('content_category = $' + (fields.length + 1)); values.push(article.content_category); }
   if (article.content_source !== undefined) { fields.push('content_source = $' + (fields.length + 1)); values.push(article.content_source); }
+  if (article.published_date !== undefined) { fields.push('published_date = $' + (fields.length + 1)); values.push(article.published_date || null); }
   
   if (fields.length === 0) return;
   
   fields.push('updated_at = CURRENT_TIMESTAMP');
   values.push(id);
-  await query(`UPDATE article_details SET ${fields.join(', ')} WHERE id = $${values.length}`, values);
+  await execute(`UPDATE article_details SET ${fields.join(', ')} WHERE id = $${values.length}`, values);
 }
 
-export async function recalculateArticleStatsForDate(platform: string, date: string): Promise<void> {
-  const articles = await query(
+export async function recalculateArticleStatsForDate(platform: string, date: string, execute = query): Promise<void> {
+  const articles = await execute(
     'SELECT * FROM article_details WHERE platform = $1 AND date = $2',
     [platform, date]
   );
   
   if (articles.rows.length === 0) {
-    await query('DELETE FROM article_stats WHERE platform = $1 AND date = $2', [platform, date]);
+    await execute(`DELETE FROM article_stats WHERE platform = $1 AND date = $2
+      AND COALESCE(followers, 0) = 0 AND COALESCE(bookmarks, 0) = 0`, [platform, date]);
+    await execute(`UPDATE article_stats
+      SET article_count = 0, total_views = 0, avg_views = 0, likes = 0, comments = 0,
+          new_articles = 0, updated_at = CURRENT_TIMESTAMP
+      WHERE platform = $1 AND date = $2`, [platform, date]);
     return;
   }
   
@@ -1130,7 +1136,7 @@ export async function recalculateArticleStatsForDate(platform: string, date: str
   const article_count = articles.rows.length;
   const avg_views = Math.round(total_views / article_count);
   
-  await query(`
+  await execute(`
     INSERT INTO article_stats 
     (date, platform, article_count, total_views, avg_views, likes, bookmarks, comments, followers, new_articles)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)

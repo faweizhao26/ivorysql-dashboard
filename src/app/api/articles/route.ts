@@ -4,42 +4,24 @@ import {
   getArticleDetailsByPlatform, 
   getArticleDetailsForDate,
   getLatestArticleDetails,
-  saveArticleDetails,
-  deleteArticleDetails,
   getAllArticleDetailsPlatforms,
-  updateReminderLastUpdated,
-  updateArticleDetails,
-  recalculateArticleStatsForDate,
-  getArticleDetailsById,
   ArticleDetails
 } from '@/lib/db';
-
-function readString(input: Record<string, unknown>, key: string): string | undefined {
-  const value = input[key];
-  return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function readNumber(input: Record<string, unknown>, key: string): number {
-  const value = input[key];
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') return Number(value) || 0;
-  return 0;
-}
+import { parseArticleInput, parseArticleId } from '@/lib/article-input';
+import { mutateManualArticle, ArticleNotFoundError } from '@/lib/manual-articles';
 
 export function parseArticleDetailsInput(body: unknown): ArticleDetails {
-  const input = body && typeof body === 'object' ? body as Record<string, unknown> : {};
+  return parseArticleInput(body);
+}
 
-  return {
-    date: readString(input, 'date') || '',
-    platform: readString(input, 'platform') || '',
-    article_title: readString(input, 'article_title') || '',
-    article_url: readString(input, 'article_url'),
-    views: readNumber(input, 'views'),
-    likes: readNumber(input, 'likes'),
-    comments: readNumber(input, 'comments'),
-    content_category: readString(input, 'content_category'),
-    content_source: readString(input, 'content_source')
-  };
+function mutationError(error: unknown) {
+  if (error instanceof RangeError || error instanceof SyntaxError) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error instanceof ArticleNotFoundError) return NextResponse.json({ error: error.message }, { status: 404 });
+  if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+    return NextResponse.json({ error: '目标平台已存在相同链接或同名文章，请编辑原有记录' }, { status: 409 });
+  }
+  console.error('Article mutation failed:', error);
+  return NextResponse.json({ error: '文章操作失败，未保存任何更改，请重试' }, { status: 500 });
 }
 
 export async function GET(request: Request) {
@@ -112,82 +94,35 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const article = parseArticleDetailsInput(body);
-    const { date, platform, article_title } = article;
-
-    if (!date || !platform || !article_title) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    await saveArticleDetails(article);
-
-    await recalculateArticleStatsForDate(platform, date);
-    await updateReminderLastUpdated(platform);
+    await mutateManualArticle({ type: 'create', article });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error saving article details:', error);
-    return NextResponse.json({ error: 'Failed to save data' }, { status: 500 });
+    return mutationError(error);
   }
 }
 
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, date, platform, article_title, article_url, views, likes, comments, content_category, content_source } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: 'Missing article id' }, { status: 400 });
-    }
-
-    const oldArticle = await getArticleDetailsById(id);
-    if (!oldArticle) {
-      return NextResponse.json({ error: 'Article not found' }, { status: 404 });
-    }
-
-    await updateArticleDetails(id, {
-      date,
-      platform,
-      article_title,
-      article_url,
-      views,
-      likes,
-      comments,
-      content_category,
-      content_source
-    });
-
-    await recalculateArticleStatsForDate(platform, date);
-    if (oldArticle.date !== date || oldArticle.platform !== platform) {
-      await recalculateArticleStatsForDate(oldArticle.platform, oldArticle.date);
-    }
-    await updateReminderLastUpdated(platform);
+    const id = parseArticleId(body?.id);
+    const article = parseArticleInput(body, true);
+    await mutateManualArticle({ type: 'update', id, article });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error updating article details:', error);
-    return NextResponse.json({ error: 'Failed to update data' }, { status: 500 });
+    return mutationError(error);
   }
 }
 
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (!id) {
-      return NextResponse.json({ error: 'Missing article id' }, { status: 400 });
-    }
-
-    const article = await getArticleDetailsById(parseInt(id));
-    await deleteArticleDetails(parseInt(id));
-    
-    if (article) {
-      await recalculateArticleStatsForDate(article.platform, article.date);
-    }
+    const id = parseArticleId(searchParams.get('id'));
+    await mutateManualArticle({ type: 'delete', id });
     
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting article details:', error);
-    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
+    return mutationError(error);
   }
 }

@@ -67,3 +67,20 @@ test('a missing platform tab does not block the remaining configured platform', 
   assert.equal(result.requests.filter(request => request.body?.status === 'failed').length, 3);
   assert.equal(handedOff, 1);
 });
+
+test('a truncated Toutiao feed is not uploaded or reported as a successful 50-article refresh', async () => {
+  const url = 'https://www.toutiao.com/c/user/token/example/';
+  const cards = Array.from({ length: 12 }, (_, index) => ({ title: `article ${index}`, url: `https://www.toutiao.com/article/${index}/`, dateLabel: '2026-10-19', views: '10' }));
+  const page = {
+    goto: async () => {}, url: async () => url,
+    evaluate: async (fn: () => unknown) => String(fn).includes('Array.from') || fn.name === 'readToutiaoCards' ? cards : 12,
+    waitForTimeout: async () => {},
+    waitForFunction: async () => { throw new Error('Timeout waiting for more articles'); },
+    fetch: async () => ({ body: '2026-10-19T12:00:00+08:00' }),
+  };
+  const result = await runScript(async () => ({
+    spaceId: 28, tabs: async () => [{ url, label: 'p4' }], page: () => page, handOff: async () => {},
+  }));
+  assert.equal(result.logs.find(result => result.platform === 'toutiao')?.success, false);
+  assert.equal(result.requests.some(request => request.body?.platform === 'toutiao' && request.body?.articles), false);
+});

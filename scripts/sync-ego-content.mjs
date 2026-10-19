@@ -79,6 +79,7 @@ async function existingDates(platform) {
 async function upload(platform, articles) {
   const prepared = uniqueRecent(articles);
   if (prepared.length === 0) throw new Error(`${platform} returned no articles`);
+  if (prepared.length < LIMIT) throw new Error(`${platform} 采集不完整：仅获取 ${prepared.length}/${LIMIT} 篇，本平台未写入`);
   if (dryRun) {
     return { articles: prepared.length, dryRun: true, sample: prepared.slice(0, 2) };
   }
@@ -181,24 +182,8 @@ async function collectToutiao() {
   const knownDates = await existingDates('toutiao');
   await toutiaoPage.goto(`https://www.toutiao.com/c/user/token/${TOUTIAO_TOKEN}/`);
 
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    const count = await toutiaoPage.evaluate(() => (
-      document.querySelectorAll('.profile-article-card-wrapper').length
-    ));
-    if (count >= LIMIT) break;
-    await toutiaoPage.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await toutiaoPage.waitForTimeout(800);
-  }
-
-  const articles = await toutiaoPage.evaluate(() => (
-    Array.from(document.querySelectorAll('.profile-article-card-wrapper')).map(card => ({
-      title: card.querySelector('a.title')?.textContent?.trim() || '',
-      url: card.querySelector('a.title')?.href || '',
-      dateLabel: card.querySelector('.feed-card-footer-time-cmp')?.textContent?.trim() || '',
-      views: card.querySelector('.profile-feed-card-tools-text')?.textContent,
-      comments: card.querySelector('a[aria-label^="评论数"]')?.getAttribute('aria-label'),
-    }))
-  ));
+  const { collectToutiaoCards } = await import(path.join(PROJECT_DIR, 'scripts/ego-toutiao.mjs'));
+  const articles = await collectToutiaoCards(toutiaoPage, LIMIT);
 
   const dates = await resolvePublishedDates(
     toutiaoPage,
