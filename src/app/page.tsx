@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { ArrowRight, RefreshCw } from 'lucide-react';
 import { getBeijingDate } from '@/lib/date';
 import { fetchMetricPeriods, metricChange } from '@/lib/metric-periods';
 import { ComparisonStatCard, PlatformCard } from '@/components/StatCard';
@@ -10,6 +12,10 @@ import { ActivityTimeline } from '@/components/Timeline';
 import { downloadCSV } from '@/lib/csv-utils';
 import LastUpdated from '@/components/LastUpdated';
 import { formatFreshnessLabel, getLatestUpdatedAt, type DataSlice } from '@/lib/data-slices';
+import { ContentPlatformCards } from '@/components/ContentPlatformCards';
+import { useContentOverview } from '@/lib/use-content-overview';
+import { contentDateQuery, contentOverviewExportRows, type ContentOverview } from '@/lib/content-overview';
+import type { ArticleDateRange } from '@/lib/article-query';
 
 type FreshnessMap = Record<string, DataSlice<unknown>>;
 
@@ -84,19 +90,6 @@ const socialPlatforms: Record<string, { name: string }> = {
   youtube: { name: 'YouTube' },
 };
 
-const contentPlatforms: Record<string, { name: string }> = {
-  csdn: { name: 'CSDN' },
-  juejin: { name: '掘金' },
-  modb: { name: '墨天轮' },
-  oschina: { name: '开源中国' },
-  sf: { name: '思否' },
-  ctoutiao: { name: '51CTO' },
-  itpub: { name: 'ITPUB' },
-  toutiao: { name: '头条号' },
-  ifclub: { name: 'IFCLUB' },
-  zhihu: { name: '知乎' },
-};
-
 export default function HomePage() {
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const today = getBeijingDate();
@@ -106,6 +99,7 @@ export default function HomePage() {
       isSingleDay: true
     };
   });
+  const { overview: contentOverview, loading: contentLoading, error: contentError, refresh: refreshContent } = useContentOverview(dateRange);
   const [comparison, setComparison] = useState<Comparison | undefined>(undefined);
   const [data, setData] = useState<DashboardData | null>(null);
   const [previous, setPrevious] = useState<DashboardData | null>(null);
@@ -151,7 +145,6 @@ export default function HomePage() {
   const github = visible?.github;
   const contributors = visible?.contributors;
   const social = visible?.social || [];
-  const articles = visible?.articles || [];
   const events = visible?.events || [];
 
   const githubHistory = github?.history || [];
@@ -180,12 +173,7 @@ export default function HomePage() {
     return acc;
   }, {} as Record<string, { followers: number; views: number }>);
 
-  const articleData = articles.reduce((acc, item) => {
-    acc[item.platform] = item;
-    return acc;
-  }, {} as Record<string, { article_count: number; total_views: number }>);
   const previousSocial = Object.fromEntries((previous?.social || []).map(item => [item.platform, item]));
-  const previousArticles = Object.fromEntries((previous?.articles || []).map(item => [item.platform, item]));
   const previousGitHub = previous?.github.latest;
   const previousContributors = previous?.contributors.latest?.main_repo_code_contributors ?? previousGitHub?.contributors;
   const currentContributors = contributors?.latest?.main_repo_code_contributors ?? latestGitHub?.contributors;
@@ -208,8 +196,8 @@ export default function HomePage() {
               </span>
             )}
             <button
-              disabled={loading || Boolean(error) || !data}
-              onClick={() => exportDashboardData(visible, currentPeriod)}
+              disabled={loading || Boolean(error) || !data || contentLoading || Boolean(contentError)}
+              onClick={() => exportDashboardData(visible, currentPeriod, contentOverview, dateRange)}
               className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors hidden md:block"
             >
               导出 CSV
@@ -296,25 +284,15 @@ export default function HomePage() {
         </div>
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold text-slate-100 mb-4">技术内容平台</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {Object.entries(contentPlatforms).map(([key, { name }]) => (
-            <div key={key} className="space-y-1">
-              <PlatformCard
-                name={name}
-                platform={key}
-                articles={articleData[key]?.article_count}
-                views={articleData[key]?.total_views}
-                change={metricChange(articleData[key]?.total_views, previousArticles[key]?.total_views)}
-                changePeriod={comparePeriod ? comparison?.mode === 'year-over-year' ? 'vs 去年同期' : 'vs 上期' : undefined}
-              />
-              <p className="px-1 text-xs text-slate-500">{formatFreshnessLabel(data?.freshness?.articles[key])}</p>
-              {!loading && comparison?.enabled && <p className="px-1 text-xs text-slate-500">对比期：{formatFreshnessLabel(previous?.freshness?.articles[key])}</p>}
-            </div>
-          ))}
-        </div>
-      </div>
+      <section className="space-y-4">
+        <header className="flex flex-wrap items-end justify-between gap-3">
+          <div><h2 className="text-lg font-semibold text-slate-100">技术内容平台</h2><p className="mt-1 text-xs text-slate-500">发布日期：{dateRange.start} ~ {dateRange.end} · 当前累计阅读</p><p className="mt-1 text-xs text-slate-500"><LastUpdated value={contentOverview?.updated_at ?? null} /></p></div>
+          <Link href={`/content?${contentDateQuery(dateRange)}`} className="inline-flex items-center gap-1 text-sm text-indigo-300">查看内容<ArrowRight size={16} /></Link>
+        </header>
+        {contentLoading && <p role="status" className="text-sm text-slate-400">正在更新内容汇总…</p>}
+        {contentError && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-red-400"><span>{contentError}</span><button type="button" onClick={() => { void refreshContent(); }} className="inline-flex items-center gap-1 text-slate-300"><RefreshCw size={14} />重试</button></div>}
+        <ContentPlatformCards summaries={contentOverview?.platforms || []} loading={contentLoading} dateRange={dateRange} />
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ActivityTimeline events={events} title="最新动态" />
@@ -323,7 +301,7 @@ export default function HomePage() {
   );
 }
 
-function exportDashboardData(data: DashboardData | null, period: string) {
+function exportDashboardData(data: DashboardData | null, period: string, contentOverview: ContentOverview | null, dateRange: ArticleDateRange) {
   if (!data) return;
   const rows: Record<string, unknown>[] = [];
 
@@ -339,9 +317,7 @@ function exportDashboardData(data: DashboardData | null, period: string) {
     rows.push({ 指标: '社交媒体', 平台: s.platform, 粉丝: s.followers, 阅读: s.views, 时间段: period });
   });
 
-  data.articles.forEach(a => {
-    rows.push({ 指标: '内容平台', 平台: a.platform, 文章数: a.article_count, 阅读量: a.total_views, 时间段: period });
-  });
+  rows.push(...contentOverviewExportRows(contentOverview?.platforms || [], dateRange));
 
   data.events.forEach(e => {
     rows.push({ 指标: '活动动态', 日期: e.date, 来源: e.source, 标题: e.title, 描述: e.description, 链接: e.url, 类型: e.event_type, 时间段: period });

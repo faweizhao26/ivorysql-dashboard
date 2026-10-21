@@ -1,6 +1,7 @@
 import { Pool, type PoolClient } from 'pg';
 import { getBeijingDate, shiftDate } from './date';
 import type { MainRepoContributor, MainRepoMonthlyActivity } from './contributor-activity';
+import type { ArticleDateRange } from './article-query';
 
 let pool: Pool | null = null;
 
@@ -969,17 +970,35 @@ export async function getAllArticleDetailsPlatforms(): Promise<string[]> {
   return result.rows.map(r => r.platform);
 }
 
-export async function getArticlePlatformSummaries(): Promise<ArticlePlatformSummary[]> {
+const articlePublicationDate = "COALESCE(NULLIF(published_date, ''), date)";
+
+function articleDetailFilter(range?: ArticleDateRange, platform?: string) {
+  const conditions: string[] = [];
+  const values: unknown[] = [];
+  if (platform) {
+    values.push(platform);
+    conditions.push(`platform = $${values.length}`);
+  }
+  if (range) {
+    values.push(range.start, range.end);
+    conditions.push(`${articlePublicationDate} >= $${values.length - 1} AND ${articlePublicationDate} <= $${values.length}`);
+  }
+  return { conditions, values };
+}
+
+export async function getArticlePlatformSummaries(range?: ArticleDateRange): Promise<ArticlePlatformSummary[]> {
+  const { conditions, values } = articleDetailFilter(range);
   const result = await query(`
     SELECT platform,
            COUNT(*)::integer AS article_count,
            COALESCE(SUM(views), 0)::bigint AS total_views,
-           MAX(COALESCE(published_date, date)) AS data_date,
+           MAX(${articlePublicationDate}) AS data_date,
            MAX(updated_at) AS updated_at
     FROM article_details
+    ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
     GROUP BY platform
     ORDER BY platform
-  `);
+  `, values);
   return result.rows.map(row => ({
     ...row,
     total_views: Number(row.total_views || 0),
@@ -993,9 +1012,9 @@ export async function getPagedArticleDetails(options: {
   pageSize: number;
   search?: string;
   category?: string;
+  range?: ArticleDateRange;
 }): Promise<PagedArticleDetails> {
-  const conditions = ['platform = $1'];
-  const values: unknown[] = [options.platform];
+  const { conditions, values } = articleDetailFilter(options.range, options.platform);
   if (options.search) {
     values.push(`%${options.search}%`);
     conditions.push(`article_title ILIKE $${values.length}`);
@@ -1009,17 +1028,17 @@ export async function getPagedArticleDetails(options: {
   values.push(options.pageSize, (options.page - 1) * options.pageSize);
   const rows = await query(
     `SELECT * FROM article_details WHERE ${where}
-     ORDER BY COALESCE(published_date, date) DESC, id DESC
+     ORDER BY ${articlePublicationDate} DESC, id DESC
      LIMIT $${values.length - 1} OFFSET $${values.length}`,
     values,
   );
   return { items: rows.rows, total: Number(countResult.rows[0]?.total || 0) };
 }
 
-export async function getAllArticleDetailsForExport(platform?: string): Promise<ArticleDetails[]> {
-  const result = platform
-    ? await query(`SELECT * FROM article_details WHERE platform = $1 ORDER BY COALESCE(published_date, date) DESC, id DESC`, [platform])
-    : await query(`SELECT * FROM article_details ORDER BY platform, COALESCE(published_date, date) DESC, id DESC`);
+export async function getAllArticleDetailsForExport(platform?: string, range?: ArticleDateRange): Promise<ArticleDetails[]> {
+  const { conditions, values } = articleDetailFilter(range, platform);
+  const result = await query(`SELECT * FROM article_details ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
+    ORDER BY platform, ${articlePublicationDate} DESC, id DESC`, values);
   return result.rows;
 }
 

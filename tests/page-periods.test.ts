@@ -24,13 +24,18 @@ test('content and GitHub filters discard superseded responses and surface failur
 
 test('writes refresh the active content filters instead of their captured old callback', () => {
   const source = readFileSync(new URL('../src/app/content/page.tsx', import.meta.url), 'utf8');
-  const writes = source.slice(source.indexOf('async function saveEdit'), source.indexOf('if (loading) return'));
+  const writesStart = source.indexOf('async function saveEdit');
+  const writesEnd = source.indexOf('\n  if (loading', writesStart);
+  assert.ok(writesStart >= 0 && writesEnd > writesStart);
+  const writes = source.slice(writesStart, writesEnd);
   assert.doesNotMatch(writes, /loadArticles\(\)/);
   assert.match(writes, /setListVersion/);
 });
 
-test('home comparison labels retain per-platform fallback dates', () => {
+test('home uses the selected publication range for current content reads without daily snapshot comparisons', () => {
   const source = readFileSync(new URL('../src/app/page.tsx', import.meta.url), 'utf8');
   assert.ok(source.includes('previous?.freshness?.social[key]'));
-  assert.ok(source.includes('previous?.freshness?.articles[key]'));
+  assert.ok(source.includes('useContentOverview'));
+  assert.ok(source.includes('useContentOverview(dateRange)'));
+  assert.equal(source.includes('previous?.freshness?.articles[key]'), false);
 });

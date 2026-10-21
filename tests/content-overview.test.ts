@@ -1,0 +1,109 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { load } from 'cheerio';
+
+const summaries = [
+  { platform: 'wechat', article_count: 633, total_views: 146138, data_date: '2026-08-31', updated_at: '2026-10-20T01:00:00Z' },
+  { platform: 'cnblogs', article_count: 441, total_views: 21238, data_date: '2026-10-16', updated_at: '2026-10-20T02:00:00Z' },
+  { platform: 'zhihu', article_count: 496, total_views: 0, data_date: '2026-10-16', updated_at: '2026-10-20T01:00:00Z' },
+];
+
+test('home and content share publication-range summaries of current article reads', () => {
+  for (const file of ['src/app/page.tsx', 'src/app/content/page.tsx']) {
+    const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    assert.match(source, /useContentOverview/);
+    assert.match(source, /ContentPlatformCards/);
+  }
+  const home = readFileSync(new URL('../src/app/page.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(home, /articleData\[key\]|previousArticles\[key\]/);
+  assert.match(home, /useContentOverview\(dateRange\)/);
+  assert.match(home, /发布日期/);
+});
+
+test('the shared overview requests the same endpoint without date filtering or cached totals', async () => {
+  const { fetchContentOverview } = await import('../src/lib/content-overview');
+  const controller = new AbortController();
+  let requested: { url: string; init?: RequestInit } | undefined;
+  const expected = { platforms: summaries, updated_at: '2026-10-20T02:00:00Z' };
+  const result = await fetchContentOverview(controller.signal, async (input, init) => {
+    requested = { url: String(input), init };
+    return Response.json(expected);
+  });
+  assert.deepEqual(result, expected);
+  assert.equal(requested?.url, '/api/content');
+  assert.equal(requested?.init?.credentials, 'include');
+  assert.equal(requested?.init?.cache, 'no-store');
+  assert.equal(requested?.init?.signal, controller.signal);
+});
+
+test('range-aware overview requests and CSV preserve the selected publication dates', async () => {
+  const { fetchContentOverview, contentOverviewExportRows } = await import('../src/lib/content-overview');
+  const range = { start: '2026-10-14', end: '2026-10-20' };
+  let requested = '';
+  await fetchContentOverview(undefined, async input => {
+    requested = String(input);
+    return Response.json({ platforms: summaries, updated_at: null });
+  }, range);
+  assert.equal(requested, '/api/content?start=2026-10-14&end=2026-10-20');
+  const rows = contentOverviewExportRows(summaries, range);
+  assert.equal(rows[0].时间段, '2026-10-14 ~ 2026-10-20');
+  assert.equal(rows[0].统计口径, '按发布日期 · 当前累计阅读');
+});
+
+test('home platform cards carry the selected publication range into the content page', async () => {
+  const { ContentPlatformCards } = await import('../src/components/ContentPlatformCards');
+  const html = load(renderToStaticMarkup(createElement(ContentPlatformCards, { summaries, dateRange: { start: '2026-10-14', end: '2026-10-20' } })));
+  const url = new URL(html('[data-content-platform="csdn"]').attr('href')!, 'http://localhost');
+  assert.equal(url.searchParams.get('platform'), 'csdn');
+  assert.equal(url.searchParams.get('start'), '2026-10-14');
+  assert.equal(url.searchParams.get('end'), '2026-10-20');
+});
+
+test('failed overview requests remain errors rather than becoming zero article counts', async () => {
+  const { fetchContentOverview } = await import('../src/lib/content-overview');
+  await assert.rejects(fetchContentOverview(undefined, async () => Response.json({ error: 'unavailable' }, { status: 503 })), /平台汇总加载失败/);
+  await assert.rejects(fetchContentOverview(undefined, async () => Response.json({ platforms: null })), /平台汇总/);
+});
+
+test('platform links, selector and CSV resolve to the same channels including WeChat and cnblogs', async () => {
+  const { CONTENT_PLATFORMS, resolveContentPlatform, contentOverviewExportRows } = await import('../src/lib/content-overview');
+  assert.ok(CONTENT_PLATFORMS.some(platform => platform.key === 'wechat'));
+  assert.ok(CONTENT_PLATFORMS.some(platform => platform.key === 'cnblogs'));
+  for (const platform of CONTENT_PLATFORMS) assert.equal(resolveContentPlatform(platform.key), platform.key);
+  for (const value of [null, '', 'invalid', 'javascript:alert(1)']) assert.equal(resolveContentPlatform(value), 'wechat');
+  const rows = contentOverviewExportRows(summaries);
+  assert.equal(rows[0].平台, '公众号');
+  assert.equal(rows[0].文章数, 633);
+  assert.equal(rows[0].阅读量, 146138);
+  assert.equal(rows[0].统计口径, '最新累计');
+  assert.equal(rows.find(row => row.平台 === '知乎')?.阅读量, 0);
+});
+
+test('home links and content selectors render identical platform metrics and preserve missing versus zero', async () => {
+  const { ContentPlatformCards } = await import('../src/components/ContentPlatformCards');
+  const home = load(renderToStaticMarkup(createElement(ContentPlatformCards, { summaries })));
+  const content = load(renderToStaticMarkup(createElement(ContentPlatformCards, { summaries, selectedPlatform: 'cnblogs', onSelect() {} })));
+  const homeCards = home('[data-content-platform]');
+  assert.equal(homeCards.length, content('[data-content-platform]').length);
+  homeCards.each((_, card) => {
+    const key = home(card).attr('data-content-platform');
+    assert.equal(home(card).attr('href'), `/content?platform=${key}`);
+    assert.equal(home(card).text(), content(`[data-content-platform="${key}"]`).text());
+  });
+  assert.equal(content('[data-content-platform="cnblogs"]').attr('aria-pressed'), 'true');
+  assert.equal(content('[data-content-platform="wechat"]').attr('aria-pressed'), 'false');
+  assert.equal(home('[data-content-platform="wechat"] dd').first().text(), '633');
+  assert.equal(home('[data-content-platform="zhihu"] dd').last().text(), '0');
+  assert.equal(home('[data-content-platform="csdn"] dd').first().text(), '-');
+});
+
+test('content selection follows the URL so home links and browser navigation select the requested platform', () => {
+  const source = readFileSync(new URL('../src/app/content/page.tsx', import.meta.url), 'utf8');
+  assert.match(source, /useSearchParams/);
+  assert.match(source, /resolveContentPlatform\(searchParams\.get\('platform'\)\)/);
+  assert.match(source, /router\.(?:push|replace)/);
+  assert.match(source, /<Suspense/);
+});
