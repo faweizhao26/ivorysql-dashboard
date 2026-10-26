@@ -67,3 +67,16 @@ test('a declined failure report is not presented as saved', async () => {
   const results = await runCollectors([['zhihu', async () => { throw new Error('page changed'); }]], async () => ({}), async () => false);
   assert.equal(results[0].failureRecorded, false);
 });
+
+test('explicit browser user takeover stops immediately without remote writes or other platform work', async () => {
+  let nextCalls = 0;
+  let writes = 0;
+  const results = await runCollectors([
+    ['oschina', async () => { throw new Error('User is taking control of this task space'); }],
+    ['zhihu', async () => { nextCalls += 1; return []; }],
+  ], async () => { writes += 1; }, async () => { writes += 1; });
+  assert.equal(nextCalls, 0);
+  assert.equal(writes, 0);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].stopped_for_user, true);
+});

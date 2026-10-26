@@ -32,6 +32,20 @@ async function resolver() {
   return helpers!.resolveEgoContentPages;
 }
 
+test('takes back a handed-off dedicated space and safely resolves a changed ID by unique exact name', async () => {
+  const { openEgoContentTask } = await import('../scripts/ego-content-pages.mjs');
+  const calls: string[] = [];
+  const api = {
+    listTaskSpaces: async () => [{ id: 42, name: 'IvorySQL collection', ownership: 'agentDelegatedToUser' }],
+    takeOverTaskSpace: async (id: number) => { calls.push(`take:${id}`); return { spaceId: id }; },
+    taskSpace: async () => { throw new Error('Must take back before using space'); },
+  };
+  assert.deepEqual(await openEgoContentTask(17, api, 'IvorySQL collection'), { spaceId: 42 });
+  assert.deepEqual(calls, ['take:42']);
+  await assert.rejects(openEgoContentTask(17, { ...api, listTaskSpaces: async () => [{ id: 17, name: 'Other project', ownership: 'user' }] }, 'IvorySQL collection'), /名称/);
+  await assert.rejects(openEgoContentTask(17, { ...api, listTaskSpaces: async () => [{ id: 41, name: 'IvorySQL collection' }, { id: 42, name: 'IvorySQL collection' }] }, 'IvorySQL collection'), /多个|唯一/);
+});
+
 test('resolves live pages by URL when persistent page labels change', async () => {
   const resolve = await resolver();
   const tabs = targets.map((target, index) => ({ label: `p${index + 6}`, url: target.url, page: {} }));

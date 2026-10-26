@@ -41,6 +41,7 @@ test('seven-day overview, list and CSV include five published articles and their
   ] as const) insert.run(id, 'csdn', date, publishedDate, `article-${id}`, `https://example.com/${id}`, views, '2026-10-22T01:00:00Z', '', '');
   t.mock.method(Pool.prototype, 'connect', async () => ({ query: async () => ({ rows: [] }), release() {} }));
   t.mock.method(Pool.prototype, 'query', async (sql: string, values: unknown[] = []) => {
+    if (sql.includes('FROM sync_runs')) return { rows: [] };
     // Execute the production SELECT against a local fixture; only Postgres casts/bindings differ.
     const portableSql = sql.replace(/::(?:integer|bigint)/g, '').replace(/\$\d+/g, '?');
     return { rows: database.prepare(portableSql).all(...values as (string | number)[]) };

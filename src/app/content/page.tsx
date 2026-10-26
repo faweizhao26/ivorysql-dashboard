@@ -1,12 +1,13 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
 import { ContentPlatformCards } from '@/components/ContentPlatformCards';
+import { ContentDateFilter } from '@/components/ContentDateFilter';
 import { useContentOverview } from '@/lib/use-content-overview';
-import { CONTENT_PLATFORMS, contentDateQuery, resolveContentPlatform, type ContentPlatformKey } from '@/lib/content-overview';
+import { CONTENT_PLATFORMS, contentDateQuery, publicationRangeQuery, resolveContentPlatform, type ContentPlatformKey } from '@/lib/content-overview';
 import { parseArticleDateRange, type ArticleDateRange } from '@/lib/article-query';
 import { useAuth } from '@/app/auth-provider';
 import LastUpdated from '@/components/LastUpdated';
@@ -52,7 +53,6 @@ function ContentPageContent({ dateRange }: { dateRange?: ArticleDateRange }) {
   const { accessLevel } = useAuth();
   const isAdmin = accessLevel === 'admin';
   const searchParams = useSearchParams();
-  const router = useRouter();
   const selectedPlatform = resolveContentPlatform(searchParams.get('platform'));
   const { overview, loading, error: summaryError, refresh: loadSummaries } = useContentOverview(dateRange);
   const start = dateRange?.start;
@@ -76,7 +76,7 @@ function ContentPageContent({ dateRange }: { dateRange?: ArticleDateRange }) {
     const query = new URLSearchParams(searchParams.toString());
     query.set('platform', platform);
     setPage(1);
-    router.push(`/content?${query}`, { scroll: false });
+    window.history.pushState(null, '', `/content?${query}`);
   }
 
   const loadArticles = useCallback(async () => {
@@ -164,6 +164,11 @@ function ContentPageContent({ dateRange }: { dateRange?: ArticleDateRange }) {
         </div>
         <div className="flex flex-wrap items-center gap-3">{dateRange && <Link href={`/content?platform=${selectedPlatform}`} className="text-sm text-indigo-300">全部日期</Link>}<a href={`/api/content/export${exportQuery.size ? `?${exportQuery}` : ''}`} className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-800 text-sm">导出{dateRange ? '当前范围' : '全部'} CSV</a></div>
       </header>
+      <ContentDateFilter dateRange={dateRange} onChange={range => {
+        const query = publicationRangeQuery(new URLSearchParams(searchParams.toString()), range);
+        setPage(1);
+        window.history.pushState(null, '', `/content${query.size ? `?${query}` : ''}`);
+      }} />
       {(summaryError || writeError) && <div role="alert" className="flex flex-wrap items-center gap-3 text-sm text-red-400"><span>{summaryError || writeError}</span>{summaryError && <button type="button" aria-label="重试平台汇总" onClick={() => { setListVersion(version => version + 1); void loadSummaries(); }} className="inline-flex items-center gap-1 text-slate-300"><RefreshCw size={14} />重试</button>}</div>}
 
       <section>

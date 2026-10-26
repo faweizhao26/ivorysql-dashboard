@@ -66,7 +66,10 @@ async function contentPage(key, url) {
     taskSpace,
     listTaskSpaces: typeof listTaskSpaces === 'function' ? listTaskSpaces : undefined,
     claimTaskSpace: typeof claimTaskSpace === 'function' ? claimTaskSpace : undefined,
-  }, process.env.EGO_TASK_SPACE_NAME));
+    takeOverTaskSpace: typeof takeOverTaskSpace === 'function' ? takeOverTaskSpace : undefined,
+  }, process.env.EGO_TASK_SPACE_NAME)).catch(error => {
+    throw Object.assign(new Error(error instanceof Error ? error.message : String(error), { cause: error }), { fatal: true });
+  });
   const task = await taskPromise;
   const pages = await resolveEgoContentPages(task, [{ key, url }]);
   return pages[key];
@@ -236,7 +239,7 @@ const results = await runCollectors(collectors, upload,
   result => (result.success ? console.log : console.error)(JSON.stringify(result)),
 );
 if (results.some(result => !result.success)) process.exitCode = 1;
-if (taskPromise) {
+if (taskPromise && !results.some(result => result.stopped_for_user)) {
   const task = await taskPromise.catch(() => null);
   if (typeof task?.handOff === 'function') await task.handOff();
 }

@@ -35,13 +35,13 @@ async function runScript(taskSpace: (id?: number) => Promise<unknown>, env: Reco
   return { requests, logs, exitCode: processMock.exitCode };
 }
 
-test('env file selects the destination before preflight and missing workspace failures are all recorded', async () => {
+test('env selects the destination before preflight and a missing workspace stops once without platform failure writes', async () => {
   let attempts = 0;
   const result = await runScript(async () => { attempts += 1; throw new Error('TaskSpace 28 missing'); });
   assert.ok(result.requests.every(request => request.url.startsWith('https://staging.example/')));
   assert.equal(attempts, 1);
-  assert.equal(result.requests.filter(request => request.body?.status === 'failed').length, 4);
-  assert.equal(result.logs.filter(result => !result.success).length, 4);
+  assert.equal(result.requests.filter(request => request.body?.status === 'failed').length, 0);
+  assert.equal(result.logs.filter(result => !result.success).length, 1);
   assert.equal(result.exitCode, 1);
 });
 

@@ -442,7 +442,11 @@ export interface ArticleDetails {
 export interface ArticlePlatformSummary {
   platform: string;
   article_count: number;
-  total_views: number;
+  total_views: number | null;
+  measured_articles?: number;
+  missing_views?: number;
+  sync?: { status: 'running' | 'success' | 'failed'; last_success_at: string | null; last_attempt_at: string } | null;
+  sync_unavailable?: boolean;
   data_date: string | null;
   updated_at: string | null;
 }
@@ -991,7 +995,9 @@ export async function getArticlePlatformSummaries(range?: ArticleDateRange): Pro
   const result = await query(`
     SELECT platform,
            COUNT(*)::integer AS article_count,
-           COALESCE(SUM(views), 0)::bigint AS total_views,
+           SUM(views)::bigint AS total_views,
+           COUNT(views)::integer AS measured_articles,
+           SUM(CASE WHEN views IS NULL THEN 1 ELSE 0 END)::integer AS missing_views,
            MAX(${articlePublicationDate}) AS data_date,
            MAX(updated_at) AS updated_at
     FROM article_details
@@ -1001,7 +1007,9 @@ export async function getArticlePlatformSummaries(range?: ArticleDateRange): Pro
   `, values);
   return result.rows.map(row => ({
     ...row,
-    total_views: Number(row.total_views || 0),
+    total_views: row.total_views === null ? null : Number(row.total_views),
+    measured_articles: Number(row.measured_articles),
+    missing_views: Number(row.missing_views),
     updated_at: row.updated_at instanceof Date ? row.updated_at.toISOString() : row.updated_at,
   }));
 }

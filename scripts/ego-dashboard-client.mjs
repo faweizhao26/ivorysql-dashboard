@@ -65,7 +65,9 @@ export async function runCollectors(collectors, upload, reportFailure, onResult 
       result = { platform, success: true, ...await upload(platform, await collect()) };
     } catch (error) {
       result = { platform, success: false, error: error instanceof Error ? error.message : String(error) };
-      stop = Boolean(error?.fatal);
+      const controlStop = /user.*(?:taking control|taking over)|用户.*(?:接管|要求停止)|space is (?:inactive|unassigned)/i.test(result.error);
+      if (controlStop) result.stopped_for_user = true;
+      stop = Boolean(error?.fatal) || controlStop;
       if (!stop && !error?.recorded) {
         try {
           result.failureRecorded = await reportFailure(platform, error) !== false;
