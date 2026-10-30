@@ -9,6 +9,8 @@ import EvangelistAvatarPicker from '@/components/admin/EvangelistAvatarPicker';
 import { getAvailableEvangelistAvatar, getEvangelistAvatar } from '@/lib/evangelist-avatar';
 import { formatArticleMetric } from '@/lib/content-values.mjs';
 import { getManualSelection, isDataCategory, MAX_STATS_VALUE, metricsByCategory, platforms } from '@/lib/manual-data';
+import { EVANGELIST_CATEGORIES, EVANGELIST_RULES_VERSION, evangelistContributionTypes, evangelistContributionLimits, getEvangelistRule, getContributionBudget, getArticleKey, mapLegacyContribution, isHistoricalScorePreserved } from '@/lib/evangelist-rules';
+export { evangelistContributionTypes, evangelistContributionLimits } from '@/lib/evangelist-rules';
 
 type TabType = 'manual' | 'articles' | 'reminders' | 'sync' | 'events' | 'evangelist';
 
@@ -1029,19 +1031,6 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
 }
 
 
-export const evangelistContributionTypes: Record<string, string[]> = {
-  '内容创作': ['官方首发深度文章—IvorySQL(30)', '官方首发深度文章—纯PG(15)', '自己渠道首发 IvorySQL 文章（15 分）', '官方发布技术视频(20)', '视频课程—完整≥5期(100+)', '内容被公众号转载(10)'],
-  '活动参与': ['IvorySQL 直播演讲(40)', '主办线下演讲/Workshop(60)', '高校活动分享(40)', '外部活动分享(30)', '组织线下Meetup(30)', '策划和组织直播活动(40)', 'HOW 2026 演讲(30)'],
-  '社区贡献': ['提交Issue/改进建议(5)', 'Bug提交(15)', '贡献代码/文档PR(25)', '贡献迁移案例/用户故事(40)'],
-  '其他': ['宣传社区活动(5/次·上限30)', '转载官方动态(10/篇·上限30)', '转发官方动态(3/次·上限21)', '其他'],
-};
-
-export const evangelistContributionLimits: Record<string, number> = {
-  '宣传社区活动(5/次·上限30)': 30,
-  '转载官方动态(10/篇·上限30)': 30,
-  '转发官方动态(3/次·上限21)': 21,
-};
-
 interface ContributionLimitRecord {
   id?: number;
   type?: string;
@@ -1063,6 +1052,8 @@ interface EvangelistContributionRecord extends ContributionLimitRecord {
   title?: string;
   url?: string;
   notes?: string;
+  rules_version?: string;
+  article_key?: string | null;
 }
 
 interface EvangelistParticipantDraft {
@@ -1086,7 +1077,7 @@ interface SavedEvangelistContribution extends EvangelistContributionRecord {
 export function calculateEvangelistContributionLimit(
   contributions: ContributionLimitRecord[],
   draft: ContributionLimitRecord,
-  year = 2026
+  year = Number(getBeijingDate().slice(0, 4))
 ): ContributionLimitStatus | null {
   const limit = draft.type ? evangelistContributionLimits[draft.type] : undefined;
   const yearPrefix = `${year}-`;
@@ -1095,7 +1086,7 @@ export function calculateEvangelistContributionLimit(
 
   const currentPoints = contributions.reduce((total, contribution) => {
     const isCurrentRecord = draft.id !== undefined && contribution.id === draft.id;
-    const isSameType = contribution.type === draft.type;
+    const isSameType = getEvangelistRule(contribution.type)?.name === getEvangelistRule(draft.type)?.name;
     const isInPlanYear = !contribution.date || contribution.date.startsWith(yearPrefix);
     return isCurrentRecord || !isSameType || !isInPlanYear
       ? total
@@ -1140,9 +1131,11 @@ function EvangelistSection() {
   const activeParticipantName = participants.find(
     participant => participant.id === editingCont?.participant_id
   )?.name || '未选择成员';
-  const limitStatus = editingCont
-    ? calculateEvangelistContributionLimit(contributions, editingCont)
-    : null;
+  const contributionBudget = editingCont ? getContributionBudget(contributions, editingCont) : null;
+  const selectedRule = getEvangelistRule(editingCont?.type);
+  const historicalPointsKept = editingCont ? isHistoricalScorePreserved(editingCont, contributions.find(row => row.id === editingCont.id)) : false;
+  const contributionHistoryReady = !loadingContributions && contributionParticipantId === editingCont?.participant_id;
+  const articleGroups = Array.from(new Map(contributions.filter(row => row.id !== editingCont?.id && getEvangelistRule(row.type)?.articlePath && getArticleKey(row)).map(row => [getArticleKey(row), row])).entries());
 
   function closeContributionDrawer() {
     setEditingCont(null);
@@ -1183,7 +1176,7 @@ function EvangelistSection() {
       if (res.ok) {
         const data = await res.json();
         if (requestId === contributionRequestRef.current) {
-          setContributions(data.contributions || []);
+          setContributions((data.contributions || []).map(mapLegacyContribution));
         }
       }
     } finally {
@@ -1203,7 +1196,7 @@ function EvangelistSection() {
 
   function openNewContribution(participantId: number) {
     setDrawerTab('form');
-    setEditingCont({ participant_id: participantId, category:'', type:'', title:'', url:'', points:0, date:'', notes:'' });
+    setEditingCont({ participant_id: participantId, category:'', type:'', title:'', url:'', points:0, date:getBeijingDate(), notes:'', rules_version: EVANGELIST_RULES_VERSION });
     void fetchContributions(participantId);
   }
 
@@ -1286,7 +1279,7 @@ function EvangelistSection() {
     await fetch('/api/evangelist?id=' + id + '&type=contribution', { method: 'DELETE', credentials: 'include' });
     if (selectedId) fetchContributions(selectedId); fetchParticipants(); }
 
-  const categories = ['内容创作', '活动参与', '社区贡献', '其他'];
+  const categories = EVANGELIST_CATEGORIES;
 
   // Ensure current value is in options
   function getCategoryOptions() {
@@ -1296,7 +1289,7 @@ function EvangelistSection() {
   }
   function getTypeOptions() {
     const opts = [...(evangelistContributionTypes[editingCont?.category ?? ''] || [])];
-    if (editingCont?.type && !opts.includes(editingCont.type)) opts.push(editingCont.type);
+    if (editingCont?.id && editingCont.type && !opts.includes(editingCont.type)) opts.push(editingCont.type);
     return opts;
   }
 
@@ -1500,7 +1493,8 @@ function EvangelistSection() {
                         required
                         autoFocus
                         value={editingCont.category || ''}
-                        onChange={e => setEditingCont({...editingCont, category: e.target.value, type: editingCont.id ? editingCont.type : ''})}
+                        disabled={!contributionHistoryReady}
+                        onChange={e => setEditingCont({...editingCont, category: e.target.value, type: '', points: 0, article_key: null})}
                         className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
                       >
                         <option value="">选择类别</option>
@@ -1512,21 +1506,46 @@ function EvangelistSection() {
                       <select
                         required
                         value={editingCont.type || ''}
-                        onChange={e => setEditingCont({...editingCont, type: e.target.value})}
+                        onChange={e => {
+                          const draft = { ...editingCont, type: e.target.value, article_key: null };
+                          setEditingCont({ ...draft, points: getContributionBudget(contributions, draft).suggestedPoints });
+                        }}
                         className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
-                        disabled={!editingCont.category}
+                        disabled={!editingCont.category || !contributionHistoryReady}
                       >
                         <option value="">选择类型</option>
-                        {getTypeOptions().map(t => <option key={t}>{t}</option>)}
+                        {getTypeOptions().map(t => <option key={t} value={t}>{t}{getEvangelistRule(t)?.points != null ? `（${getEvangelistRule(t)?.points} 分）` : ''}</option>)}
                       </select>
                     </label>
                   </div>
 
+                  {selectedRule && <div className="space-y-2 border-l-2 border-indigo-500/60 pl-3 text-sm text-slate-400" data-contribution-budget>
+                    <p>{selectedRule.description}</p>
+                    {contributionBudget?.limits.map(limit => <p key={limit.scope} className="text-xs">{limit.label}：已计 {limit.currentPoints} / {limit.limit} 分</p>)}
+                    {!historicalPointsKept && Number.isFinite(contributionBudget?.availablePoints) && <p className="text-xs text-indigo-300">本次最多可计 {contributionBudget?.availablePoints} 分</p>}
+                  </div>}
+                  {historicalPointsKept && <p className="text-xs text-amber-300">历史已审核积分保留：{editingCont.points} 分；仅调整分类名称或补充说明，不追溯重算。</p>}
+                  {selectedRule?.articlePath && <label className="block space-y-1.5 text-sm text-slate-300">
+                    <span>归属文章</span>
+                    <select aria-label="归属文章" value={editingCont.article_key || ''} onChange={e => {
+                      const draft = { ...editingCont, article_key: e.target.value || null };
+                      setEditingCont({ ...draft, points: getContributionBudget(contributions, draft).suggestedPoints });
+                    }} className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200">
+                      <option value="">按本条文章标题归组</option>
+                      {editingCont.article_key && !articleGroups.some(([key]) => key === editingCont.article_key) && <option value={editingCont.article_key}>当前文章：{editingCont.title || editingCont.article_key}</option>}
+                      {articleGroups.map(([key, article]) => <option key={key} value={key}>{article.title || key}</option>)}
+                    </select>
+                  </label>}
+
                   <label className="block space-y-1.5 text-sm text-slate-300">
-                    <span>标题 <span className="text-slate-500">（可选）</span></span>
+                    <span>标题 <span className="text-slate-500">{selectedRule?.articlePath && !editingCont.article_key && !historicalPointsKept ? '（必填）' : '（可选）'}</span></span>
                     <input
+                      required={!!selectedRule?.articlePath && !editingCont.article_key && !historicalPointsKept}
                       value={editingCont.title || ''}
-                      onChange={e => setEditingCont({...editingCont, title: e.target.value})}
+                      onChange={e => {
+                        const draft = { ...editingCont, title: e.target.value };
+                        setEditingCont(!draft.id && selectedRule?.articlePath ? { ...draft, points: getContributionBudget(contributions, draft).suggestedPoints } : draft);
+                      }}
                       className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
                     />
                   </label>
@@ -1536,7 +1555,11 @@ function EvangelistSection() {
                       <span>积分</span>
                       <input
                         type="number"
-                        value={editingCont.points || ''}
+                        min={0}
+                        step={1}
+                        max={!historicalPointsKept && Number.isFinite(contributionBudget?.availablePoints) ? contributionBudget?.availablePoints : undefined}
+                        required
+                        value={editingCont.points ?? ''}
                         onChange={e => setEditingCont({...editingCont, points: parseInt(e.target.value) || 0})}
                         className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
                       />
@@ -1545,16 +1568,20 @@ function EvangelistSection() {
                       <span>日期</span>
                       <input
                         type="date"
+                        required={!editingCont.id}
                         value={editingCont.date || ''}
-                        onChange={e => setEditingCont({...editingCont, date: e.target.value})}
+                        onChange={e => {
+                          const draft = { ...editingCont, date: e.target.value };
+                          setEditingCont(!draft.id ? { ...draft, points: getContributionBudget(contributions, draft).suggestedPoints } : draft);
+                        }}
                         className="w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
                       />
                     </label>
                   </div>
 
-                  {limitStatus && limitStatus.exceededBy > 0 && (
+                  {!historicalPointsKept && contributionBudget && Number(editingCont.points) > contributionBudget.availablePoints && (
                     <div data-contribution-limit-warning role="status" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm leading-6 text-amber-300">
-                      当前已计 {limitStatus.currentPoints} 分，本次 {limitStatus.draftPoints} 分，年度上限 {limitStatus.limit} 分，保存后将超出 {limitStatus.exceededBy} 分。
+                      本次最多可计 {contributionBudget.availablePoints} 分，保存后将超出 {Number(editingCont.points) - contributionBudget.availablePoints} 分，请调整积分。
                     </div>
                   )}
 
@@ -1570,9 +1597,10 @@ function EvangelistSection() {
                   </label>
 
                   <label className="block space-y-1.5 text-sm text-slate-300">
-                    <span>备注 <span className="text-slate-500">（可选）</span></span>
+                    <span>备注 <span className="text-slate-500">{selectedRule?.category === '其他' && !historicalPointsKept ? '（必填）' : '（可选）'}</span></span>
                     <textarea
                       rows={4}
+                      required={selectedRule?.category === '其他' && !historicalPointsKept}
                       value={editingCont.notes || ''}
                       onChange={e => setEditingCont({...editingCont, notes: e.target.value})}
                       className="w-full resize-y rounded-lg border border-slate-600 bg-slate-800 px-3 py-2.5 text-slate-200"
@@ -1590,7 +1618,7 @@ function EvangelistSection() {
                   </button>
                   <button
                     type="submit"
-                    disabled={savingContribution}
+                    disabled={savingContribution || !contributionHistoryReady}
                     aria-busy={savingContribution}
                     className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >

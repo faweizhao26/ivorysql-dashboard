@@ -36,6 +36,7 @@ const categoryColors: Record<string, string> = {
   '内容创作': 'bg-blue-500/15 text-blue-300 border-blue-500/40',
   '活动参与': 'bg-green-500/15 text-green-300 border-green-500/40',
   '社区贡献': 'bg-purple-500/15 text-purple-300 border-purple-500/40',
+  '宣传': 'bg-amber-500/15 text-amber-300 border-amber-500/40',
   '其他': 'bg-slate-500/15 text-slate-300 border-slate-500/40',
 };
 

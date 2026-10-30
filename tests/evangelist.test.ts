@@ -40,7 +40,7 @@ test('other contribution category includes an other type', async () => {
     evangelistContributionTypes?: Record<string, string[]>;
   };
 
-  assert.equal(adminPage.evangelistContributionTypes?.['其他']?.at(-1), '其他');
+  assert.equal(adminPage.evangelistContributionTypes?.['其他']?.at(-1), '其他贡献');
 });
 
 test('content creation includes self-published IvorySQL articles', async () => {
@@ -50,7 +50,7 @@ test('content creation includes self-published IvorySQL articles', async () => {
 
   assert.ok(
     adminPage.evangelistContributionTypes?.['内容创作']?.includes(
-      '自己渠道首发 IvorySQL 文章（15 分）',
+      '本人渠道发布 IvorySQL 技术文章',
     ),
   );
 });

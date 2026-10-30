@@ -314,6 +314,8 @@ async function initializeDb() {
       );
 
       CREATE INDEX IF NOT EXISTS idx_evangelist_contrib_pid ON evangelist_contributions(participant_id);
+      ALTER TABLE evangelist_contributions ADD COLUMN IF NOT EXISTS rules_version TEXT NOT NULL DEFAULT 'legacy';
+      ALTER TABLE evangelist_contributions ADD COLUMN IF NOT EXISTS article_key TEXT;
     `);
   } finally {
     client.release();

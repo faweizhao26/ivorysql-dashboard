@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getAvailableEvangelistAvatar, normalizeEvangelistAvatarUrl } from '@/lib/evangelist-avatar';
+import { saveEvangelistContribution } from '@/lib/evangelist-store';
 
 export async function GET(request: Request) {
   const pool = getDb();
@@ -52,11 +53,8 @@ export async function POST(request: Request) {
 
     // Handle contribution creation
     if (body.participant_id && body.category && body.type) {
-      const r = await pool.query(
-        `INSERT INTO evangelist_contributions (participant_id, category, type, title, url, points, date, notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-        [body.participant_id, body.category, body.type, body.title || null, body.url || null, body.points || 0, body.date || null, body.notes || null]
-      );
-      return NextResponse.json({ id: r.rows[0].id, success: true });
+      const result = await saveEvangelistContribution({ ...body, id: undefined });
+      return NextResponse.json({ ...result, success: true });
     }
 
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
@@ -82,10 +80,7 @@ export async function PUT(request: Request) {
 
     // Update contribution
     if (body.id && body.category) {
-      await pool.query(
-        `UPDATE evangelist_contributions SET category=$2, type=$3, title=$4, url=$5, points=$6, date=$7, notes=$8 WHERE id=$1`,
-        [body.id, body.category, body.type, body.title || null, body.url || null, body.points || 0, body.date || null, body.notes || null]
-      );
+      await saveEvangelistContribution(body);
       return NextResponse.json({ success: true });
     }
 

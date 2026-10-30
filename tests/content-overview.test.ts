@@ -4,6 +4,8 @@ import test from 'node:test';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { load } from 'cheerio';
+import ts from 'typescript';
+import { runInNewContext } from 'node:vm';
 
 const summaries = [
   { platform: 'wechat', article_count: 633, total_views: 146138, data_date: '2026-08-31', updated_at: '2026-10-20T01:00:00Z' },
@@ -102,8 +104,24 @@ test('home links and content selectors render identical platform metrics and pre
 
 test('content selection follows the URL so home links and browser navigation select the requested platform', () => {
   const source = readFileSync(new URL('../src/app/content/page.tsx', import.meta.url), 'utf8');
-  assert.match(source, /useSearchParams/);
-  assert.match(source, /resolveContentPlatform\(searchParams\.get\('platform'\)\)/);
-  assert.match(source, /router\.(?:push|replace)/);
-  assert.match(source, /<Suspense/);
+  const ast = ts.createSourceFile('page.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  let handler: ts.FunctionDeclaration | undefined;
+  function find(node: ts.Node) {
+    if (ts.isFunctionDeclaration(node) && node.name?.text === 'selectPlatform') handler = node;
+    ts.forEachChild(node, find);
+  }
+  find(ast);
+  assert.ok(handler);
+  const code = ts.transpileModule(handler.getText(ast), { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  let page = 4;
+  let href = '/content?platform=wechat&start=2026-10-01&end=2026-10-07';
+  const select = runInNewContext(`${code}; selectPlatform`, {
+    URLSearchParams,
+    searchParams: new URLSearchParams('platform=wechat&start=2026-10-01&end=2026-10-07'),
+    setPage: (value: number) => { page = value; },
+    window: { history: { pushState: (_state: unknown, _title: string, url: string) => { href = url; } } },
+  });
+  select('zhihu');
+  assert.equal(page, 1);
+  assert.equal(href, '/content?platform=zhihu&start=2026-10-01&end=2026-10-07');
 });
