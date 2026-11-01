@@ -1,16 +1,14 @@
 'use client';
 
-import { createContext, useContext, useEffect, useSyncExternalStore, ReactNode } from 'react';
-
-type Theme = 'dark' | 'light';
+import { createContext, useContext, useEffect, useSyncExternalStore, type ReactNode } from 'react';
+import type { Theme } from '@/lib/theme';
 
 interface ThemeContextType {
   theme: Theme;
-  toggle: () => void;
+  setTheme: (theme: Theme) => void;
 }
 
-const ThemeContext = createContext<ThemeContextType>({ theme: 'dark', toggle: () => {} });
-
+const ThemeContext = createContext<ThemeContextType>({ theme: 'light', setTheme: () => {} });
 const themeListeners = new Set<() => void>();
 
 function subscribeTheme(listener: () => void) {
@@ -19,37 +17,34 @@ function subscribeTheme(listener: () => void) {
 }
 
 function getThemeSnapshot(): Theme {
-  return localStorage.getItem('theme') === 'light' ? 'light' : 'dark';
+  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
 }
 
-function getServerThemeSnapshot(): Theme {
-  return 'dark';
+function getServerThemeSnapshot(): Theme { return 'light'; }
+
+function applyTheme(theme: Theme) {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+  themeListeners.forEach(listener => listener());
+}
+
+function setTheme(theme: Theme) {
+  applyTheme(theme);
+  try { localStorage.setItem('theme', theme); } catch { /* The in-session switch still works without storage. */ }
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerThemeSnapshot);
 
   useEffect(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved === 'light' || saved === 'dark') {
-      document.documentElement.setAttribute('data-theme', saved);
+    function onStorage(event: StorageEvent) {
+      if (event.key === 'theme' || event.key === null) applyTheme(event.newValue === 'dark' ? 'dark' : 'light');
     }
-  }, [theme]);
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
-  const toggle = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-    themeListeners.forEach(listener => listener());
-  };
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggle }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
 }
 
-export function useTheme() {
-  return useContext(ThemeContext);
-}
+export function useTheme() { return useContext(ThemeContext); }

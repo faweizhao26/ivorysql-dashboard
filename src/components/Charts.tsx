@@ -16,6 +16,13 @@ import {
   AreaChart
 } from 'recharts';
 
+function chartColor(color: string) {
+  const themed: Record<string, string> = { '#6366f1': 'var(--chart-primary)', '#a855f7': 'var(--chart-secondary)', '#22d3ee': 'var(--accent-cyan)' };
+  return themed[color.toLowerCase()] || color;
+}
+
+const chartTooltipStyle = { backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)', border: '1px solid var(--card-border)', borderRadius: '6px' };
+
 interface ChartDataPoint {
   date: string;
   [key: string]: string | number;
@@ -38,6 +45,7 @@ interface LineChartProps {
 
 export function TrendChart({ title, data, dataKey, color = '#6366F1', gradientId }: LineChartProps) {
   const id = gradientId || `gradient-${dataKey}`;
+  const seriesColor = chartColor(color);
   return (
     <div className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
       <h3 className="text-lg font-semibold text-slate-100 mb-4">{title}</h3>
@@ -46,33 +54,29 @@ export function TrendChart({ title, data, dataKey, color = '#6366F1', gradientId
           <AreaChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
             <defs>
               <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={color} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={color} stopOpacity={0} />
+                <stop offset="5%" stopColor={seriesColor} stopOpacity={0.15} />
+                <stop offset="95%" stopColor={seriesColor} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12, fill: '#94A3B8' }}
+              tick={{ fontSize: 12, fill: 'var(--chart-label)' }}
               tickFormatter={formatDateTick}
             />
-            <YAxis tick={{ fontSize: 12, fill: '#94A3B8' }} />
+            <YAxis tick={{ fontSize: 12, fill: 'var(--chart-label)' }} />
             <Tooltip
-              contentStyle={{
-                backgroundColor: '#1E293B',
-                border: '1px solid #334155',
-                borderRadius: '8px'
-              }}
+              contentStyle={chartTooltipStyle}
               formatter={(value) => [typeof value === 'number' ? value.toLocaleString() : value, dataKey]}
               labelFormatter={(label) => `日期: ${label}`}
             />
             <Area
               type="monotone"
               dataKey={dataKey}
-              stroke={color}
+              stroke={seriesColor}
               strokeWidth={2}
               fill={`url(#${id})`}
-              dot={{ fill: color, strokeWidth: 2, r: 3 }}
+              dot={{ fill: seriesColor, strokeWidth: 2, r: 3 }}
               activeDot={{ r: 5 }}
             />
           </AreaChart>
@@ -96,19 +100,15 @@ export function MultiLineChart({ title, data, dataKeys, colors = ['#6366F1', '#1
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12, fill: '#94A3B8' }}
+              tick={{ fontSize: 12, fill: 'var(--chart-label)' }}
               tickFormatter={formatDateTick}
             />
-            <YAxis tick={{ fontSize: 12, fill: '#94A3B8' }} />
+            <YAxis tick={{ fontSize: 12, fill: 'var(--chart-label)' }} />
             <Tooltip
-              contentStyle={{
-                backgroundColor: '#1E293B',
-                border: '1px solid #334155',
-                borderRadius: '8px'
-              }}
+              contentStyle={chartTooltipStyle}
               labelFormatter={(label) => `日期: ${label}`}
             />
             <Legend />
@@ -117,9 +117,9 @@ export function MultiLineChart({ title, data, dataKeys, colors = ['#6366F1', '#1
                 key={key}
                 type="monotone"
                 dataKey={key}
-                stroke={colors[index % colors.length]}
+                stroke={chartColor(colors[index % colors.length])}
                 strokeWidth={2}
-                dot={{ fill: colors[index % colors.length], strokeWidth: 2, r: 3 }}
+                dot={{ fill: chartColor(colors[index % colors.length]), strokeWidth: 2, r: 3 }}
               />
             ))}
           </LineChart>
@@ -143,23 +143,19 @@ export function BarChartComponent({ title, data, dataKey, color = '#6366F1' }: B
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12, fill: '#94A3B8' }}
+              tick={{ fontSize: 12, fill: 'var(--chart-label)' }}
               tickFormatter={formatDateTick}
             />
-            <YAxis tick={{ fontSize: 12, fill: '#94A3B8' }} />
+            <YAxis tick={{ fontSize: 12, fill: 'var(--chart-label)' }} />
             <Tooltip
-              contentStyle={{
-                backgroundColor: '#1E293B',
-                border: '1px solid #334155',
-                borderRadius: '8px'
-              }}
+              contentStyle={chartTooltipStyle}
               formatter={(value) => [typeof value === 'number' ? value.toLocaleString() : value, dataKey]}
               labelFormatter={(label) => `日期: ${label}`}
             />
-            <Bar dataKey={dataKey} fill={color} radius={[4, 4, 0, 0]} />
+            <Bar dataKey={dataKey} fill={chartColor(color)} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

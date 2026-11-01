@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { NavIcon } from './NavIcon';
 import { useAuth } from '@/app/auth-provider';
 
-const items = [
+export const navigationItems = [
   { href: '/', icon: 'home', name: '首页' },
   { href: '/github', icon: 'github', name: 'GitHub' },
   { href: '/social', icon: 'social', name: '社媒' },
@@ -16,58 +16,23 @@ const items = [
   { href: '/admin', icon: 'admin', name: '后台' },
 ];
 
-export default function NavLinks() {
-  const pathname = usePathname();
-  const { accessLevel } = useAuth();
-
+export function NavigationLinks({ pathname, accessLevel, onNavigate }: {
+  pathname: string;
+  accessLevel: 'admin' | 'viewer' | null;
+  onNavigate?: () => void;
+}) {
   return (
-    <div className="hidden md:flex items-center gap-0.5">
-      {items.filter(item => item.href !== '/admin' || accessLevel === 'admin').map((item) => {
-        const isActive = pathname === item.href
-          || (item.href !== '/' && pathname.startsWith(item.href));
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`px-2 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-              isActive
-                ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
-                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50'
-            }`}
-          >
-            <NavIcon name={item.icon} className={isActive ? 'opacity-100' : 'opacity-60'} />
-            <span className="hidden xl:inline">{item.name}</span>
-          </Link>
-        );
+    <nav className="app-navigation" aria-label="主要导航">
+      {navigationItems.filter(item => item.href !== '/admin' || accessLevel === 'admin').map(item => {
+        const active = pathname === item.href || item.href !== '/' && pathname.startsWith(`${item.href}/`);
+        return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} onClick={onNavigate} className="app-navigation-link"><NavIcon name={item.icon} /><span>{item.name}</span></Link>;
       })}
-    </div>
+    </nav>
   );
 }
 
-export function MobileNavLinks() {
-  const pathname = usePathname();
+export default function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+  const pathname = usePathname() || '/';
   const { accessLevel } = useAuth();
-
-  return (
-    <div className="md:hidden border-t border-slate-200 dark:border-slate-800 px-4 py-2 flex gap-2 overflow-x-auto scrollbar-thin">
-      {items.filter(item => item.href !== '/admin' || accessLevel === 'admin').map((item) => {
-        const isActive = pathname === item.href
-          || (item.href !== '/' && pathname.startsWith(item.href));
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap flex items-center gap-1 transition-colors ${
-              isActive
-                ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
-                : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-            }`}
-          >
-            <NavIcon name={item.icon} />
-            <span>{item.name}</span>
-          </Link>
-        );
-      })}
-    </div>
-  );
+  return <NavigationLinks pathname={pathname} accessLevel={accessLevel} onNavigate={onNavigate} />;
 }
