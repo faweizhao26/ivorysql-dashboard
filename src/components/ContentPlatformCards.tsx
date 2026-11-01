@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { PlatformIcon } from './PlatformIcon';
-import { CONTENT_PLATFORMS, contentDateQuery, contentSyncState, type ContentPlatformKey } from '@/lib/content-overview';
+import { CONTENT_PLATFORMS, contentDateQuery, contentSyncState, contentUpdateMode, type ContentPlatformKey } from '@/lib/content-overview';
 import { formatLastUpdated } from './LastUpdated';
 import type { ArticleDateRange } from '@/lib/article-query';
 import { formatArticleMetric } from '@/lib/content-values.mjs';
@@ -31,8 +31,8 @@ export function ContentPlatformCards({ summaries, selectedPlatform, onSelect, lo
         const summary = byPlatform.get(key);
         const selected = selectedPlatform === key;
         const state = contentSyncState(key, summary?.sync, now, summary?.sync_unavailable);
-        const collectedAt = formatLastUpdated(summary?.sync?.last_success_at || null);
-        const editedAt = key === 'wechat' ? formatLastUpdated(summary?.updated_at || null) : null;
+        const automatic = contentUpdateMode(key) === 'automatic';
+        const updatedAt = formatLastUpdated((automatic ? summary?.sync?.last_success_at : summary?.updated_at) || null);
         const tone = { muted: 'text-slate-500', good: 'text-emerald-400', warning: 'text-amber-400', error: 'text-red-400' }[state.tone];
         const query = new URLSearchParams({ platform: key, ...Object.fromEntries(contentDateQuery(dateRange)) });
         const style = `min-w-0 min-h-52 rounded-lg border p-4 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400 ${selected ? 'border-indigo-500 bg-indigo-500/10' : 'border-slate-700 bg-slate-800/50 hover:border-slate-500'}`;
@@ -49,7 +49,7 @@ export function ContentPlatformCards({ summaries, selectedPlatform, onSelect, lo
           <div className="mt-3 space-y-1 text-xs leading-5">
             {Boolean(summary?.missing_views) && <p className="text-amber-400">{summary?.missing_views} 篇未获取阅读量</p>}
             <p className={tone}>{loading ? '更新中' : state.label}</p>
-            <p className="min-h-5 break-words text-slate-500">{collectedAt ? `采集：${collectedAt}` : editedAt ? `更新：${editedAt}` : ''}</p>
+            <p className="min-h-5 break-words text-slate-500">{updatedAt ? `${automatic ? '采集' : '更新'}：${updatedAt}` : ''}</p>
           </div>
         </>;
         return onSelect

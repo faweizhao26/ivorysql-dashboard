@@ -125,3 +125,35 @@ test('content selection follows the URL so home links and browser navigation sel
   assert.equal(page, 1);
   assert.equal(href, '/content?platform=zhihu&start=2026-10-01&end=2026-10-07');
 });
+
+test('manual and archived cards show data update times instead of historical collection times', async () => {
+  const { ContentPlatformCards } = await import('../src/components/ContentPlatformCards');
+  const { formatLastUpdated } = await import('../src/components/LastUpdated');
+  const updatedAt = '2026-10-31T01:00:00Z';
+  const collectedAt = '2026-10-01T01:00:00Z';
+  const rows = ['wechat', 'oschina', 'ctoutiao', 'toutiao', 'zhihu', 'juejin', 'csdn'].map(platform => ({
+    platform, article_count: 50, total_views: 500, data_date: null, updated_at: updatedAt,
+    sync: { status: 'success' as const, last_success_at: collectedAt, last_attempt_at: collectedAt },
+  }));
+  const html = load(renderToStaticMarkup(createElement(ContentPlatformCards, { summaries: rows })));
+  for (const { platform } of rows.filter(row => row.platform !== 'csdn')) {
+    const card = html(`[data-content-platform="${platform}"]`).text();
+    assert.match(card, platform === 'juejin' ? /历史保留/ : /手动更新/);
+    assert.ok(card.includes(`更新：${formatLastUpdated(updatedAt)}`));
+    assert.doesNotMatch(card, /采集：|采集已过期|采集正常/);
+  }
+  assert.ok(html('[data-content-platform="csdn"]').text().includes(`采集：${formatLastUpdated(collectedAt)}`));
+  const missing = load(renderToStaticMarkup(createElement(ContentPlatformCards, { summaries: [{ ...rows[1], updated_at: null }] })));
+  assert.doesNotMatch(missing('[data-content-platform="oschina"]').text(), /采集：|更新：/);
+});
+
+test('CSV marks cancelled collection as manual and keeps its last success explicitly historical', async () => {
+  const { contentOverviewExportRows } = await import('../src/lib/content-overview');
+  const sync = { status: 'failed' as const, last_success_at: '2026-10-01T01:00:00Z', last_attempt_at: '2026-10-02T01:00:00Z' };
+  const rows = contentOverviewExportRows(summaries.map(row => ({ ...row, sync })));
+  const manual = rows.find(row => row.平台 === '知乎')!;
+  assert.equal(manual.采集状态, '手动更新');
+  assert.equal(manual.数据更新, summaries[2].updated_at);
+  assert.equal(manual['最近成功采集（历史）'], sync.last_success_at);
+  assert.equal(rows.find(row => row.平台 === '博客园')?.采集状态, '最近采集失败');
+});

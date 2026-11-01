@@ -49,10 +49,24 @@ test('platform collection freshness is independent of article edit times and res
   const now = Date.parse('2026-10-26T01:00:00Z');
   assert.equal(contentSyncState('wechat', null, now).label, '手动更新');
   assert.equal(contentSyncState('juejin', null, now).label, '历史保留');
-  assert.equal(contentSyncState('zhihu', { status: 'success', last_success_at: '2026-10-19T01:00:00Z', last_attempt_at: '2026-10-19T01:00:00Z' }, now).label, '采集已过期');
-  assert.equal(contentSyncState('zhihu', { status: 'failed', last_success_at: '2026-10-25T01:00:00Z', last_attempt_at: '2026-10-26T00:00:00Z' }, now).label, '最近采集失败');
-  assert.equal(contentSyncState('zhihu', { status: 'running', last_success_at: null, last_attempt_at: '2026-10-26T00:00:00Z' }, now).label, '采集可能中断');
+  assert.equal(contentSyncState('csdn', { status: 'success', last_success_at: '2026-10-19T01:00:00Z', last_attempt_at: '2026-10-19T01:00:00Z' }, now).label, '采集已过期');
+  assert.equal(contentSyncState('csdn', { status: 'failed', last_success_at: '2026-10-25T01:00:00Z', last_attempt_at: '2026-10-26T00:00:00Z' }, now).label, '最近采集失败');
+  assert.equal(contentSyncState('csdn', { status: 'running', last_success_at: null, last_attempt_at: '2026-10-26T00:00:00Z' }, now).label, '采集可能中断');
   assert.equal(contentSyncState('itpub', { status: 'success', last_success_at: '2026-10-20T01:00:00Z', last_attempt_at: '2026-10-20T01:00:00Z' }, now).label, '采集正常');
+});
+
+test('cancelled browser collectors ignore historical results and unavailable sync logs', async () => {
+  const { contentSyncState } = await import('../src/lib/content-overview');
+  const now = Date.parse('2026-11-01T01:00:00Z');
+  for (const platform of ['oschina', 'ctoutiao', 'toutiao', 'zhihu']) {
+    for (const status of ['success', 'failed', 'running'] as const) {
+      const sync = { status, last_success_at: '2026-10-01T01:00:00Z', last_attempt_at: '2026-10-01T01:00:00Z' };
+      for (const unavailable of [false, true]) {
+        assert.deepEqual(contentSyncState(platform, sync, now, unavailable), { label: '手动更新', tone: 'muted' });
+      }
+    }
+    assert.equal(contentSyncState(platform, null, now).label, '手动更新');
+  }
 });
 
 test('content date filter offers independent range selection and preserves platform query state', async () => {

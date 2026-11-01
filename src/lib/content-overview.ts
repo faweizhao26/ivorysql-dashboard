@@ -12,6 +12,14 @@ export const CONTENT_PLATFORMS = [
 ] as const;
 
 export type ContentPlatformKey = typeof CONTENT_PLATFORMS[number]['key'];
+
+const MANUAL_CONTENT_PLATFORMS = new Set(['wechat', 'oschina', 'ctoutiao', 'toutiao', 'zhihu']);
+
+export function contentUpdateMode(platform: string): 'manual' | 'archived' | 'automatic' {
+  if (platform === 'juejin') return 'archived';
+  return MANUAL_CONTENT_PLATFORMS.has(platform) ? 'manual' : 'automatic';
+}
+
 export interface ContentOverview {
   platforms: ArticlePlatformSummary[];
   updated_at: string | null;
@@ -34,8 +42,9 @@ export function publicationRangeQuery(params: URLSearchParams, range?: ArticleDa
 }
 
 export function contentSyncState(platform: string, sync?: ArticlePlatformSummary['sync'], now = Date.now(), unavailable = false): { label: string; tone: 'muted' | 'good' | 'warning' | 'error' } {
-  if (platform === 'wechat') return { label: '手动更新', tone: 'muted' };
-  if (platform === 'juejin') return { label: '历史保留', tone: 'muted' };
+  const mode = contentUpdateMode(platform);
+  if (mode === 'manual') return { label: '手动更新', tone: 'muted' };
+  if (mode === 'archived') return { label: '历史保留', tone: 'muted' };
   if (unavailable) return { label: '采集状态未获取', tone: 'warning' };
   if (!sync) return { label: '暂无采集记录', tone: 'muted' };
   if (sync.status === 'failed') return { label: '最近采集失败', tone: 'error' };
@@ -62,6 +71,6 @@ export function contentOverviewExportRows(summaries: ArticlePlatformSummary[], r
   const byPlatform = new Map(summaries.map(summary => [summary.platform, summary]));
   return CONTENT_PLATFORMS.flatMap(({ key, name }) => {
     const summary = byPlatform.get(key);
-    return summary ? [{ 指标: '内容平台', 平台: name, 文章数: summary.article_count, 阅读量: summary.total_views ?? '', 阅读量缺失篇数: summary.missing_views ?? '', 统计口径: range ? '按发布日期 · 当前累计阅读' : '最新累计', 时间段: range ? `${range.start} ~ ${range.end}` : '全部日期', 数据更新: summary.updated_at || '', 最近成功采集: summary.sync?.last_success_at || '', 采集状态: contentSyncState(key, summary.sync, Date.now(), summary.sync_unavailable).label }] : [];
+    return summary ? [{ 指标: '内容平台', 平台: name, 文章数: summary.article_count, 阅读量: summary.total_views ?? '', 阅读量缺失篇数: summary.missing_views ?? '', 统计口径: range ? '按发布日期 · 当前累计阅读' : '最新累计', 时间段: range ? `${range.start} ~ ${range.end}` : '全部日期', 数据更新: summary.updated_at || '', '最近成功采集（历史）': summary.sync?.last_success_at || '', 采集状态: contentSyncState(key, summary.sync, Date.now(), summary.sync_unavailable).label }] : [];
   });
 }

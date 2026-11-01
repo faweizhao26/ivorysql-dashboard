@@ -5,6 +5,7 @@ import { useAuth } from '@/app/auth-provider';
 import type { AccessLevel } from '@/lib/auth';
 import type { SyncPlatformStatus } from '@/lib/sync-runs';
 import { syncFreshness } from '@/lib/sync-freshness';
+import { contentUpdateMode } from '@/lib/content-overview';
 
 const retryRoutes: Record<string, string> = {
   github: '/api/github/sync',
@@ -90,8 +91,7 @@ export default function SyncStatusPanel() {
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-slate-100">自动同步状态</h2>
-        <p className="mt-1 text-sm text-slate-500">展示每个平台最近一次同步结果；浏览器渠道需通过 ego-lite 更新。</p>
+        <h2 className="text-lg font-semibold text-slate-100">数据同步状态</h2>
       </div>
 
       {message && <div className="rounded border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm text-slate-300">{message}</div>}
@@ -105,10 +105,10 @@ export default function SyncStatusPanel() {
               <tr>
                 <th className="px-4 py-3 text-left">平台</th>
                 <th className="px-4 py-3 text-left">状态</th>
-                <th className="px-4 py-3 text-left">最近运行</th>
-                <th className="px-4 py-3 text-left">最近成功</th>
+                <th className="px-4 py-3 text-left">上次采集</th>
+                <th className="px-4 py-3 text-left">上次成功采集</th>
                 <th className="px-4 py-3 text-left">数据时效</th>
-                <th className="px-4 py-3 text-right">读取 / 写入</th>
+                <th className="px-4 py-3 text-right">上次读取 / 写入</th>
                 <th className="px-4 py-3 text-left">详情</th>
                 <th className="px-4 py-3 text-right">操作</th>
               </tr>
@@ -116,23 +116,26 @@ export default function SyncStatusPanel() {
             <tbody>
               {items.map(item => {
                 const retryable = canRetrySync(accessLevel, item.platform);
-                const freshness = syncFreshness(item.platform, item.last_success_at);
+                const mode = contentUpdateMode(item.platform);
+                const automatic = mode === 'automatic';
+                const freshness = automatic ? syncFreshness(item.platform, item.last_success_at) : null;
+                const lastResult = item.status === 'success' ? '成功' : item.status === 'failed' ? '失败' : '未结束';
                 return (
                   <tr key={item.platform} className="border-t border-slate-700/70">
                     <td className="px-4 py-3 font-medium text-slate-200">{platformNames[item.platform] || item.platform}</td>
                     <td className="px-4 py-3">
-                      <span className={item.status === 'success' ? 'text-emerald-400' : item.status === 'failed' ? 'text-red-400' : 'text-amber-400'}>
-                        {item.status === 'success' ? '成功' : item.status === 'failed' ? '失败' : '进行中'}
+                      <span className={!automatic ? 'text-slate-500' : item.status === 'success' ? 'text-emerald-400' : item.status === 'failed' ? 'text-red-400' : 'text-amber-400'}>
+                        {!automatic ? mode === 'manual' ? '手动更新' : '历史保留' : item.status === 'success' ? '成功' : item.status === 'failed' ? '失败' : '进行中'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-400">{formatTime(item.finished_at || item.started_at)}</td>
                     <td className="px-4 py-3 text-slate-400">{formatTime(item.last_success_at)}</td>
-                    <td className={`whitespace-nowrap px-4 py-3 ${freshness === 'fresh' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                      {freshness === 'fresh' ? '正常' : freshness === 'stale' ? '已过期' : '尚未成功同步'}
+                    <td className={`whitespace-nowrap px-4 py-3 ${!automatic ? 'text-slate-500' : freshness === 'fresh' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                      {!automatic ? '不监测' : freshness === 'fresh' ? '正常' : freshness === 'stale' ? '已过期' : '尚未成功同步'}
                     </td>
                     <td className="px-4 py-3 text-right text-slate-400">{item.records_seen} / {item.records_written}</td>
                     <td className="max-w-xs whitespace-normal break-words px-4 py-3 text-slate-400">
-                      {item.error_message || (retryable ? '可在此手动执行' : '通过 ego-lite 更新')}
+                      {automatic ? item.error_message || (retryable ? '可在此手动执行' : '-') : `自动采集已停用；历史采集结果：${lastResult}${item.error_message ? `（${item.error_message}）` : ''}`}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {retryable ? (
