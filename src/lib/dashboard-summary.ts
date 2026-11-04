@@ -1,7 +1,14 @@
+import { normalizeMonthlyContributorActivity } from './contributor-activity';
+
 export type DashboardRow = Record<string, unknown>;
 
 export function selectDashboardContributor(row: DashboardRow | null, includeDetails: boolean): DashboardRow | null {
-  return includeDetails ? row : toDashboardContributorSummary(row);
+  if (!includeDetails) return toDashboardContributorSummary(row);
+  if (!row || !Array.isArray(row.main_repo_monthly_activity)) return row;
+  return {
+    ...row,
+    main_repo_monthly_activity: normalizeMonthlyContributorActivity(row.main_repo_monthly_activity),
+  };
 }
 
 export function toDashboardGitHubSummary(row: DashboardRow | null): DashboardRow | null {

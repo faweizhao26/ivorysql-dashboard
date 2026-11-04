@@ -111,7 +111,8 @@ test('sync persists first-ever eligible contributor counts from repository-creat
   const months = JSON.parse(String(activity?.[13]));
   assert.deepEqual(months.find((month: { month: string }) => month.month === '2026-01').new_contributors, ['january']);
   const october = months.find((month: { month: string }) => month.month === '2026-10');
-  assert.deepEqual(october.year_first_contributors, ['daily', 'old', 'outside-week', 'weekly']);
+  assert.deepEqual(october.year_first_contributors, ['old']);
+  assert.equal(october.year_first_contributor_count, 1);
   assert.deepEqual(october.new_contributors, ['daily', 'outside-week', 'weekly']);
   assert.equal(october.unmerged_pr_count, 2);
 });

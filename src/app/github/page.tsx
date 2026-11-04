@@ -7,7 +7,7 @@ import { TimeRangeSelector, DateRange } from '@/components/TimeRangeSelector';
 import { TrendChart } from '@/components/Charts';
 import { ActivityTimeline } from '@/components/Timeline';
 import { downloadCSV } from '@/lib/csv-utils';
-import { isCurrentContributionMonth } from '@/lib/contributor-activity';
+import { isCurrentContributionMonth, normalizeMonthlyContributorActivity } from '@/lib/contributor-activity';
 
 interface MonthlyContributor {
   login: string;
@@ -218,24 +218,7 @@ export default function GitHubPage() {
   const latestContributors = contributors?.latest;
   const mainRepoContributors = latestContributors?.main_repo_top_contributors || [];
   const storedMonthlyActivity = latestContributors?.main_repo_monthly_activity || [];
-  const firstContributionMonth2026 = new Map<string, string>();
-  for (const month of [...storedMonthlyActivity].sort((a, b) => a.month.localeCompare(b.month))) {
-    for (const contributor of month.contributors) {
-      if (!firstContributionMonth2026.has(contributor.login)) {
-        firstContributionMonth2026.set(contributor.login, month.month);
-      }
-    }
-  }
-  const normalizedMonthlyActivity = storedMonthlyActivity.map((month) => {
-    const yearFirstContributors = month.year_first_contributors || month.contributors
-      .filter(contributor => firstContributionMonth2026.get(contributor.login) === month.month)
-      .map(contributor => contributor.login);
-    return {
-      ...month,
-      year_first_contributor_count: month.year_first_contributor_count ?? yearFirstContributors.length,
-      year_first_contributors: yearFirstContributors,
-    };
-  });
+  const normalizedMonthlyActivity = normalizeMonthlyContributorActivity(storedMonthlyActivity);
   const monthlyActivity = normalizedMonthlyActivity.length > 0
     ? Array.from({ length: 12 }, (_, index) => normalizedMonthlyActivity.find(month => month.month === `2026-${String(index + 1).padStart(2, '0')}`) || ({
       month: `2026-${String(index + 1).padStart(2, '0')}`,
@@ -434,7 +417,7 @@ export default function GitHubPage() {
         <div>
           <div className="flex flex-wrap items-baseline gap-3 mb-4">
             <h2 className="text-lg font-semibold text-slate-100">2026 年主仓库贡献明细</h2>
-            <span className="text-xs text-slate-400">贡献者按 Issue 创建或 PR 合并计算；分别标记 2026 年首次贡献和仓库历史首次贡献</span>
+            <span className="text-xs text-slate-400">贡献者按 Issue 创建或 PR 合并计算；年内首次（往年已贡献）与历史首次（新贡献者）互不重复</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-4">
             <StatCard title="2026 贡献者" value={annualContributors.size} icon="👥" />
@@ -464,7 +447,7 @@ export default function GitHubPage() {
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     <ContributorBreakdown
                       title="2026 年首次贡献者"
-                      description="本月是其 2026 年第一次有效贡献"
+                      description="2026 年前已有贡献，本月是其年内首次有效贡献"
                       contributors={month.contributors}
                       names={month.year_first_contributors}
                       count={month.year_first_contributor_count}
@@ -472,7 +455,7 @@ export default function GitHubPage() {
                     />
                     <ContributorBreakdown
                       title="历史首次贡献者"
-                      description="本月是其在 IvorySQL 仓库的第一次有效贡献"
+                      description="新贡献者：本月是其在 IvorySQL 仓库的第一次有效贡献"
                       contributors={month.contributors}
                       names={month.new_contributors}
                       count={month.new_contributor_count}
@@ -640,26 +623,15 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
     });
   }
 
-  const monthlyActivity = data.contributors.latest?.main_repo_monthly_activity || [];
-  const firstContributionMonth2026 = new Map<string, string>();
-  for (const month of [...monthlyActivity].sort((a, b) => a.month.localeCompare(b.month))) {
-    for (const contributor of month.contributors) {
-      if (!firstContributionMonth2026.has(contributor.login)) {
-        firstContributionMonth2026.set(contributor.login, month.month);
-      }
-    }
-  }
+  const monthlyActivity = normalizeMonthlyContributorActivity(data.contributors.latest?.main_repo_monthly_activity || []);
 
   for (const month of monthlyActivity) {
-    const yearFirstContributors = month.year_first_contributors || month.contributors
-      .filter(contributor => firstContributionMonth2026.get(contributor.login) === month.month)
-      .map(contributor => contributor.login);
     rows.push({
       指标: '2026 月度贡献汇总',
       月份: month.month,
       本月贡献者: month.contributor_count,
-      '2026 年首次贡献者数': month.year_first_contributor_count ?? yearFirstContributors.length,
-      '2026 年首次贡献者': yearFirstContributors.join('、'),
+      '2026 年首次贡献者数': month.year_first_contributor_count,
+      '2026 年首次贡献者': month.year_first_contributors.join('、'),
       历史首次贡献者数: month.new_contributor_count,
       历史首次贡献者: month.new_contributors.join('、'),
       Issue: month.issue_count,

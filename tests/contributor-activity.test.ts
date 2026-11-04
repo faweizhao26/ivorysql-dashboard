@@ -112,13 +112,13 @@ test('groups 2026 activity by month and marks first-time contributors', () => {
     {
       month: '2026-01',
       contributor_count: 2,
-      year_first_contributor_count: 2,
+      year_first_contributor_count: 1,
       new_contributor_count: 1,
       issue_count: 1,
       pr_count: 1,
       merged_pr_count: 1,
       unmerged_pr_count: 0,
-      year_first_contributors: ['alice', 'bob'],
+      year_first_contributors: ['alice'],
       new_contributors: ['bob'],
       contributors: [
         { login: 'alice', issue_count: 1, pr_count: 0, merged_pr_count: 0, unmerged_pr_count: 0, total: 1 },
@@ -216,11 +216,41 @@ test('separates first contribution in 2026 from first contribution ever', () => 
   const february = result.find(month => month.month === '2026-02');
   const march = result.find(month => month.month === '2026-03');
 
-  assert.deepEqual(february?.year_first_contributors, ['alice', 'bob']);
-  assert.equal(february?.year_first_contributor_count, 2);
+  assert.deepEqual(february?.year_first_contributors, ['alice']);
+  assert.equal(february?.year_first_contributor_count, 1);
   assert.deepEqual(february?.new_contributors, ['bob']);
   assert.equal(february?.new_contributor_count, 1);
 
-  assert.deepEqual(march?.year_first_contributors, ['carol']);
+  assert.deepEqual(march?.year_first_contributors, []);
   assert.deepEqual(march?.new_contributors, ['carol']);
+});
+
+test('October A/B/C cohorts are exclusive and repeat contributions do not create new people', () => {
+  const result = aggregateMonthlyContributorActivity([
+    { number: 1, type: 'issue', author: 'B', created_at: '2025-06-01', status: 'closed' },
+    { number: 2, type: 'pr', author: 'A', created_at: '2025-07-01', status: 'closed' },
+    { number: 3, type: 'issue', author: 'A', created_at: '2026-10-02', status: 'open' },
+    { number: 4, type: 'pr', author: 'B', created_at: '2026-09-01', merged_at: '2026-10-03', status: 'merged' },
+    { number: 5, type: 'pr', author: 'C', created_at: '2026-09-01', merged_at: '2026-10-04', status: 'merged' },
+    { number: 6, type: 'issue', author: 'A', created_at: '2026-10-05', status: 'open' },
+    { number: 6, type: 'issue', author: 'A', created_at: '2026-10-05', status: 'open' },
+    { number: 7, type: 'issue', author: 'A', created_at: '2026-11-01', status: 'open' },
+    { number: 8, type: 'issue', author: 'B', created_at: '2026-11-02', status: 'open' },
+    { number: 9, type: 'issue', author: 'C', created_at: '2026-11-03', status: 'open' },
+  ], 2026);
+  const october = result.find(row => row.month === '2026-10')!;
+  assert.equal(october.contributor_count, 3);
+  assert.deepEqual(october.year_first_contributors, ['B']);
+  assert.equal(october.year_first_contributor_count, 1);
+  assert.deepEqual(october.new_contributors, ['A', 'C']);
+  assert.equal(october.new_contributor_count, 2);
+  assert.equal(october.issue_count, 2);
+  const november = result.find(row => row.month === '2026-11')!;
+  assert.equal(november.contributor_count, 3);
+  assert.equal(november.year_first_contributor_count, 0);
+  assert.equal(november.new_contributor_count, 0);
+  for (const month of result) {
+    assert.ok(month.year_first_contributors.every(login => !month.new_contributors.includes(login)));
+    assert.ok(month.year_first_contributor_count + month.new_contributor_count <= month.contributor_count);
+  }
 });

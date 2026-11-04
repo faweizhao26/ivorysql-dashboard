@@ -50,6 +50,36 @@ export interface MainRepoMonthlyActivity {
   contributions: ContributorActivityItem[];
 }
 
+type StoredMonthlyActivity = Omit<MainRepoMonthlyActivity, 'year_first_contributors' | 'year_first_contributor_count'>
+  & Partial<Pick<MainRepoMonthlyActivity, 'year_first_contributors' | 'year_first_contributor_count'>>;
+
+export function normalizeMonthlyContributorActivity(months: StoredMonthlyActivity[]): MainRepoMonthlyActivity[] {
+  const firstMonth = new Map<string, string>();
+  const historicalFirst = new Set<string>();
+  const yearKey = (month: string, login: string) => `${month.slice(0, 4)}:${login}`;
+  // Older snapshots included historical newcomers in the year-first cohort.
+  for (const month of [...months].sort((a, b) => a.month.localeCompare(b.month))) {
+    for (const contributor of month.contributors) {
+      const key = yearKey(month.month, contributor.login);
+      if (!firstMonth.has(key)) firstMonth.set(key, month.month);
+    }
+    for (const login of month.new_contributors) historicalFirst.add(yearKey(month.month, login));
+  }
+  return months.map(month => {
+    const newContributors = [...new Set(month.new_contributors)].sort();
+    const yearFirstContributors = [...new Set(month.contributors.map(contributor => contributor.login))]
+      .filter(login => firstMonth.get(yearKey(month.month, login)) === month.month && !historicalFirst.has(yearKey(month.month, login)))
+      .sort();
+    return {
+      ...month,
+      year_first_contributors: yearFirstContributors,
+      year_first_contributor_count: yearFirstContributors.length,
+      new_contributors: newContributors,
+      new_contributor_count: newContributors.length,
+    };
+  });
+}
+
 export function isCurrentContributionMonth(month: string, today: Date = new Date()): boolean {
   return month === getBeijingDate(today).slice(0, 7);
 }
@@ -202,7 +232,8 @@ export function aggregateMonthlyContributorActivity(
       .filter(contributor => data.validContributors.has(contributor.login))
       .sort((a, b) => b.total - a.total || a.login.localeCompare(b.login));
     const yearFirstContributors = contributors
-      .filter(contributor => firstSeenInYear.get(contributor.login)?.slice(0, 7) === month)
+      .filter(contributor => firstSeenInYear.get(contributor.login)?.slice(0, 7) === month
+        && firstSeen.get(contributor.login)! < `${year}-01-01`)
       .map(contributor => contributor.login)
       .sort();
     const newContributors = contributors
