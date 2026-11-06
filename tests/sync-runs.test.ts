@@ -121,20 +121,38 @@ test('keeps the last successful time separate from a newer failed run', async ()
   } finally { queryMock.mock.restore(); }
 });
 
-test('stale reminders use successful runs and retain manual-only timestamps', async () => {
-  const old = new Date(Date.now() - 12 * 86400000);
+test('manual content imports clear old collection reminders without hiding automatic collector failures', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-11-06T12:00:00Z') });
+  const old = new Date('2026-10-27T12:00:00Z');
   const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string) {
     assert.match(sql, /status = 'success'/);
     assert.match(sql, /last_data_updated/);
     return { rows: [
-      { platform: 'zhihu', update_frequency_days: 7, last_data_updated: new Date(), effective_updated_at: old },
-      { platform: 'wechat', update_frequency_days: 7, effective_updated_at: new Date() },
-      { platform: 'ctoutiao', update_frequency_days: 7, effective_updated_at: null },
+      ...['ctoutiao', 'oschina', 'toutiao', 'zhihu', 'wechat'].map(platform => ({ platform, update_frequency_days: 7, last_data_updated: new Date(), effective_updated_at: old })),
+      { platform: 'csdn', update_frequency_days: 7, last_data_updated: new Date(), effective_updated_at: old },
+      { platform: 'sf', update_frequency_days: 7, last_data_updated: new Date(), effective_updated_at: null },
+      { platform: 'cnblogs', update_frequency_days: 7, last_data_updated: old, effective_updated_at: new Date() },
     ] };
   });
   try {
     const stale = await getStalePlatforms();
+    assert.deepEqual(stale.map(item => item.platform), ['csdn', 'sf']);
+    assert.equal(stale[0].daysSinceUpdate, 10);
+  } finally { queryMock.mock.restore(); }
+});
+
+test('manual update reminders still respect the configured expiry boundary and missing data', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-11-06T12:00:00Z') });
+  const queryMock = mock.method(Pool.prototype, 'query', async () => ({ rows: [
+    { platform: 'zhihu', update_frequency_days: 7, last_data_updated: '2026-10-30T12:00:00Z', effective_updated_at: new Date() },
+    { platform: 'oschina', update_frequency_days: 7, last_data_updated: '2026-10-31T12:00:00Z', effective_updated_at: null },
+    { platform: 'ctoutiao', update_frequency_days: 7, last_data_updated: null, effective_updated_at: new Date() },
+    { platform: 'wechat', update_frequency_days: 14, last_data_updated: '2026-10-27T12:00:00Z', effective_updated_at: null },
+  ] }));
+  try {
+    const stale = await getStalePlatforms();
     assert.deepEqual(stale.map(item => item.platform), ['zhihu', 'ctoutiao']);
-    assert.equal(stale[0].daysSinceUpdate, 12);
+    assert.equal(stale[0].daysSinceUpdate, 7);
+    assert.equal(stale[0].updateFrequency, 7);
   } finally { queryMock.mock.restore(); }
 });

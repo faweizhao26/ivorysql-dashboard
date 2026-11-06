@@ -2,6 +2,7 @@ import { Pool, type PoolClient } from 'pg';
 import { getBeijingDate, shiftDate } from './date';
 import type { MainRepoContributor, MainRepoMonthlyActivity } from './contributor-activity';
 import type { ArticleDateRange } from './article-query';
+import { contentUpdateMode } from './content-overview';
 
 let pool: Pool | null = null;
 
@@ -1107,7 +1108,8 @@ export async function getStalePlatforms(): Promise<{ platform: string; daysSince
   const today = new Date();
   
   return result.rows.map(s => {
-    const lastUpdated = s.effective_updated_at ? new Date(s.effective_updated_at) : new Date(0);
+    const updatedAt = contentUpdateMode(s.platform) === 'manual' ? s.last_data_updated : s.effective_updated_at;
+    const lastUpdated = updatedAt ? new Date(updatedAt) : new Date(0);
     const daysSinceUpdate = Math.floor((today.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24));
     return {
       platform: s.platform,
