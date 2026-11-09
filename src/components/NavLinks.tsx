@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { NavIcon } from './NavIcon';
 import { useAuth } from '@/app/auth-provider';
+import type { AccessLevel } from '@/lib/auth';
 
 export const navigationItems = [
   { href: '/', icon: 'home', name: '首页' },
@@ -18,12 +19,12 @@ export const navigationItems = [
 
 export function NavigationLinks({ pathname, accessLevel, onNavigate }: {
   pathname: string;
-  accessLevel: 'admin' | 'viewer' | null;
+  accessLevel: AccessLevel | null;
   onNavigate?: () => void;
 }) {
   return (
     <nav className="app-navigation" aria-label="主要导航">
-      {navigationItems.filter(item => item.href !== '/admin' || accessLevel === 'admin').map(item => {
+      {navigationItems.filter(item => accessLevel === 'evangelist' ? item.href === '/evangelist' : item.href !== '/admin' || accessLevel === 'admin').map(item => {
         const active = pathname === item.href || item.href !== '/' && pathname.startsWith(`${item.href}/`);
         return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} onClick={onNavigate} className="app-navigation-link"><NavIcon name={item.icon} /><span>{item.name}</span></Link>;
       })}

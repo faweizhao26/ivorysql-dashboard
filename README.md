@@ -59,10 +59,14 @@ GitHub 贡献者统计从 `IvorySQL/IvorySQL` 仓库的实际创建日期开始�
 | 变量 | 用途 |
 |------|------|
 | `DATABASE_URL` | PostgreSQL 连接字符串 |
-| `ACCESS_PASSWORD` | 只读访问密码 |
+| `ACCESS_PASSWORD` | 布道者页面只读密码（原查看密码，不能访问其他页面或接口） |
+| `VIEWER_PASSWORD` | 新增的全站只读密码，不可编辑或进入后台；必须与另外两个密码不同 |
 | `ADMIN_PASSWORD` | 管理员密码 |
+
 | `CRON_SECRET` | Vercel Cron 与 ego-lite 写入鉴权 |
 | `GITHUB_TOKEN` | GitHub API；需要读取公开仓库数据的权限与足够额度 |
+
+访问权限分为布道者只读、全站只读、管理员三档。布道者只读仅允许 `/evangelist` 页面及其 GET/HEAD 数据接口。此次权限拆分会使旧会话失效，需要重新输入对应密码；三个密码中的任意一个更改后也需要重新登录。`VIEWER_PASSWORD` 未配置时不开放全站只读访问，不影响布道者和管理员登录。密码仅配置在 `.env.local` 和 Vercel 环境变量中，不提交到仓库。
 
 可选变量：
 

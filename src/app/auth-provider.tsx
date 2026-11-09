@@ -4,10 +4,11 @@ import { createContext, useContext, useState, useEffect, useLayoutEffect, ReactN
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { withSessionNotice } from '@/lib/session-response';
+import type { AccessLevel } from '@/lib/auth';
 
 interface AuthContextType {
   isLoggedIn: boolean;
-  accessLevel: 'admin' | 'viewer' | null;
+  accessLevel: AccessLevel | null;
   loading: boolean;
 }
 
@@ -24,7 +25,7 @@ export function useAuth() {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [accessLevel, setAccessLevel] = useState<'admin' | 'viewer' | null>(null);
+  const [accessLevel, setAccessLevel] = useState<AccessLevel | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
 
@@ -48,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await fetch('/api/auth/check', { signal: controller.signal, cache: 'no-store' });
         const data = res.ok ? await res.json() : null;
         if (controller.signal.aborted) return;
-        const level = data?.level === 'admin' || data?.level === 'viewer' ? data.level : null;
+        const level = data?.level === 'admin' || data?.level === 'viewer' || data?.level === 'evangelist' ? data.level : null;
         setIsLoggedIn(Boolean(level));
         setAccessLevel(level);
         if (level) setSessionExpired(false);

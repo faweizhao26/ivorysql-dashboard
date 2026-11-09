@@ -1,3 +1,5 @@
+import type { AccessLevel } from './auth';
+
 export function withSessionNotice(fetcher: typeof fetch, onExpired: () => void, origin: string): typeof fetch {
   return async (input, init) => {
     const response = await fetcher(input, init);
@@ -11,7 +13,8 @@ export function withSessionNotice(fetcher: typeof fetch, onExpired: () => void, 
   };
 }
 
-export function safeReturnPath(value: string | null): string {
+export function safeReturnPath(value: string | null, level?: AccessLevel): string {
+  if (level === 'evangelist') return '/evangelist';
   if (!value || !value.startsWith('/') || value.startsWith('//') || /[\\\r\n]/.test(value)) return '/';
   const url = new URL(value, 'https://dashboard.invalid');
   if (url.origin !== 'https://dashboard.invalid' || url.pathname.startsWith('/auth')) return '/';

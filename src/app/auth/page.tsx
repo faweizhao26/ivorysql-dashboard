@@ -23,7 +23,7 @@ export default function AuthPage() {
       const data = await res.json();
 
       if (res.ok) {
-        window.location.href = safeReturnPath(new URLSearchParams(window.location.search).get('redirect'));
+        window.location.href = safeReturnPath(new URLSearchParams(window.location.search).get('redirect'), data.level);
       } else {
         setError(data.error || '密码错误');
       }
@@ -74,7 +74,10 @@ export default function AuthPage() {
 
         <div className="mt-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700/50">
           <p className="text-xs text-slate-500 mb-1">
-            <span className="text-slate-400 font-medium">查看密码：</span>只读，可查看所有数据
+            <span className="text-slate-400 font-medium">布道者密码：</span>仅查看布道者数据
+          </p>
+          <p className="text-xs text-slate-500 mb-1">
+            <span className="text-slate-400 font-medium">全站查看密码：</span>只读，可查看所有页面
           </p>
           <p className="text-xs text-slate-500">
             <span className="text-slate-400 font-medium">管理密码：</span>完整权限，可编辑数据

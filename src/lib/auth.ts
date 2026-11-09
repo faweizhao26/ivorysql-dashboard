@@ -1,4 +1,12 @@
-export type AccessLevel = 'admin' | 'viewer';
+export type AccessLevel = 'admin' | 'viewer' | 'evangelist';
+
+export function resolvePasswordAccess(password: unknown, config: { accessPassword: string; adminPassword: string; viewerPassword?: string }): AccessLevel | null {
+  if (typeof password !== 'string' || !password) return null;
+  if (password === config.adminPassword) return 'admin';
+  if (password === config.accessPassword) return 'evangelist';
+  if (config.viewerPassword && password === config.viewerPassword) return 'viewer';
+  return null;
+}
 
 export const ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 
@@ -27,7 +35,7 @@ async function sign(value: string, secret: string): Promise<string> {
 }
 
 function isAccessLevel(value: string): value is AccessLevel {
-  return value === 'admin' || value === 'viewer';
+  return value === 'admin' || value === 'viewer' || value === 'evangelist';
 }
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -39,8 +47,8 @@ function timingSafeEqual(a: string, b: string): boolean {
   return result === 0;
 }
 
-export function getAccessTokenSecret(accessPassword: string, adminPassword: string): string {
-  return `${accessPassword}:${adminPassword}`;
+export function getAccessTokenSecret(accessPassword: string, adminPassword: string, viewerPassword = ''): string {
+  return `access-v2:${JSON.stringify([accessPassword, adminPassword, viewerPassword])}`;
 }
 
 export async function createAccessToken(level: AccessLevel, secret: string): Promise<string> {

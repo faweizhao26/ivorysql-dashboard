@@ -22,7 +22,7 @@ async function authorization(request: Request): Promise<'ego_lite' | 'manual' | 
   const accessLevel = accessPassword && adminPassword
     ? await readAccessToken(
         cookieStore.get('access_level')?.value,
-        getAccessTokenSecret(accessPassword, adminPassword),
+    getAccessTokenSecret(accessPassword, adminPassword, process.env.VIEWER_PASSWORD),
       )
     : null;
 

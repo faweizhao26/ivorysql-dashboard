@@ -12,7 +12,7 @@ export async function GET() {
 
   const cookieStore = await cookies();
   const accessLevel = cookieStore.get('access_level');
-  const level = await readAccessToken(accessLevel?.value, getAccessTokenSecret(accessPassword, adminPassword));
+  const level = await readAccessToken(accessLevel?.value, getAccessTokenSecret(accessPassword, adminPassword, process.env.VIEWER_PASSWORD));
 
   if (!level) {
     return NextResponse.json({ authenticated: false }, { status: 401 });

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { ACCESS_TOKEN_MAX_AGE_SECONDS, createAccessToken, getAccessTokenSecret } from '@/lib/auth';
+import { ACCESS_TOKEN_MAX_AGE_SECONDS, createAccessToken, getAccessTokenSecret, resolvePasswordAccess } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -13,28 +13,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
     }
 
-    const secret = getAccessTokenSecret(accessPassword, adminPassword);
-
-    if (password === adminPassword) {
+    const viewerPassword = process.env.VIEWER_PASSWORD;
+    const secret = getAccessTokenSecret(accessPassword, adminPassword, viewerPassword);
+    const level = resolvePasswordAccess(password, { accessPassword, adminPassword, viewerPassword });
+    if (level) {
       const cookieStore = await cookies();
-      cookieStore.set('access_level', await createAccessToken('admin', secret), {
+      cookieStore.set('access_level', await createAccessToken(level, secret), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS
       });
-      return NextResponse.json({ level: 'admin', message: 'Admin access granted' });
-    }
-
-    if (password === accessPassword) {
-      const cookieStore = await cookies();
-      cookieStore.set('access_level', await createAccessToken('viewer', secret), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS
-      });
-      return NextResponse.json({ level: 'viewer', message: 'Access granted' });
+      return NextResponse.json({ level, message: 'Access granted' });
     }
 
     return NextResponse.json({ error: 'Invalid password' }, { status: 401 });

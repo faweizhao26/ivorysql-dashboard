@@ -39,7 +39,7 @@ test('signs the role, issuance time and seven-day expiry together', async (t) =>
   assert.equal(value, signedToken(`viewer.${issuedAt}.${expiresAt}`));
 });
 
-for (const level of ['admin', 'viewer'] as const) {
+for (const level of ['admin', 'viewer', 'evangelist'] as const) {
   test(`${level} tokens expire at the server boundary even when replayed`, async (t) => {
     let now = issuedAt * 1000;
     t.mock.method(Date, 'now', () => now);
@@ -142,4 +142,12 @@ test('rotating either password invalidates existing tokens', async (t) => {
   assert.equal(await readAccessToken(value, key), 'admin');
   assert.equal(await readAccessToken(value, getAccessTokenSecret('changed', 'test-admin-password')), null);
   assert.equal(await readAccessToken(value, getAccessTokenSecret('test-viewer-password', 'changed')), null);
+});
+
+test('old full-site viewer sessions cannot survive the split in access scope', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const old = signedToken(`viewer.${now}.${now + 3600}`, 'old-viewer:admin');
+  assert.equal(await readAccessToken(old, getAccessTokenSecret('old-viewer', 'admin', 'new-viewer')), null);
+  const current = await createAccessToken('viewer', getAccessTokenSecret('old-viewer', 'admin', 'new-viewer'));
+  assert.equal(await readAccessToken(current, getAccessTokenSecret('old-viewer', 'admin', 'changed')), null);
 });

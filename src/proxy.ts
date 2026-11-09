@@ -31,11 +31,11 @@ export function requiresAdminMutation(pathname: string, method: string): boolean
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  if (pathname.startsWith('/_next') || pathname.startsWith('/favicon') || STATIC_PATTERN.test(pathname)) {
+  if (pathname.startsWith('/_next/') || pathname.startsWith('/favicon') || (!pathname.startsWith('/api/') && STATIC_PATTERN.test(pathname))) {
     return NextResponse.next();
   }
 
-  if (pathname.startsWith('/auth') || pathname.startsWith('/api/auth')) {
+  if (pathname === '/auth' || ['/api/auth/login', '/api/auth/check', '/api/auth/logout'].includes(pathname)) {
     return NextResponse.next();
   }
 
@@ -63,11 +63,20 @@ export async function proxy(request: NextRequest) {
   const accessCookie = request.cookies.get('access_level');
   const accessLevel = await readAccessToken(
     accessCookie?.value,
-    getAccessTokenSecret(accessPassword, adminPassword)
+    getAccessTokenSecret(accessPassword, adminPassword, process.env.VIEWER_PASSWORD)
   );
 
   if (accessLevel === 'admin') {
     return NextResponse.next();
+  }
+
+  if (accessLevel === 'evangelist') {
+    if (pathname === '/evangelist' || pathname === '/evangelist/') return NextResponse.next();
+    if (pathname === '/api/evangelist' && (request.method === 'GET' || request.method === 'HEAD')) return NextResponse.next();
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: '该密码仅可查看布道者数据', code: 'ACCESS_DENIED' }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL('/evangelist', request.url));
   }
 
   if (accessLevel === 'viewer') {
