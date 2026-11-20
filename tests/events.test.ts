@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { parseEventId, parseEventListParams } from '../src/app/api/events/route';
+import { parseEventId, parseEventListParams } from '../src/lib/event-query';
 import { validateMaterialInput } from '../src/lib/activity-materials';
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');

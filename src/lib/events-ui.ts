@@ -2,6 +2,7 @@ export const EVENT_TYPES = [
   { value: 'conference', label: '技术大会' }, { value: 'meetup', label: '线下聚会' },
   { value: 'webinar', label: '线上直播' }, { value: 'workshop', label: '工作坊' },
   { value: 'hackathon', label: '黑客马拉松' }, { value: 'other', label: '其他' },
+  { value: 'campus', label: '校园行' }, { value: 'campaign', label: '运营活动' },
 ];
 export const MATERIAL_LABELS: Record<string, string> = {
   poster: '海报', photo: '照片', ppt: 'PPT', video: '视频', article: '文章', other: '其他资料',

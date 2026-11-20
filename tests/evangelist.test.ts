@@ -23,7 +23,7 @@ interface LimitStatus {
 }
 
 async function loadLimitCalculator() {
-  const adminPage = await import('../src/app/admin/page') as typeof import('../src/app/admin/page') & {
+  const adminPage = await import('../src/lib/evangelist-contribution-limit') as typeof import('../src/lib/evangelist-contribution-limit') & {
     calculateEvangelistContributionLimit?: (
       contributions: LimitContribution[],
       draft: LimitContribution,
@@ -36,7 +36,7 @@ async function loadLimitCalculator() {
 }
 
 test('other contribution category includes an other type', async () => {
-  const adminPage = await import('../src/app/admin/page') as typeof import('../src/app/admin/page') & {
+  const adminPage = await import('../src/lib/evangelist-rules') as typeof import('../src/lib/evangelist-rules') & {
     evangelistContributionTypes?: Record<string, string[]>;
   };
 
@@ -44,7 +44,7 @@ test('other contribution category includes an other type', async () => {
 });
 
 test('content creation includes self-published IvorySQL articles', async () => {
-  const adminPage = await import('../src/app/admin/page') as typeof import('../src/app/admin/page') & {
+  const adminPage = await import('../src/lib/evangelist-rules') as typeof import('../src/lib/evangelist-rules') & {
     evangelistContributionTypes?: Record<string, string[]>;
   };
 

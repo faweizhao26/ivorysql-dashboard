@@ -36,7 +36,8 @@ for (const [instant, expected] of [
   test(`defaults to Beijing date ${expected} at ${instant}`, (t) => {
     freeze(t, instant);
     assert.equal(db.getToday(), expected);
-    assert.equal(newEvent().event_date, expected);
+    assert.equal(newEvent().event_date, '');
+    assert.equal((newEvent().collected_data.workspace as { status: string }).status, 'intent');
     assert.equal(isCurrentContributionMonth(expected.slice(0, 7)), true);
   });
 }

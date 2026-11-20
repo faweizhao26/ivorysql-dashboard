@@ -9,8 +9,8 @@ import EvangelistAvatarPicker from '@/components/admin/EvangelistAvatarPicker';
 import { getAvailableEvangelistAvatar, getEvangelistAvatar } from '@/lib/evangelist-avatar';
 import { formatArticleMetric } from '@/lib/content-values.mjs';
 import { getManualSelection, isDataCategory, MAX_STATS_VALUE, metricsByCategory, platforms } from '@/lib/manual-data';
-import { EVANGELIST_CATEGORIES, EVANGELIST_RULES_VERSION, evangelistContributionTypes, evangelistContributionLimits, getEvangelistRule, getContributionBudget, getArticleKey, mapLegacyContribution, isHistoricalScorePreserved } from '@/lib/evangelist-rules';
-export { evangelistContributionTypes, evangelistContributionLimits } from '@/lib/evangelist-rules';
+import { EVANGELIST_CATEGORIES, EVANGELIST_RULES_VERSION, evangelistContributionTypes, getEvangelistRule, getContributionBudget, getArticleKey, mapLegacyContribution, isHistoricalScorePreserved } from '@/lib/evangelist-rules';
+import type { ContributionLimitRecord } from '@/lib/evangelist-contribution-limit';
 
 type TabType = 'manual' | 'articles' | 'reminders' | 'sync' | 'events' | 'evangelist';
 
@@ -1031,21 +1031,6 @@ function ReminderSection({ onSettingsChange }: { onSettingsChange: () => void })
 }
 
 
-interface ContributionLimitRecord {
-  id?: number;
-  type?: string;
-  points?: number;
-  date?: string | null;
-}
-
-interface ContributionLimitStatus {
-  currentPoints: number;
-  draftPoints: number;
-  projectedPoints: number;
-  limit: number;
-  exceededBy: number;
-}
-
 interface EvangelistContributionRecord extends ContributionLimitRecord {
   participant_id: number;
   category?: string;
@@ -1072,36 +1057,6 @@ interface EvangelistParticipant extends EvangelistParticipantDraft {
 
 interface SavedEvangelistContribution extends EvangelistContributionRecord {
   id: number;
-}
-
-export function calculateEvangelistContributionLimit(
-  contributions: ContributionLimitRecord[],
-  draft: ContributionLimitRecord,
-  year = Number(getBeijingDate().slice(0, 4))
-): ContributionLimitStatus | null {
-  const limit = draft.type ? evangelistContributionLimits[draft.type] : undefined;
-  const yearPrefix = `${year}-`;
-
-  if (!limit || (draft.date && !draft.date.startsWith(yearPrefix))) return null;
-
-  const currentPoints = contributions.reduce((total, contribution) => {
-    const isCurrentRecord = draft.id !== undefined && contribution.id === draft.id;
-    const isSameType = getEvangelistRule(contribution.type)?.name === getEvangelistRule(draft.type)?.name;
-    const isInPlanYear = !contribution.date || contribution.date.startsWith(yearPrefix);
-    return isCurrentRecord || !isSameType || !isInPlanYear
-      ? total
-      : total + (Number(contribution.points) || 0);
-  }, 0);
-  const draftPoints = Number(draft.points) || 0;
-  const projectedPoints = currentPoints + draftPoints;
-
-  return {
-    currentPoints,
-    draftPoints,
-    projectedPoints,
-    limit,
-    exceededBy: Math.max(0, projectedPoints - limit),
-  };
 }
 
 function EvangelistSection() {

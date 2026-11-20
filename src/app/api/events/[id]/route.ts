@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getActivityEventById, getActivityMaterialCounts } from '@/lib/db';
 import { listActivityMaterials } from '@/lib/activity-materials';
-import { parseEventId } from '../route';
+import { parseEventId } from '@/lib/event-query';
+import { eventAccess } from '@/lib/event-access';
+import { publicEvent } from '@/lib/event-workspace';
 
 export async function GET(
   _request: Request,
@@ -9,7 +11,8 @@ export async function GET(
 ) {
   try {
     const id = parseEventId((await params).id);
-    const event = await getActivityEventById(id);
+    const raw = await getActivityEventById(id);
+    const event = raw && (await eventAccess() === 'admin' ? raw : publicEvent(raw));
     if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
 
     const [materials, materialCounts] = await Promise.all([

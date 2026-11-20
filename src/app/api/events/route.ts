@@ -1,39 +1,19 @@
 import { NextResponse } from 'next/server';
 import { 
   getPagedActivityEvents,
-  saveActivityEvent, 
-  updateActivityEvent, 
   deleteActivityEvent
 } from '@/lib/db';
-
-const EVENT_TYPES = new Set(['conference', 'meetup', 'webinar', 'workshop', 'hackathon', 'other']);
-
-export function parseEventId(value: string): number {
-  const id = Number(value);
-  if (!/^\d+$/.test(value) || !Number.isSafeInteger(id) || id <= 0) throw new RangeError('Invalid event id');
-  return id;
-}
-
-export function parseEventListParams(searchParams: URLSearchParams) {
-  const page = Number(searchParams.get('page') || '1');
-  const pageSize = Number(searchParams.get('pageSize') || '100');
-  const year = searchParams.get('year')?.trim() || undefined;
-  const type = searchParams.get('type')?.trim() || undefined;
-  const search = searchParams.get('search')?.trim().slice(0, 100) || undefined;
-
-  if (!Number.isSafeInteger(page) || page < 1 || page > 1000000) throw new RangeError('Invalid page');
-  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) {
-    throw new RangeError('Invalid pageSize; expected 1 to 100');
-  }
-  if (year && !/^\d{4}$/.test(year)) throw new RangeError('Invalid year');
-  if (type && !EVENT_TYPES.has(type)) throw new RangeError('Invalid event type');
-  return { page, pageSize, year, type, search };
-}
+import { eventAccess } from '@/lib/event-access';
+import { publicEvent } from '@/lib/event-workspace';
+import { EventConflict, EventNotFound, writeWorkspaceEvent } from '@/lib/event-workspace-store';
+import { parseEventId, parseEventListParams } from '@/lib/event-query';
 
 export async function GET(request: Request) {
   try {
     const params = parseEventListParams(new URL(request.url).searchParams);
-    const result = await getPagedActivityEvents(params);
+    const admin = await eventAccess() === 'admin';
+    const result = await getPagedActivityEvents({ ...params, includeInternal: admin });
+    if (!admin) result.items = result.items.flatMap(item => { const visible = publicEvent(item); return visible ? [visible] : []; });
     return NextResponse.json({
       ...result,
       page: params.page,
@@ -51,29 +31,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    if (await eventAccess() !== 'admin') return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
     const body = await request.json();
-    const { event_name, event_date, event_type, location, venue, participants, registrations, online_viewers, collected_data, description, url } = body;
-
-    if (!event_name || !event_date || !event_type) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-    }
-
-    const eventId = await saveActivityEvent({
-      event_name,
-      event_date,
-      event_type,
-      location,
-      venue,
-      participants: participants || 0,
-      registrations: registrations || 0,
-      online_viewers: online_viewers || 0,
-      collected_data: collected_data || {},
-      description,
-      url
-    });
-
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new RangeError('活动数据格式错误');
+    const eventId = await writeWorkspaceEvent(body);
     return NextResponse.json({ success: true, eventId });
   } catch (error) {
+    if (error instanceof RangeError || error instanceof SyntaxError) return NextResponse.json({ error: error.message }, { status: 400 });
     console.error('Error saving activity event:', error);
     return NextResponse.json({ error: 'Failed to save data' }, { status: 500 });
   }
@@ -81,29 +45,15 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    if (await eventAccess() !== 'admin') return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
     const body = await request.json();
-    const { id, event_name, event_date, event_type, location, venue, participants, registrations, online_viewers, collected_data, description, url } = body;
-
-    if (!id) {
-      return NextResponse.json({ error: 'Missing event id' }, { status: 400 });
-    }
-
-    await updateActivityEvent(id, {
-      event_name,
-      event_date,
-      event_type,
-      location,
-      venue,
-      participants,
-      registrations,
-      online_viewers,
-      collected_data,
-      description,
-      url
-    });
-
+    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new RangeError('活动数据格式错误');
+    await writeWorkspaceEvent(body, parseEventId(String(body.id)));
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof RangeError || error instanceof SyntaxError) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error instanceof EventConflict) return NextResponse.json({ error: error.message }, { status: 409 });
+    if (error instanceof EventNotFound) return NextResponse.json({ error: error.message }, { status: 404 });
     console.error('Error updating activity event:', error);
     return NextResponse.json({ error: 'Failed to update data' }, { status: 500 });
   }

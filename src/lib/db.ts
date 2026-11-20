@@ -244,6 +244,14 @@ async function initializeDb() {
       CREATE UNIQUE INDEX IF NOT EXISTS idx_activity_events_source_url
         ON activity_events(source_url) WHERE source_url IS NOT NULL;
       ALTER TABLE activity_materials ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE activity_events ENABLE ROW LEVEL SECURITY;
+
+      CREATE TABLE IF NOT EXISTS activity_task_templates (
+        template_key TEXT PRIMARY KEY,
+        tasks JSONB NOT NULL DEFAULT '[]',
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE activity_task_templates ENABLE ROW LEVEL SECURITY;
 
       CREATE TABLE IF NOT EXISTS sync_runs (
         id SERIAL PRIMARY KEY,
@@ -1231,6 +1239,7 @@ export interface ActivityEvent {
   description?: string;
   url?: string;
   source_url?: string;
+  updated_at?: string;
 }
 
 export interface ActivityEventParsed extends Omit<ActivityEvent, 'collected_data'> {
@@ -1243,6 +1252,7 @@ export interface ActivityEventListOptions {
   year?: string;
   type?: string;
   search?: string;
+  includeInternal?: boolean;
 }
 
 export interface ActivityEventListItem extends ActivityEventParsed {
@@ -1269,6 +1279,9 @@ function parseCollectedData(value: unknown): Record<string, unknown> {
 function buildActivityEventFilters(options: ActivityEventListOptions) {
   const clauses: string[] = [];
   const values: unknown[] = [];
+  if (!options.includeInternal) clauses.push(`COALESCE(e.collected_data::jsonb->'workspace'->>'visibility','public') = 'public'
+    AND COALESCE(e.collected_data::jsonb->'workspace'->>'status','recorded') IN ('recorded','confirmed','completed')
+    AND e.event_date <> ''`);
   if (options.year) {
     values.push(options.year);
     clauses.push(`LEFT(e.event_date, 4) = $${values.length}`);

@@ -108,7 +108,7 @@ export async function persistOfficialEvent(event: OfficialEvent, materials: Offi
       const row = existing.rows[0]; id = Number(row.id);
       const updated = await client.query(`UPDATE activity_events SET source_url = $1,
         url = CASE WHEN url IS NULL OR url ~ $2 THEN $1 ELSE url END,
-        event_name = $3, event_date = $4, event_type = $5,
+        event_name = $3, event_date = CASE WHEN collected_data::jsonb ? 'workspace' THEN event_date ELSE $4 END, event_type = $5,
         location = COALESCE(NULLIF(location, ''), $6),
         description = COALESCE(NULLIF(description, ''), $7)
         WHERE id = $8 AND (source_url IS DISTINCT FROM $1 OR event_name IS DISTINCT FROM $3

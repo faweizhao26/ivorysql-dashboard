@@ -7,13 +7,15 @@ import { listActivityMaterials } from '@/lib/activity-materials';
 import { EVENT_TYPES } from '@/lib/events-ui';
 import { MaterialSection } from '@/components/events/MaterialSection';
 import { safeExternalUrl } from '@/components/events/MaterialLink';
+import { eventAccess } from '@/lib/event-access';
+import { publicEvent } from '@/lib/event-workspace';
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   const { id } = await params;
   if (!/^\d+$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) < 1) notFound();
   const event = await getActivityEventById(Number(id));
-  if (!event) notFound();
+  if (!event || await eventAccess() !== 'admin' && !publicEvent(event)) notFound();
   const materials = await listActivityMaterials(Number(id));
   const source = safeExternalUrl(event.url);
   return <div className="space-y-8">

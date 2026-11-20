@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getActivityEventById } from '@/lib/db';
 import { createActivityMaterial, validateMaterialInput } from '@/lib/activity-materials';
-import { parseEventId } from '../../route';
+import { parseEventId } from '@/lib/event-query';
 
 function isUniqueViolation(error: unknown): boolean {
   return Boolean(error && typeof error === 'object' && 'code' in error && error.code === '23505');

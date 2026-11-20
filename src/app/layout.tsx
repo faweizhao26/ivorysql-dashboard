@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./events/events.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import AppShell from '@/components/AppShell';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
