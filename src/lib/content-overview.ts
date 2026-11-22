@@ -8,12 +8,12 @@ export const CONTENT_PLATFORMS = [
   { key: 'oschina', name: '开源中国' }, { key: 'sf', name: '思否' },
   { key: 'ctoutiao', name: '51CTO' }, { key: 'itpub', name: 'ITPUB' },
   { key: 'toutiao', name: '头条号' }, { key: 'cnblogs', name: '博客园' },
-  { key: 'zhihu', name: '知乎' },
+  { key: 'zhihu', name: '知乎' }, { key: 'official', name: '官网' },
 ] as const;
 
 export type ContentPlatformKey = typeof CONTENT_PLATFORMS[number]['key'];
 
-const MANUAL_CONTENT_PLATFORMS = new Set(['wechat', 'oschina', 'ctoutiao', 'toutiao', 'zhihu']);
+const MANUAL_CONTENT_PLATFORMS = new Set(['wechat', 'oschina', 'ctoutiao', 'toutiao', 'zhihu', 'official']);
 
 export function contentUpdateMode(platform: string): 'manual' | 'archived' | 'automatic' {
   if (platform === 'juejin') return 'archived';

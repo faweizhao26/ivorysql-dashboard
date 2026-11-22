@@ -2,7 +2,7 @@ import { isArticleDate } from './content-values.mjs';
 
 export const ARTICLE_PLATFORMS = [
   'wechat', 'csdn', 'juejin', 'modb', 'oschina', 'sf', 'ctoutiao',
-  'itpub', 'toutiao', 'ifclub', 'zhihu', 'cnblogs',
+  'itpub', 'toutiao', 'ifclub', 'zhihu', 'cnblogs', 'official',
 ] as const;
 
 export interface ArticleListParams {

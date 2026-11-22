@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
 import { ContentPlatformCards } from '@/components/ContentPlatformCards';
 import { ContentDateFilter } from '@/components/ContentDateFilter';
+import { PublicationCalendar } from '@/components/PublicationCalendar';
 import { useContentOverview } from '@/lib/use-content-overview';
 import { CONTENT_PLATFORMS, contentDateQuery, publicationRangeQuery, resolveContentPlatform, type ContentPlatformKey } from '@/lib/content-overview';
 import { parseArticleDateRange, type ArticleDateRange } from '@/lib/article-query';
@@ -40,13 +41,18 @@ export default function ContentPage() {
 
 function ContentPageRoute() {
   const params = useSearchParams();
+  const { accessLevel } = useAuth();
+  const [calendar, setCalendar] = useState(false);
   let dateRange: ArticleDateRange | undefined;
   try {
     dateRange = parseArticleDateRange(params);
   } catch {
     return <div role="alert" className="space-y-3 text-sm text-red-400"><p>发布日期范围无效，请选择有效的开始和结束日期。</p><Link href="/content" className="text-indigo-300">查看全部日期</Link></div>;
   }
-  return <ContentPageContent key={`${dateRange?.start || ''}/${dateRange?.end || ''}`} dateRange={dateRange} />;
+  return <>{accessLevel === 'admin' && <nav className="event-tabs" aria-label="内容视图">
+    <button aria-pressed={!calendar} onClick={() => setCalendar(false)}>内容阅读量</button>
+    <button aria-pressed={calendar} onClick={() => setCalendar(true)}>发布日历</button>
+  </nav>}{calendar && accessLevel === 'admin' ? <PublicationCalendar /> : <ContentPageContent key={`${dateRange?.start || ''}/${dateRange?.end || ''}`} dateRange={dateRange} />}</>;
 }
 
 function ContentPageContent({ dateRange }: { dateRange?: ArticleDateRange }) {
@@ -130,6 +136,7 @@ function ContentPageContent({ dateRange }: { dateRange?: ArticleDateRange }) {
         article_title: editingArticle.article_title,
         content_category: editingArticle.content_category,
         content_source: editingArticle.content_source,
+        ...(editingArticle.views != null && editingArticle.views !== items.find(a => a.id === editingArticle.id)?.views ? { views: editingArticle.views } : {}),
       }),
     });
       if (!response.ok) throw new Error((await response.json()).error || '文章保存失败，请重试');
@@ -223,6 +230,9 @@ function ContentPageContent({ dateRange }: { dateRange?: ArticleDateRange }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onMouseDown={() => { if (!saving) setEditingArticle(null); }}>
           <form onSubmit={saveEdit} onMouseDown={event => event.stopPropagation()} className="w-full max-w-2xl rounded-lg border border-slate-700 bg-slate-900 p-5 space-y-4">
             <h3 className="text-lg font-semibold text-slate-100">编辑文章</h3>
+            <label className="block text-sm">累计阅读量
+              <input type="number" min="0" max="2147483647" step="1" placeholder="待补录" value={editingArticle.views ?? ''} onChange={event => setEditingArticle({ ...editingArticle, views: event.target.value === '' ? null : Number(event.target.value) })} className="w-full px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200" />
+            </label>
             <input required value={editingArticle.article_title} onChange={event => setEditingArticle({ ...editingArticle, article_title: event.target.value })} className="w-full px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <select value={editingArticle.content_category || ''} onChange={event => setEditingArticle({ ...editingArticle, content_category: event.target.value })} className="px-3 py-2 bg-slate-950 border border-slate-600 rounded text-slate-200"><option value="">未分类</option>{categories.map(item => <option key={item}>{item}</option>)}</select>

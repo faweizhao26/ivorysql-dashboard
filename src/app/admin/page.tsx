@@ -53,6 +53,7 @@ interface StalePlatform {
 
 const articlePlatforms = [
   { value: 'wechat', label: '公众号' },
+  { value: 'official', label: '官网' },
   { value: 'csdn', label: 'CSDN' },
   { value: 'juejin', label: '掘金' },
   { value: 'modb', label: '墨天轮' },

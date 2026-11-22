@@ -145,6 +145,18 @@ async function initializeDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS content_publication_plans (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        planned_date TEXT,
+        channels TEXT[] NOT NULL
+      );
+      ALTER TABLE content_publication_plans ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE article_details ADD COLUMN IF NOT EXISTS publication_plan_id INTEGER
+        REFERENCES content_publication_plans(id) ON DELETE SET NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_article_publication_plan_channel
+        ON article_details(publication_plan_id, platform) WHERE publication_plan_id IS NOT NULL;
+
       ALTER TABLE article_details DROP CONSTRAINT IF EXISTS unique_article;
       ALTER TABLE article_details DROP CONSTRAINT IF EXISTS article_details_date_platform_article_title_key;
       CREATE UNIQUE INDEX IF NOT EXISTS idx_article_details_platform_url_unique
