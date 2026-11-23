@@ -836,6 +836,20 @@ export async function getEventsForDate(date: string): Promise<CommunityEvent[]> 
   return result.rows;
 }
 
+export async function getArchivedGitHubEvents(start: string, end: string): Promise<CommunityEvent[]> {
+  const result = await query(`SELECT DISTINCT ON (date,event_type,COALESCE(NULLIF(url,''),title))
+    date,source,title,description,url,event_type FROM community_events
+    WHERE event_type IN ('github_issue','github_pr') AND date BETWEEN $1 AND $2
+    ORDER BY date DESC,event_type,COALESCE(NULLIF(url,''),title),id DESC`, [start,end]);
+  return result.rows;
+}
+
+export async function getLatestGitHubActivityMonths(): Promise<MainRepoMonthlyActivity[]> {
+  const result = await query(`SELECT main_repo_monthly_activity FROM contributor_stats
+    WHERE jsonb_typeof(main_repo_monthly_activity) = 'array' ORDER BY date DESC LIMIT 1`);
+  return result.rows[0]?.main_repo_monthly_activity ?? [];
+}
+
 export async function saveArticleDetails(article: ArticleDetails, execute = query): Promise<void> {
   const conflictTarget = article.article_url
     ? `(platform, article_url) WHERE article_url IS NOT NULL AND article_url <> ''`

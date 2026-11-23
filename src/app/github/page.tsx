@@ -19,6 +19,7 @@ interface MonthlyContributor {
 }
 
 interface GitHubPageData {
+  rangeKey: string;
   github: {
     latest: {
       stars: number;
@@ -152,14 +153,14 @@ export default function GitHubPage() {
         const params = new URLSearchParams({
           start: dateRange.start,
           end: dateRange.end,
-          include: 'contributors',
+          include: 'contributors,githubActivity',
         });
         const res = await fetch(`/api/dashboard?${params}`, {
           credentials: 'include', signal: controller.signal,
         });
-        if (!res.ok) throw new Error('Failed to fetch data');
+        if (!res.ok) throw new Error('GitHub 数据加载失败，请重试');
         const json = await res.json();
-        if (!controller.signal.aborted) setData(json);
+        if (!controller.signal.aborted) setData({ ...json, rangeKey: dateRange.start + '/' + dateRange.end });
       } catch (err) {
         if (!controller.signal.aborted) setLoadError(err instanceof Error ? err.message : 'GitHub 数据加载失败');
       } finally {
@@ -170,15 +171,9 @@ export default function GitHubPage() {
     return () => controller.abort();
   }, [dateRange, syncVer]);
 
-  if (loading) {
-    return (
+  const pending = loading || data?.rangeKey !== dateRange.start + '/' + dateRange.end;
+  const skeleton = (
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">📊</span>
-            <h1 className="text-2xl font-bold text-slate-100">GitHub 数据</h1>
-          </div>
-        </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[...Array(6)].map((_, i) => (
@@ -202,9 +197,6 @@ export default function GitHubPage() {
         </div>
       </div>
     );
-  }
-
-  if (loadError) return <div className="space-y-4"><h1 className="text-2xl font-bold">GitHub 数据</h1><p role="alert" className="text-red-400">{loadError}</p><button onClick={() => setSyncVer(value => value + 1)} className="rounded border border-slate-600 px-3 py-2">重试</button></div>;
 
   const github = data?.github;
   const contributors = data?.contributors;
@@ -245,16 +237,16 @@ export default function GitHubPage() {
   const prevGitHub = githubHistory.length > 1 ? githubHistory[githubHistory.length - 2] : null;
 
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
-  const displayDate = isSingleDay ? dateRange.start : null;
+  const displayDate = isSingleDay ? dateRange.start : currentPeriod;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap gap-3 justify-between items-center">
         <div className="flex items-center gap-3">
           <span className="text-2xl">📊</span>
           <h1 className="text-2xl font-bold text-slate-100">GitHub 数据</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {displayDate && (
             <span className="px-3 py-1 bg-amber-500/20 text-amber-400 rounded-full text-sm font-medium border border-amber-500/30">
               {displayDate}
@@ -262,6 +254,7 @@ export default function GitHubPage() {
           )}
           <button
             onClick={() => exportGitHubData(data, currentPeriod)}
+            disabled={pending || Boolean(loadError)}
             className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
           >
             导出 CSV
@@ -290,6 +283,7 @@ export default function GitHubPage() {
         </div>
       )}
 
+      {loadError ? <div><p role="alert" className="text-red-400">{loadError}</p><button onClick={() => setSyncVer(value => value + 1)}>重试</button></div> : pending ? skeleton : <>
       <div>
         <h2 className="text-lg font-semibold text-slate-100 mb-4">仓库基础指标</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -529,7 +523,8 @@ export default function GitHubPage() {
         )}
       </div>
 
-      <ActivityTimeline events={events} title="IvorySQL Issue/PR 动态" />
+      <ActivityTimeline events={events.slice(0,50)} title={`IvorySQL Issue/PR 动态 · ${displayDate}（${events.length > 50 ? '最近 50 / ' : ''}${events.length} 条）`} />
+      </>}
     </div>
   );
 }

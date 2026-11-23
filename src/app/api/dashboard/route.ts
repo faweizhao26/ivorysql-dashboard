@@ -14,10 +14,14 @@ import {
   getArticleStatsByDateRange,
   getEventsByDateRange,
   getEventsForDate,
+  getArchivedGitHubEvents,
+  getLatestGitHubActivityMonths,
   getDownloadStatsHistory
 } from '@/lib/db';
 import { createDataSlice, createPlatformFreshness, projectDataSlice, type DataSlice } from '@/lib/data-slices';
 import { getDataRangeParams } from '@/lib/date-query';
+import { githubTimeline } from '@/lib/github-timeline';
+import { getBeijingDate } from '@/lib/date';
 import {
   toDashboardArticleSummary,
   toDashboardContributorSummary,
@@ -41,7 +45,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const { startDate, endDate, isSingleDay } = getDataRangeParams(searchParams);
     const includeDownloads = searchParams.get('include')?.split(',').includes('downloads') || false;
-    const includeContributors = searchParams.get('include')?.split(',').includes('contributors') || false;
+    const githubActivity = searchParams.get('include')?.split(',').includes('githubActivity');
+    const includeContributors = githubActivity || searchParams.get('include')?.split(',').includes('contributors') || false;
     let githubData: {
       latest: Awaited<ReturnType<typeof getLatestGitHubStats>>;
       history: Awaited<ReturnType<typeof getGitHubStatsByDateRange>>;
@@ -75,7 +80,7 @@ export async function GET(request: Request) {
         getContributorStatsForDate(startDate, includeContributors),
         getSocialStatsForDate(startDate),
         getArticleStatsForDate(startDate),
-        getEventsForDate(startDate),
+        githubActivity ? getArchivedGitHubEvents(startDate,endDate) : getEventsForDate(startDate),
         getLatestGitHubStats(endDate),
         getLatestContributorStats(endDate, includeContributors),
         getLatestSocialStats(endDate),
@@ -126,7 +131,7 @@ export async function GET(request: Request) {
         getContributorStatsByDateRange(startDate, endDate),
         getSocialStatsByDateRange(startDate, endDate),
         getArticleStatsByDateRange(startDate, endDate),
-        getEventsByDateRange(startDate, endDate, 20)
+        githubActivity ? getArchivedGitHubEvents(startDate,endDate) : getEventsByDateRange(startDate, endDate, 20)
       ]);
 
       githubData = {
@@ -164,6 +169,13 @@ export async function GET(request: Request) {
       };
     }
 
+    if (githubActivity) {
+      // A morning snapshot can miss actions later that day; reconstruct history from synced actions.
+      const snapshot = contributorData.latest;
+      const months = snapshot?.date === getBeijingDate() && Array.isArray(snapshot.main_repo_monthly_activity)
+        ? snapshot.main_repo_monthly_activity : await getLatestGitHubActivityMonths();
+      events = githubTimeline(months, events, startDate, endDate);
+    }
     const downloadHistory = includeDownloads ? await getDownloadStatsHistory(365) : [];
 
     const typedFreshness = freshness as {

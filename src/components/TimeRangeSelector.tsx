@@ -151,6 +151,7 @@ export function TimeRangeSelector({ onRangeChange, allowComparison = true }: Tim
             {presetOptions.map(opt => (
               <button
                 key={opt.key}
+                aria-pressed={preset === opt.key}
                 onClick={() => handlePresetChange(opt.key)}
                 className={`whitespace-nowrap px-3 py-1 text-sm rounded-md transition-colors ${
                   preset === opt.key
