@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { addMonths, eachDayOfInterval, endOfMonth, endOfWeek, format, parseISO, startOfWeek } from 'date-fns';
-import { CalendarPlus, ChevronLeft, ChevronRight, FilePlus2 } from 'lucide-react';
+import { CalendarPlus, ChevronLeft, ChevronRight, Download, FilePlus2 } from 'lucide-react';
 import { publicationChannels, type PublicationPlan } from '@/lib/publication';
 import { getBeijingDate } from '@/lib/date';
 
@@ -22,6 +22,26 @@ export function PublicationCalendar() {
   const [draft, setDraft] = useState(blank), [busy, setBusy] = useState(false);
   const [error, setError] = useState(''), [loaded, setLoaded] = useState(false), [reload, setReload] = useState(0);
   const [receipt, setReceipt] = useState(''), [platform, setPlatform] = useState('wechat'), [title, setTitle] = useState('');
+  const [allYears, setAllYears] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  async function downloadCsv() {
+    if (exporting) return;
+    const sheet = mode === 'register' ? 'actual' : 'plan';
+    const scope = allYears ? '历年' : month.slice(0,4);
+    const params = new URLSearchParams({sheet});
+    if (!allYears) params.set('year',scope);
+    setExporting(true);setError('');
+    try {
+      const res = await fetch(endpoint+'/export?'+params, {cache:'no-store'});
+      if (!res.ok || !res.headers.get('content-type')?.startsWith('text/csv')) throw new Error('导出失败，请检查登录状态后重试');
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement('a');
+      a.href=url; a.download=scope+' IvorySQL 内容'+(sheet==='plan'?'发布排期':'实际发布')+'.csv';
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),10000);
+    } catch(e) { setError(e instanceof Error ? e.message : '导出失败'); }
+    finally { setExporting(false); }
+  }
   useEffect(() => {
     let live = true;
     request().then(rows => { if (live) { setPlans(rows); setLoaded(true); } })
@@ -43,7 +63,12 @@ export function PublicationCalendar() {
   function refresh() { setLoaded(false);setReload(i=>i+1); }
   return <section className="event-workspace">
     <header className="event-heading"><h1>{mode==='register'?'发布登记':mode==='edit'?(draft.id?'编辑排期':'新增排期'):'内容发布日历'}</h1>
-      <div className="event-inline">{mode==='calendar'?<>
+      <div className="event-inline">{mode!=='edit' && <>
+        <select aria-label="导出范围" value={allYears?'all':'year'} onChange={e=>setAllYears(e.target.value==='all')}>
+          <option value="year">{month.slice(0,4)} 年</option><option value="all">{mode==='calendar'?'全部年份（含待排期）':'全部年份'}</option>
+        </select>
+        <button type="button" className="event-button" disabled={exporting} onClick={downloadCsv}><Download size={16}/>{exporting?'导出中…':mode==='register'?'导出实际发布 CSV':'导出排期 CSV'}</button>
+      </>}{mode==='calendar'?<>
         <button className="event-button" onClick={()=>{setTitle('');setPlatform('wechat');change('register');}}><FilePlus2 size={16}/>发布登记</button>
         <button className="event-button event-primary" onClick={()=>edit(blank())}><CalendarPlus size={16}/>新增排期</button>
       </>:<button className="event-button" disabled={busy} onClick={()=>change('calendar')}>返回日历</button>}</div>
