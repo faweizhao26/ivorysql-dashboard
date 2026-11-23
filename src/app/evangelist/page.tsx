@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
+import { getBeijingDate } from '@/lib/date';
+import { COMMUNITY_EVANGELIST_POINTS } from '@/lib/evangelist-milestone';
 import { downloadCSV } from '@/lib/csv-utils';
 import EvangelistAvatar from '@/components/EvangelistAvatar';
 
@@ -12,6 +14,7 @@ interface Participant {
   bio: string | null;
   joined_date: string | null;
   total_points: number;
+  first_qualified_on: string | null;
 }
 
 interface Contribution {
@@ -28,7 +31,7 @@ interface Contribution {
 
 const levelBadge = (points: number) => points >= 300
   ? { label: '高级布道者', color: 'bg-amber-500/20 text-amber-400 border border-amber-500/30' }
-  : points >= 100
+  : points >= COMMUNITY_EVANGELIST_POINTS
   ? { label: '社区布道者', color: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' }
   : { label: '新星', color: 'bg-slate-500/20 text-slate-400 border border-slate-500/30' };
 
@@ -40,9 +43,52 @@ const categoryColors: Record<string, string> = {
   '其他': 'bg-slate-500/15 text-slate-300 border-slate-500/40',
 };
 
+function qualificationLabel(member: Participant) {
+  return member.first_qualified_on ?? (member.total_points >= COMMUNITY_EVANGELIST_POINTS ? '日期待确认' : '未达标');
+}
+
+function MonthlyQualifications({ participants }: { participants: Participant[] }) {
+  const today = getBeijingDate();
+  const currentYear = today.slice(0, 4);
+  const [year, setYear] = useState(currentYear);
+  const qualified = participants.filter(p => p.first_qualified_on);
+  const years = [...new Set([currentYear, ...qualified.map(p => p.first_qualified_on!.slice(0, 4))])].sort().reverse();
+  const dated = qualified.filter(p => p.first_qualified_on!.startsWith(year + '-'))
+    .sort((a, b) => a.first_qualified_on!.localeCompare(b.first_qualified_on!) || a.name.localeCompare(b.name, 'zh-CN'));
+  const months = year === currentYear
+    ? Math.max(Number(today.slice(5, 7)), ...dated.map(p => Number(p.first_qualified_on!.slice(5, 7)))) : 12;
+  const pending = participants.filter(p => !p.first_qualified_on && p.total_points >= COMMUNITY_EVANGELIST_POINTS);
+  return <section aria-labelledby="monthly-qualifications">
+    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <h2 id="monthly-qualifications" className="text-lg font-semibold">每月新增社区布道者</h2>
+      <div className="flex items-center gap-3 text-sm"><span>{year} 年已确认 {dated.length} 人</span>
+        <select aria-label="达标统计年份" className="rounded border border-slate-600 bg-slate-900 px-2 py-1" value={year} onChange={e => setYear(e.target.value)}>
+          {years.map(y => <option key={y} value={y}>{y} 年</option>)}
+        </select>
+      </div>
+    </div>
+    <p className="mb-3 text-xs text-slate-400">按贡献发生日期累计，首次达到 100 分的当月计入一次。</p>
+    <table className="w-full text-sm"><thead><tr className="border-b border-slate-700 text-left text-slate-400">
+      <th className="w-16 px-2 py-2">月份</th><th className="w-20 px-2">新增人数</th><th className="px-2">姓名 · 达标日期</th>
+    </tr></thead><tbody>
+      {Array.from({ length: months }, (_, i) => months - i).map(month => {
+        const group = dated.filter(p => Number(p.first_qualified_on!.slice(5, 7)) === month);
+        return <tr key={month} className="border-b border-slate-700/50">
+          <th scope="row" className="px-2 py-2 text-left font-normal">{month} 月</th>
+          <td className="px-2 tabular-nums">{group.length}</td>
+          <td className="px-2 py-1"><div className="flex flex-wrap gap-x-4 gap-y-1">{group.length ? group.map(p =>
+            <span key={p.id}>{p.name} <time className="text-xs text-slate-400" dateTime={p.first_qualified_on!}>{p.first_qualified_on!.slice(5)}</time></span>) : '—'}</div></td>
+        </tr>;
+      })}
+    </tbody></table>
+    {pending.length > 0 && <p className="mt-3 text-sm text-amber-400">已达标，日期待确认（不计入月份）：{pending.map(p => p.name).join('、')}。请补全缺失的贡献日期。</p>}
+  </section>;
+}
+
 export default function EvangelistPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [contributions, setContributions] = useState<Record<number, Contribution[]>>({});
   const [loadingContributions, setLoadingContributions] = useState(false);
@@ -50,10 +96,13 @@ export default function EvangelistPage() {
   useEffect(() => { fetchData(); }, []);
 
   async function fetchData() {
+    setFailed(false);
+    setLoading(true);
     try {
-      const res = await fetch('/api/evangelist', { credentials: 'include' });
-      if (res.ok) setParticipants(await res.json());
-    } catch (e) { console.error(e); }
+      const res = await fetch('/api/evangelist', { credentials: 'include', cache: 'no-store' });
+      if (!res.ok) throw new Error('参与者名单加载失败');
+      setParticipants(await res.json());
+    } catch { setFailed(true); }
     finally { setLoading(false); }
   }
 
@@ -83,6 +132,7 @@ export default function EvangelistPage() {
       头衔: p.title || '',
       积分: p.total_points,
       等级: levelBadge(p.total_points).label,
+      首次达100分日期: qualificationLabel(p),
       加入日期: p.joined_date || '',
       简介: p.bio || '',
     }));
@@ -94,6 +144,7 @@ export default function EvangelistPage() {
   }
 
   const top3 = participants.slice(0, 3);
+  if (failed) return <div role="alert">布道者数据加载失败。 <button onClick={fetchData}>重试</button></div>;
 
   return (
     <div className="space-y-6">
@@ -141,6 +192,7 @@ export default function EvangelistPage() {
               <th className="text-left py-3 px-4 font-medium text-slate-400">姓名</th>
               <th className="text-left py-3 px-4 font-medium text-slate-400 hidden md:table-cell">头衔</th>
               <th className="text-right py-3 px-4 font-medium text-slate-400 w-20">积分</th>
+              <th className="text-left py-3 px-4 font-medium text-slate-400 hidden md:table-cell">首次达 100 分</th>
               <th className="text-left py-3 px-4 font-medium text-slate-400 hidden md:table-cell">等级</th>
             </tr>
           </thead>
@@ -151,7 +203,7 @@ export default function EvangelistPage() {
               const memberContributions = contributions[p.id] || [];
               const contribTotal = memberContributions.reduce((s, c) => s + (c.points || 0), 0);
               return (
-                <>
+                <Fragment key={p.id}>
                   <tr
                     key={p.id}
                     onClick={() => toggleExpand(p.id)}
@@ -168,16 +220,18 @@ export default function EvangelistPage() {
                           {isExpanded ? '▲ 收起' : '▼ 明细'}
                         </span>
                       </div>
+                      <small className="mt-1 block text-slate-400 md:hidden">首次达标：{qualificationLabel(p)}</small>
                     </td>
                     <td className="py-3 px-4 text-slate-400 hidden md:table-cell">{p.title || '-'}</td>
                     <td className="py-3 px-4 text-right font-bold text-slate-200">{p.total_points}</td>
+                    <td className="py-3 px-4 text-slate-400 hidden md:table-cell">{qualificationLabel(p)}</td>
                     <td className="py-3 px-4 hidden md:table-cell">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${level.color}`}>{level.label}</span>
                     </td>
                   </tr>
                   {isExpanded && (
                     <tr key={`${p.id}-detail`}>
-                      <td colSpan={5} className="p-0">
+                      <td colSpan={6} className="p-0">
                         <div className="mx-4 mb-3 rounded-lg bg-slate-900 border border-slate-600 overflow-hidden">
                           {loadingContributions ? (
                             <div className="text-slate-400 text-center py-6">加载中...</div>
@@ -212,12 +266,13 @@ export default function EvangelistPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               );
             })}
           </tbody>
         </table>
       </div>
+      <MonthlyQualifications participants={participants} />
     </div>
   );
 }

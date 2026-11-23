@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getAvailableEvangelistAvatar, normalizeEvangelistAvatarUrl } from '@/lib/evangelist-avatar';
 import { saveEvangelistContribution } from '@/lib/evangelist-store';
+import { firstQualificationDate } from '@/lib/evangelist-milestone';
 
 export async function GET(request: Request) {
   const pool = getDb();
@@ -20,13 +21,17 @@ export async function GET(request: Request) {
 
     // Get all participants with total points
     const result = await pool.query(`
-      SELECT p.*, COALESCE(SUM(c.points), 0) as total_points
+      SELECT p.*, COALESCE(SUM(c.points), 0) as total_points,
+        COALESCE(jsonb_agg(jsonb_build_object('date', c.date, 'points', c.points))
+          FILTER (WHERE c.points IS NOT NULL), '[]'::jsonb) AS score_history
       FROM evangelist_participants p
       LEFT JOIN evangelist_contributions c ON c.participant_id = p.id
       GROUP BY p.id
       ORDER BY total_points DESC, p.name ASC
     `);
-    return NextResponse.json(result.rows);
+    return NextResponse.json(result.rows.map(({ score_history, ...member }) => ({
+      ...member, total_points: Number(member.total_points), first_qualified_on: firstQualificationDate(score_history),
+    })), { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : undefined }, { status: 500 });
   }
