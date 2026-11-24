@@ -14,6 +14,7 @@ export const navigationItems = [
   { href: '/downloads', icon: 'download', name: '下载' },
   { href: '/evangelist', icon: 'evangelist', name: '布道' },
   { href: '/events', icon: 'events', name: '活动' },
+  { href: '/reports', icon: 'reports', name: '运营报告' },
   { href: '/admin', icon: 'admin', name: '后台' },
 ];
 
@@ -24,7 +25,7 @@ export function NavigationLinks({ pathname, accessLevel, onNavigate }: {
 }) {
   return (
     <nav className="app-navigation" aria-label="主要导航">
-      {navigationItems.filter(item => accessLevel === 'evangelist' ? item.href === '/evangelist' : item.href !== '/admin' || accessLevel === 'admin').map(item => {
+      {navigationItems.filter(item => accessLevel === 'evangelist' ? item.href === '/evangelist' : !['/admin','/reports'].includes(item.href) || accessLevel === 'admin').map(item => {
         const active = pathname === item.href || item.href !== '/' && pathname.startsWith(`${item.href}/`);
         return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} onClick={onNavigate} className="app-navigation-link"><NavIcon name={item.icon} /><span>{item.name}</span></Link>;
       })}

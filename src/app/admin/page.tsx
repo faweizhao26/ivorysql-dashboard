@@ -666,6 +666,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="">-- 不设置 --</option>
                 <option>研发供稿</option>
+                <option>布道者投稿</option>
                 <option>活动演讲</option>
                 <option>PGnexus 邮件</option>
                 <option>社区</option>

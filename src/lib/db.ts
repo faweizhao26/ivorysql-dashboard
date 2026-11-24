@@ -337,6 +337,16 @@ async function initializeDb() {
       CREATE INDEX IF NOT EXISTS idx_evangelist_contrib_pid ON evangelist_contributions(participant_id);
       ALTER TABLE evangelist_contributions ADD COLUMN IF NOT EXISTS rules_version TEXT NOT NULL DEFAULT 'legacy';
       ALTER TABLE evangelist_contributions ADD COLUMN IF NOT EXISTS article_key TEXT;
+
+      CREATE TABLE IF NOT EXISTS operations_reports (
+        kind TEXT NOT NULL CHECK (kind IN ('month','quarter','year')),
+        period_key TEXT NOT NULL,
+        revision UUID NOT NULL,
+        document JSONB NOT NULL,
+        finalized_at TIMESTAMPTZ,
+        PRIMARY KEY (kind, period_key)
+      );
+      ALTER TABLE operations_reports ENABLE ROW LEVEL SECURITY;
     `);
   } finally {
     client.release();

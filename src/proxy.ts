@@ -9,7 +9,7 @@ function isCronRequest(request: NextRequest, pathname: string): boolean {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) return false;
   const isScheduledGet = request.method === 'GET'
-    && /^\/api\/(github|itpub|csdn|cnblogs|modb|sf|events)\/sync$/.test(pathname);
+    && (/^\/api\/(github|itpub|csdn|cnblogs|modb|sf|events)\/sync$/.test(pathname) || pathname === '/api/reports/schedule');
   const isBrowserImport = request.method === 'POST'
     && pathname === '/api/browser-content/sync';
   if (!isScheduledGet && !isBrowserImport) return false;
@@ -80,7 +80,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (accessLevel === 'viewer') {
-    if (pathname.startsWith('/admin')) {
+    if (pathname.startsWith('/admin') || pathname === '/reports' || pathname.startsWith('/reports/')) {
       return NextResponse.redirect(new URL('/auth?error=admin_required', request.url));
     }
     if (requiresAdminMutation(pathname, request.method)) {
