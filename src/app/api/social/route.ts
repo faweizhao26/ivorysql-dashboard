@@ -35,28 +35,17 @@ export async function GET(request: Request) {
       getLatestSocialStats(endDate),
     ]);
 
-    // Fill in latest data for platforms with no data in range
-    const social = await Promise.all(
-      allData.map(async ({ platform: p, data }) => {
-        if (data.length > 0) return data;
-        // Fetch the latest single entry for this platform
-        return latest.filter(row => row.platform === p).slice(-1);
-      })
-    );
-
-    const flattened = social.flat();
-    const exactRows = isSingleDay ? allData.flatMap(item => item.data) : flattened;
-
-    return NextResponse.json({
+    const freshness = createPlatformFreshness(
       platforms,
-      social: flattened,
-      freshness: createPlatformFreshness(
-        platforms,
-        isSingleDay ? startDate : undefined,
-        exactRows,
-        latest,
-      ),
+      isSingleDay ? startDate : undefined,
+      allData.flatMap(item => item.data),
+      latest,
+    );
+    const social = allData.flatMap(({ platform, data }) => {
+      const fallback = freshness[platform].data;
+      return data.length || !fallback ? data : [fallback];
     });
+    return NextResponse.json({ platforms, social, freshness });
   } catch (error) {
     if (error instanceof RangeError) {
       return NextResponse.json({ error: error.message }, { status: 400 });

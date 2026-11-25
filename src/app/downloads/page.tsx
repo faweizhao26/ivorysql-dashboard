@@ -1,58 +1,47 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TrendChart } from '@/components/Charts';
+import { MultiLineChart } from '@/components/Charts';
 import { Download, GitFork, Container, Package } from 'lucide-react';
+import type { DownloadStatsHistory } from '@/lib/db';
 import type { DownloadSummary } from '@/lib/download-stats';
-
-interface DownloadHistoryRow {
-  date: string;
-  github_total: number;
-  docker_total: number;
-}
-
-interface DashboardDownloadsResponse {
-  downloads?: DownloadHistoryRow[];
-}
 
 export default function DownloadsPage() {
   const [downloads, setDownloads] = useState<DownloadSummary | null>(null);
-  const [history, setHistory] = useState<DownloadHistoryRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState<DownloadStatsHistory[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [historyError, setHistoryError] = useState(false);
 
   useEffect(() => {
-    async function load() {
+    const controller = new AbortController();
+    const options = { credentials: 'include' as const, signal: controller.signal };
+    async function loadSummary() {
       try {
-        async function readJSON(url: string) {
-          const response = await fetch(url, { credentials: 'include' });
-          return { ok: response.ok, data: await response.json() };
-        }
-        const [live, historical] = await Promise.allSettled([
-          readJSON('/api/downloads'),
-          readJSON('/api/dashboard?start=2025-01-01&end=2099-12-31&days=730&include=downloads'),
-        ]);
-        if (live.status === 'fulfilled') {
-          const value = live.value.data;
-          if (value?.github && value?.docker) setDownloads(value as DownloadSummary);
-          else setError('下载统计暂时不可用，请稍后重试');
-        } else setError('下载统计暂时不可用，请稍后重试');
-        if (historical.status === 'fulfilled' && historical.value.ok) {
-          const d = historical.value.data as DashboardDownloadsResponse;
-          setHistory(d.downloads || []);
-        } else {
-          setHistoryError(true);
-        }
-      } catch (e) { console.error(e); setError('下载统计加载失败，请稍后重试'); }
-      finally { setLoading(false); }
+        const response = await fetch('/api/downloads', options);
+        const value = await response.json();
+        // A partial (502) response can still contain usable totals and source status.
+        if (!value?.github || !value?.docker) throw new Error('Missing download summary');
+        if (!controller.signal.aborted) setDownloads(value);
+      } catch {
+        if (!controller.signal.aborted) setError('下载统计暂时不可用，请稍后重试');
+      }
     }
-    load();
-  }, []);
 
-  if (loading) {
-    return <div className="space-y-6"><div className="card p-8 h-48 animate-pulse" /></div>;
-  }
+    async function loadHistory() {
+      try {
+        const response = await fetch('/api/downloads/history', options);
+        if (!response.ok) throw new Error('Download history unavailable');
+        const value = await response.json();
+        if (!Array.isArray(value?.downloads)) throw new Error('Missing download history');
+        if (!controller.signal.aborted) setHistory(value.downloads);
+      } catch {
+        if (!controller.signal.aborted) setHistoryError(true);
+      }
+    }
+    void loadSummary();
+    void loadHistory();
+    return () => controller.abort();
+  }, []);
 
   const gh = downloads?.github;
   const dk = downloads?.docker;
@@ -60,6 +49,7 @@ export default function DownloadsPage() {
   const githubReleases = gh?.releases ?? [];
   const combinedTotal = typeof gh?.total === 'number' && typeof dk?.total === 'number' ? gh.total + dk.total : null;
   function sourceLabel(source: typeof gh | typeof dk) {
+    if (!downloads && !error) return '正在加载统计…';
     if (!source || source.status === 'unavailable') return '暂无可用数据';
     return source.status === 'stale' ? `获取失败，显示 ${source.data_date} 历史统计` : '实时统计';
   }
@@ -104,14 +94,17 @@ export default function DownloadsPage() {
       </div>
 
       {/* Trend Chart */}
-      {historyError && <p role="status" className="text-sm text-amber-400">历史趋势加载失败，请稍后重试</p>}
-      {history.length > 1 && (
-        <TrendChart
-          title="下载趋势"
-          data={history.map(d => ({ date: d.date, github: d.github_total, docker: d.docker_total }))}
-          dataKey="github"
-          color="#6366F1"
+      {historyError ? (
+        <p role="status" className="text-sm text-amber-400">历史趋势加载失败，请稍后重试</p>
+      ) : history?.length ? (
+        <MultiLineChart
+          title="累计下载趋势（近 365 天）"
+          data={history.map(d => ({ date: d.date, 'GitHub Release': d.github_total, 'Docker Hub': d.docker_total }))}
+          dataKeys={['GitHub Release', 'Docker Hub']}
+          colors={['var(--chart-primary)', 'var(--chart-secondary)']}
         />
+      ) : (
+        <p role="status" className="text-sm text-slate-400">{history ? '近 365 天暂无下载快照' : '正在加载下载趋势…'}</p>
       )}
 
       {/* Docker Repos Detail */}

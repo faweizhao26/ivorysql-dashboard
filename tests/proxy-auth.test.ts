@@ -81,6 +81,10 @@ test('full-site viewer sessions retain all read access but no administration or 
     assert.equal(response.status, 401, path);
   }
   const admin = await proxy(new NextRequest('https://dashboard.test/admin', { headers }));
+  for (const method of ['GET', 'HEAD']) {
+    const denied = await proxy(new NextRequest('https://dashboard.test/api/reminders?platform=wechat', { headers, method }));
+    assert.equal(denied.status, 403);
+  }
   assert.equal(new URL(admin.headers.get('location')!).pathname, '/auth');
   const writable = await proxy(new NextRequest('https://dashboard.test/api/evangelist', { headers: await session('admin'), method: 'POST' }));
   assert.equal(writable.headers.get('x-middleware-next'), '1');

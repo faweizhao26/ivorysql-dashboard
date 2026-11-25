@@ -7,7 +7,7 @@ import { TimeRangeSelector, DateRange } from '@/components/TimeRangeSelector';
 import { TrendChart } from '@/components/Charts';
 import { ActivityTimeline } from '@/components/Timeline';
 import { downloadCSV } from '@/lib/csv-utils';
-import { isCurrentContributionMonth, normalizeMonthlyContributorActivity } from '@/lib/contributor-activity';
+import { contributorCalendarMonths, isCurrentContributionMonth, normalizeMonthlyContributorActivity, type MainRepoMonthlyActivity } from '@/lib/contributor-activity';
 
 interface MonthlyContributor {
   login: string;
@@ -39,6 +39,7 @@ interface GitHubPageData {
   };
   contributors: {
     latest: {
+      date: string;
       total_contributors: number;
       contributors_before_2026: number;
       cumulative_2026: number;
@@ -120,6 +121,7 @@ export default function GitHubPage() {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [syncVer, setSyncVer] = useState(0);
+  const [preferredYear, setPreferredYear] = useState<number | null>(null);
 
   const isSingleDay = dateRange.start === dateRange.end;
 
@@ -211,29 +213,16 @@ export default function GitHubPage() {
   const mainRepoContributors = latestContributors?.main_repo_top_contributors || [];
   const storedMonthlyActivity = latestContributors?.main_repo_monthly_activity || [];
   const normalizedMonthlyActivity = normalizeMonthlyContributorActivity(storedMonthlyActivity);
-  const monthlyActivity = normalizedMonthlyActivity.length > 0
-    ? Array.from({ length: 12 }, (_, index) => normalizedMonthlyActivity.find(month => month.month === `2026-${String(index + 1).padStart(2, '0')}`) || ({
-      month: `2026-${String(index + 1).padStart(2, '0')}`,
-      contributor_count: 0,
-      year_first_contributor_count: 0,
-      new_contributor_count: 0,
-      issue_count: 0,
-      pr_count: 0,
-      merged_pr_count: 0,
-      unmerged_pr_count: 0,
-      year_first_contributors: [],
-      new_contributors: [],
-      contributors: [],
-      contributions: [],
-    }))
-    : [];
-  const annualContributors = new Set(normalizedMonthlyActivity.flatMap(month => month.contributors.map(contributor => contributor.login)));
-  const annualYearFirstContributors = normalizedMonthlyActivity.reduce((sum, month) => sum + month.year_first_contributor_count, 0);
-  const annualHistoricalNewContributors = normalizedMonthlyActivity.reduce((sum, month) => sum + month.new_contributor_count, 0);
-  const annualIssues = normalizedMonthlyActivity.reduce((sum, month) => sum + month.issue_count, 0);
-  const annualPrs = normalizedMonthlyActivity.reduce((sum, month) => sum + month.pr_count, 0);
-  const annualMergedPrs = normalizedMonthlyActivity.reduce((sum, month) => sum + month.merged_pr_count, 0);
-  const annualUnmergedPrs = normalizedMonthlyActivity.reduce((sum, month) => sum + month.unmerged_pr_count, 0);
+  const years = [...new Set(normalizedMonthlyActivity.map(row => Number(row.month.slice(0, 4))))].sort((a,b) => b-a);
+  const year = preferredYear !== null && years.includes(preferredYear) ? preferredYear : years[0];
+  const monthlyActivity = year && latestContributors ? contributorCalendarMonths(normalizedMonthlyActivity, year, latestContributors.date) : [];
+  const annualContributors = new Set(monthlyActivity.flatMap(month => month.contributors.map(contributor => contributor.login)));
+  const annualYearFirstContributors = monthlyActivity.reduce((sum, month) => sum + month.year_first_contributor_count, 0);
+  const annualHistoricalNewContributors = monthlyActivity.reduce((sum, month) => sum + month.new_contributor_count, 0);
+  const annualIssues = monthlyActivity.reduce((sum, month) => sum + month.issue_count, 0);
+  const annualPrs = monthlyActivity.reduce((sum, month) => sum + month.pr_count, 0);
+  const annualMergedPrs = monthlyActivity.reduce((sum, month) => sum + month.merged_pr_count, 0);
+  const annualUnmergedPrs = monthlyActivity.reduce((sum, month) => sum + month.unmerged_pr_count, 0);
   const prevGitHub = githubHistory.length > 1 ? githubHistory[githubHistory.length - 2] : null;
 
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
@@ -253,7 +242,7 @@ export default function GitHubPage() {
             </span>
           )}
           <button
-            onClick={() => exportGitHubData(data, currentPeriod)}
+            onClick={() => exportGitHubData(data, currentPeriod, monthlyActivity)}
             disabled={pending || Boolean(loadError)}
             className="px-4 py-2 border border-slate-600 text-slate-300 rounded-lg hover:bg-slate-700 text-sm font-medium transition-colors"
           >
@@ -270,6 +259,7 @@ export default function GitHubPage() {
       </div>
 
       <TimeRangeSelector allowComparison={false} onRangeChange={(range) => {
+        setPreferredYear(null);
         setDateRange({ start: range.start, end: range.end, isSingleDay: range.isSingleDay });
       }} />
 
@@ -337,7 +327,7 @@ export default function GitHubPage() {
         <div className="flex items-baseline gap-3 mb-4">
           <h2 className="text-lg font-semibold text-slate-100">社区 Issue / PR 参与者</h2>
           <span className="text-xs text-slate-400">
-            {latestContributors?.main_repo_activity_since || '待同步'} 至今 · 创建 Issue/PR 即计入参与
+            {latestContributors?.main_repo_activity_since || '待同步'} 至 {latestContributors?.date || '待同步'} · 创建 Issue/PR 即计入参与
           </span>
         </div>
         <p className="text-xs text-slate-500 mb-4">
@@ -410,15 +400,19 @@ export default function GitHubPage() {
       {monthlyActivity.length > 0 && (
         <div>
           <div className="flex flex-wrap items-baseline gap-3 mb-4">
-            <h2 className="text-lg font-semibold text-slate-100">2026 年主仓库贡献明细</h2>
-            <span className="text-xs text-slate-400">贡献者按 Issue 创建或 PR 合并计算；年内首次（往年已贡献）与历史首次（新贡献者）互不重复</span>
+            <h2 className="text-lg font-semibold text-slate-100">{year} 年主仓库贡献明细</h2>
+            <select aria-label="贡献明细年份" value={year} onChange={e => setPreferredYear(Number(e.target.value))}
+              className="rounded border border-slate-600 bg-slate-800 px-2 py-1 text-sm text-slate-200">
+              {years.map(option => <option key={option} value={option}>{option} 年</option>)}
+            </select>
+            <span className="text-xs text-slate-400">快照：{latestContributors?.date}。创建 Issue 或合并 PR 计为有效贡献；年内首次（往年已贡献）与历史首次互不重复。已合并 PR 按合并月归档。</span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-4">
-            <StatCard title="2026 贡献者" value={annualContributors.size} icon="👥" />
-            <StatCard title="2026 年首次贡献者" value={annualYearFirstContributors} icon="✨" />
+            <StatCard title={`${year} 贡献者`} value={annualContributors.size} icon="👥" />
+            <StatCard title={`${year} 年首次贡献者`} value={annualYearFirstContributors} icon="✨" />
             <StatCard title="历史首次贡献者" value={annualHistoricalNewContributors} icon="🌱" />
             <StatCard title="Issue" value={annualIssues} icon="📋" />
-            <StatCard title="PR 提交" value={annualPrs} icon="🔀" />
+            <StatCard title="PR 记录" value={annualPrs} icon="🔀" />
             <StatCard title="已合并 PR" value={annualMergedPrs} icon="✅" />
             <StatCard title="未合并 PR" value={annualUnmergedPrs} icon="⏳" />
           </div>
@@ -433,15 +427,15 @@ export default function GitHubPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="font-semibold text-slate-100">{month.month}</span>
                     <span className="text-sm text-slate-400">
-                      全部 {month.contributor_count} 人 · 2026 年首次 {month.year_first_contributor_count} 人 · 历史首次 {month.new_contributor_count} 人 · Issue {month.issue_count} · PR {month.pr_count}（合并 {month.merged_pr_count} / 未合并 {month.unmerged_pr_count}）
+                      全部 {month.contributor_count} 人 · {year} 年首次 {month.year_first_contributor_count} 人 · 历史首次 {month.new_contributor_count} 人 · Issue {month.issue_count} · PR {month.pr_count}（合并 {month.merged_pr_count} / 未合并 {month.unmerged_pr_count}）
                     </span>
                   </div>
                 </summary>
                 <div className="border-t border-slate-700/60 p-5 space-y-6">
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     <ContributorBreakdown
-                      title="2026 年首次贡献者"
-                      description="2026 年前已有贡献，本月是其年内首次有效贡献"
+                      title={`${year} 年首次贡献者`}
+                      description={`${year} 年前已有贡献，本月是其年内首次有效贡献`}
                       contributors={month.contributors}
                       names={month.year_first_contributors}
                       count={month.year_first_contributor_count}
@@ -577,7 +571,7 @@ function ContributorBreakdown({
   );
 }
 
-function exportGitHubData(data: GitHubPageData | null, period: string) {
+function exportGitHubData(data: GitHubPageData | null, period: string, monthlyActivity: MainRepoMonthlyActivity[]) {
   if (!data) return;
 
   const rows: Record<string, unknown>[] = [];
@@ -595,7 +589,7 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
 
   if (data.contributors.history.length > 0) {
     rows.push(...data.contributors.history.map(h => ({
-      指标: '2026 贡献者',
+      指标: '贡献者快照',
       日期: h.date,
       '2026 累计新增': h.cumulative_2026,
       '每日新增': h.new_contributors_daily,
@@ -618,15 +612,14 @@ function exportGitHubData(data: GitHubPageData | null, period: string) {
     });
   }
 
-  const monthlyActivity = normalizeMonthlyContributorActivity(data.contributors.latest?.main_repo_monthly_activity || []);
-
   for (const month of monthlyActivity) {
+    const year = month.month.slice(0, 4);
     rows.push({
-      指标: '2026 月度贡献汇总',
+      指标: `${year} 月度贡献汇总`,
       月份: month.month,
       本月贡献者: month.contributor_count,
-      '2026 年首次贡献者数': month.year_first_contributor_count,
-      '2026 年首次贡献者': month.year_first_contributors.join('、'),
+      [`${year} 年首次贡献者数`]: month.year_first_contributor_count,
+      [`${year} 年首次贡献者`]: month.year_first_contributors.join('、'),
       历史首次贡献者数: month.new_contributor_count,
       历史首次贡献者: month.new_contributors.join('、'),
       Issue: month.issue_count,

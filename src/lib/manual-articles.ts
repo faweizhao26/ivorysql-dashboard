@@ -1,4 +1,4 @@
-import { withDbTransaction, saveArticleDetails, updateArticleDetails, recalculateArticleStatsForDate, type ArticleDetails } from './db';
+import { withDbTransaction, insertManualArticle, updateArticleDetails, recalculateArticleStatsForDate, type ArticleDetails } from './db';
 
 export class ArticleNotFoundError extends Error {}
 
@@ -23,8 +23,6 @@ export async function mutateManualArticle(mutation: ArticleMutation): Promise<vo
     if (mutation.type !== 'create') {
       previous = (await execute('SELECT * FROM article_details WHERE id = $1 FOR UPDATE', [mutation.id])).rows[0];
       if (!previous) throw new ArticleNotFoundError('文章不存在或已被删除');
-    } else if (mutation.article.article_url) {
-      previous = (await execute('SELECT date, platform FROM article_details WHERE platform = $1 AND article_url = $2 FOR UPDATE', [targetPlatform, mutation.article.article_url])).rows[0];
     }
 
     const affected = new Map<string, { platform: string; date: string }>();
@@ -32,7 +30,7 @@ export async function mutateManualArticle(mutation: ArticleMutation): Promise<vo
     if (mutation.type === 'delete') {
       await execute('DELETE FROM article_details WHERE id = $1', [mutation.id]);
     } else {
-      if (mutation.type === 'create') await saveArticleDetails(mutation.article, execute);
+      if (mutation.type === 'create') await insertManualArticle(mutation.article, execute);
       else await updateArticleDetails(mutation.id, mutation.article, execute);
       const date = mutation.article.date ?? previous!.date;
       affected.set(`${targetPlatform}:${date}`, { platform: targetPlatform, date });

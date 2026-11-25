@@ -6,7 +6,8 @@ import {
   getLatestContributorStats,
   getLatestGitHubStats,
   recalculateArticleStatsForDates,
-  saveArticleDetails,
+  insertManualArticle,
+  saveReminderSettings,
   saveSyncedArticleDetails,
   saveSyncedArticleDetailsBatch,
 } from '../src/lib/db';
@@ -60,7 +61,7 @@ test('shares database initialization across concurrent queries', async () => {
   }
 });
 
-test('upserts linked articles by platform and URL', async () => {
+test('manual article creation cannot update an existing linked article', async () => {
   const queries: string[] = [];
 
   const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string) {
@@ -69,7 +70,7 @@ test('upserts linked articles by platform and URL', async () => {
   });
 
   try {
-    await saveArticleDetails({
+    await insertManualArticle({
       date: '2026-08-02',
       platform: 'modb',
       article_title: '同日重名文章',
@@ -79,13 +80,14 @@ test('upserts linked articles by platform and URL', async () => {
       comments: 0,
     });
 
-    assert.match(queries.at(-1) || '', /ON CONFLICT \(platform, article_url\)/);
+    assert.match(queries.at(-1) || '', /INSERT INTO article_details/);
+    assert.doesNotMatch(queries.at(-1) || '', /DO UPDATE/);
   } finally {
     queryMock.mock.restore();
   }
 });
 
-test('keeps the legacy identity for articles without a URL', async () => {
+test('changing reminder preferences does not write a data freshness timestamp', async () => {
   const queries: string[] = [];
 
   const queryMock = mock.method(Pool.prototype, 'query', async function (sql: string) {
@@ -94,16 +96,9 @@ test('keeps the legacy identity for articles without a URL', async () => {
   });
 
   try {
-    await saveArticleDetails({
-      date: '2026-08-02',
-      platform: 'wechat',
-      article_title: '无链接文章',
-      views: 10,
-      likes: 0,
-      comments: 0,
-    });
-
-    assert.match(queries.at(-1) || '', /ON CONFLICT \(date, platform, article_title\)/);
+    await saveReminderSettings({ platform: 'wechat', reminder_enabled: 1, update_frequency_days: 14 });
+    assert.match(queries.at(-1) || '', /INSERT INTO reminder_settings/);
+    assert.doesNotMatch(queries.at(-1) || '', /last_data_updated/);
   } finally {
     queryMock.mock.restore();
   }

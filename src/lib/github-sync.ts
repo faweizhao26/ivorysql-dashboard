@@ -7,7 +7,7 @@ import {
 import {
   aggregateContributorActivity,
   aggregateContributorSummary,
-  aggregateMonthlyContributorActivity,
+  contributorSnapshotMonths,
   type ContributorStatus,
   type MainRepoContributorStats,
   type ContributorActivityItem,
@@ -21,7 +21,6 @@ import {
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_MAIN_REPO = process.env.GITHUB_REPO || 'IvorySQL/IvorySQL';
 const PAGE_SIZE = 100;
-const CONTRIBUTION_YEAR = 2026;
 
 interface GitHubActivityItem {
   number: number;
@@ -105,6 +104,7 @@ async function fetchMainRepoContributorActivity(
   owner: string,
   repo: string,
   since: string,
+  until: string,
 ): Promise<MainRepoContributorActivitySnapshot> {
   const items: ContributorActivityItem[] = [];
 
@@ -120,7 +120,7 @@ async function fetchMainRepoContributorActivity(
 
       for (const item of data) {
         const createdAt = item.created_at?.slice(0, 10);
-        if (createdAt && createdAt < since) continue;
+        if (createdAt && (createdAt < since || createdAt > until)) continue;
         if (!createdAt || !item.user?.login) continue;
         if (kind === 'issues' && item.pull_request) continue;
 
@@ -133,7 +133,11 @@ async function fetchMainRepoContributorActivity(
         };
         if (item.title) activityItem.title = item.title;
         if (item.html_url) activityItem.url = item.html_url;
-        if (item.merged_at) activityItem.merged_at = item.merged_at.slice(0, 10);
+        if (item.merged_at) {
+          const mergedAt = item.merged_at.slice(0, 10);
+          if (mergedAt <= until) activityItem.merged_at = mergedAt;
+          else activityItem.status = 'open';
+        }
         items.push(activityItem);
       }
 
@@ -143,7 +147,7 @@ async function fetchMainRepoContributorActivity(
   }
 
   return {
-    stats: aggregateContributorActivity(items, since, getToday()),
+    stats: aggregateContributorActivity(items, since, until),
     items,
   };
 }
@@ -179,10 +183,10 @@ export async function syncMainRepoContributorActivity(
 ): Promise<MainRepoContributorStats> {
   const [owner, repo] = getMainRepoParts();
   const activitySince = since || (await getMainRepoMetrics()).repository_created_at;
-  const activity = await fetchMainRepoContributorActivity(owner, repo, activitySince);
+  const activity = await fetchMainRepoContributorActivity(owner, repo, activitySince, date);
   await saveMainRepoContributorStats(date, {
     ...activity.stats,
-    monthly_activity: aggregateMonthlyContributorActivity(activity.items, CONTRIBUTION_YEAR),
+    monthly_activity: contributorSnapshotMonths(activity.items, date),
   }, activitySince);
   return activity.stats;
 }
@@ -210,12 +214,13 @@ export async function syncGitHubData(): Promise<{
       owner,
       repo,
       mainStats.repository_created_at,
+      today,
     );
     const contributorSummary = aggregateContributorSummary(
       mainRepoActivity.items,
       mainStats.repository_created_at,
       today,
-      CONTRIBUTION_YEAR,
+      2026, // The persisted before_2026 and cumulative_2026 columns never roll over.
     );
 
     await saveGitHubStats({
@@ -238,7 +243,7 @@ export async function syncGitHubData(): Promise<{
     await saveMainRepoContributorStats(today, {
       ...mainRepoActivity.stats,
       code_contributors: mainStats.contributors,
-      monthly_activity: aggregateMonthlyContributorActivity(mainRepoActivity.items, CONTRIBUTION_YEAR),
+      monthly_activity: contributorSnapshotMonths(mainRepoActivity.items, today),
     }, mainStats.repository_created_at);
 
     return {

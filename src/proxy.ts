@@ -80,6 +80,9 @@ export async function proxy(request: NextRequest) {
   }
 
   if (accessLevel === 'viewer') {
+    if ((request.method === 'GET' || request.method === 'HEAD') && pathname.replace(/\/$/, '') === '/api/reminders') {
+      return NextResponse.json({ error: '仅管理员可查看提醒配置' }, { status: 403 });
+    }
     if (pathname.startsWith('/admin') || pathname === '/reports' || pathname.startsWith('/reports/')) {
       return NextResponse.redirect(new URL('/auth?error=admin_required', request.url));
     }

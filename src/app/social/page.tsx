@@ -2,27 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { getBeijingDate } from '@/lib/date';
-import { fetchMetricPeriods, metricChange } from '@/lib/metric-periods';
+import { fetchMetricPeriods } from '@/lib/metric-periods';
 import { TimeRangeSelector, DateRange, Comparison } from '@/components/TimeRangeSelector';
 import { PlatformIcon } from '@/components/PlatformIcon';
 import { downloadCSV } from '@/lib/csv-utils';
 import LastUpdated from '@/components/LastUpdated';
-import { formatFreshnessLabel, getLatestUpdatedAt, type DataSlice } from '@/lib/data-slices';
+import { getLatestUpdatedAt, type DataSlice } from '@/lib/data-slices';
+import type { SocialStats } from '@/lib/db';
+import { PlatformMetrics } from './PlatformMetrics';
 
 interface SocialData {
-  social: Array<{
-    date: string;
-    platform: string;
-    followers: number;
-    posts: number;
-    views: number;
-    likes: number;
-    shares: number;
-    comments: number;
-    subscribers: number;
-    video_views: number;
-  }>;
-  freshness: Record<string, DataSlice<unknown>>;
+  social: SocialStats[];
+  freshness?: Record<string, DataSlice<SocialStats>>;
 }
 
 interface PlatformCardData {
@@ -90,17 +81,9 @@ export default function SocialPage() {
   }
 
   const socialDataList = loading || error ? [] : data?.social || [];
-  const platformData = socialPlatforms.reduce((acc, { key }) => {
-    const platformItems = socialDataList.filter(s => s.platform === key);
-    const latest = platformItems[platformItems.length - 1];
-    acc[key] = { current: latest, history: platformItems };
-    return acc;
-  }, {} as Record<string, { current: SocialData['social'][number] | undefined; history: SocialData['social'] }>);
-
   const currentPeriod = `${dateRange.start} ~ ${dateRange.end}`;
   const displayDate = dateRange.start === dateRange.end ? dateRange.start : null;
   const lastUpdated = getLatestUpdatedAt(Object.values(data?.freshness || {}));
-  const previousByPlatform = Object.fromEntries((previous?.social || []).map(item => [item.platform, item]));
 
   return (
     <div className="space-y-6">
@@ -146,13 +129,6 @@ export default function SocialPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {socialPlatforms.map(({ key, name, accent, description }, index) => {
-          const platform = platformData[key];
-          const current = platform?.current;
-          const followers = current ? current.followers || current.subscribers : undefined;
-          const posts = current?.posts;
-          const views = current ? current.views || current.video_views : undefined;
-          const before = previousByPlatform[key];
-
           return (
             <div key={key} className="card p-8 relative overflow-hidden group" style={{ animationDelay: `${index * 0.1}s` }}>
               <div className="absolute top-0 right-0 w-32 h-32 opacity-5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:opacity-10 transition-opacity" style={{ backgroundColor: accent }} />
@@ -167,28 +143,12 @@ export default function SocialPage() {
                   </div>
                 </div>
 
-                <div className="mb-4 p-4 rounded-xl" style={{ backgroundColor: `${accent}08`, border: `1px solid ${accent}15` }}>
-                  <div className="text-slate-400 text-xs font-medium mb-1">粉丝 / 订阅者</div>
-                  <div className="text-3xl font-bold text-slate-100">{followers?.toLocaleString() ?? '-'}</div>
-                  <PreviousMetric current={followers} previous={before ? before.followers || before.subscribers : undefined} enabled={Boolean(comparison?.enabled)} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-900/50 rounded-xl p-4 text-center">
-                    <div className="text-slate-500 text-xs mb-1">帖子 / 视频</div>
-                    <div className="text-xl font-bold text-slate-200">{posts?.toLocaleString() ?? '-'}</div>
-                    <PreviousMetric current={posts} previous={before?.posts} enabled={Boolean(comparison?.enabled)} />
-                  </div>
-                  <div className="bg-slate-900/50 rounded-xl p-4 text-center">
-                    <div className="text-slate-500 text-xs mb-1">阅读 / 播放</div>
-                    <div className="text-xl font-bold text-slate-200">
-                      {views === undefined ? '-' : views >= 10000 ? `${(views / 10000).toFixed(1)}万` : views.toLocaleString()}
-                    </div>
-                    <PreviousMetric current={views} previous={before ? before.views || before.video_views : undefined} enabled={Boolean(comparison?.enabled)} />
-                  </div>
-                </div>
-                <p className="mt-3 text-xs text-slate-500">{formatFreshnessLabel(loading || error ? null : data?.freshness?.[key])}</p>
-                {!loading && comparison?.enabled && <p className="mt-1 text-xs text-slate-500">对比期：{formatFreshnessLabel(previous?.freshness?.[key])}</p>}
+                <PlatformMetrics
+                  current={!loading && !error ? data?.freshness?.[key] : undefined}
+                  previous={previous?.freshness?.[key]}
+                  compare={Boolean(comparison?.enabled && !loading && !error && !comparisonError)}
+                  accent={accent}
+                />
               </div>
             </div>
           );
@@ -196,12 +156,6 @@ export default function SocialPage() {
       </div>
     </div>
   );
-}
-
-function PreviousMetric({ current, previous, enabled }: { current: number | undefined; previous: number | undefined; enabled: boolean }) {
-  if (!enabled) return null;
-  const change = metricChange(current, previous);
-  return <p className="mt-1 text-xs text-slate-400">{previous === undefined ? '对比期暂无数据' : `对比期 ${previous.toLocaleString()}`}{change !== undefined && <span className={change >= 0 ? 'ml-2 text-emerald-400' : 'ml-2 text-red-400'}>{change > 0 ? '+' : ''}{change.toFixed(1)}%</span>}</p>;
 }
 
 function exportSocialData(data: SocialData['social'], period: string) {

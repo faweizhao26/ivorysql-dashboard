@@ -17,6 +17,7 @@ export async function generateOperationsReport(period: ReportPeriod) {
       COALESCE(NULLIF(published_date, ''), date) AS date FROM article_details
       WHERE COALESCE(NULLIF(published_date, ''), date) BETWEEN $1 AND $2
       ORDER BY platform, views DESC NULLS LAST, id`, [compareReportPeriod(period).prior.start, period.end]);
+    // Later syncs can backfill the last day of a closed period. Filter by action date in the report.
     const github = await data(`SELECT date, main_repo_monthly_activity AS months FROM contributor_stats
       WHERE jsonb_typeof(main_repo_monthly_activity) = 'array' AND main_repo_monthly_activity <> '[]'::jsonb
       ORDER BY date DESC LIMIT 1`);

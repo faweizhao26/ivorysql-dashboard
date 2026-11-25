@@ -84,6 +84,34 @@ export function isCurrentContributionMonth(month: string, today: Date = new Date
   return month === getBeijingDate(today).slice(0, 7);
 }
 
+export function contributorCalendarMonths(rows: MainRepoMonthlyActivity[], year: number, through: string): MainRepoMonthlyActivity[] {
+  const byMonth = new Map(rows.map(row => [row.month, row]));
+  const months: MainRepoMonthlyActivity[] = [];
+  for (let i = 1; i <= 12; i++) {
+    const month = `${year}-${String(i).padStart(2, '0')}`;
+    if (month > through.slice(0, 7)) break;
+    months.push(byMonth.get(month) ?? {
+      month, contributor_count: 0, year_first_contributor_count: 0, new_contributor_count: 0,
+      issue_count: 0, pr_count: 0, merged_pr_count: 0, unmerged_pr_count: 0,
+      year_first_contributors: [], new_contributors: [], contributors: [], contributions: [],
+    });
+  }
+  return months;
+}
+
+// The original snapshots covered 2026. Keep their flat JSON format and add
+// elapsed months, including measured zeros, without changing historical rows.
+export function contributorSnapshotMonths(items: ContributorActivityItem[], date: string): MainRepoMonthlyActivity[] {
+  const lastYear = Number(date.slice(0, 4));
+  const rows = aggregateMonthlyContributorActivity(items, 2026, lastYear);
+  const byYear = Map.groupBy(rows, row => Number(row.month.slice(0, 4)));
+  const result: MainRepoMonthlyActivity[] = [];
+  for (let year = 2026; year <= lastYear; year++) {
+    result.push(...contributorCalendarMonths(byYear.get(year) ?? [], year, date));
+  }
+  return result;
+}
+
 export function aggregateContributorActivity(
   items: ContributorActivityItem[],
   since: string,
@@ -151,7 +179,8 @@ export function aggregateContributorActivity(
 
 export function aggregateMonthlyContributorActivity(
   items: ContributorActivityItem[],
-  year: number,
+  firstYear: number,
+  lastYear = firstYear,
 ): MainRepoMonthlyActivity[] {
   const seenItems = new Set<string>();
   const uniqueItems = [...items]
@@ -164,17 +193,12 @@ export function aggregateMonthlyContributorActivity(
       return true;
     });
   const firstSeen = new Map<string, string>();
-  const firstSeenInYear = new Map<string, string>();
 
   for (const item of uniqueItems) {
     const contributionDate = getValidContributionDate(item);
     if (!contributionDate) continue;
     const previousDate = firstSeen.get(item.author);
     if (!previousDate || contributionDate < previousDate) firstSeen.set(item.author, contributionDate);
-    if (new Date(`${contributionDate}T00:00:00Z`).getUTCFullYear() === year) {
-      const previousYearDate = firstSeenInYear.get(item.author);
-      if (!previousYearDate || contributionDate < previousYearDate) firstSeenInYear.set(item.author, contributionDate);
-    }
   }
 
   const monthly = new Map<string, {
@@ -189,7 +213,8 @@ export function aggregateMonthlyContributorActivity(
 
   for (const item of uniqueItems) {
     const activityDate = getMonthlyActivityDate(item);
-    if (new Date(`${activityDate}T00:00:00Z`).getUTCFullYear() !== year) continue;
+    const year = Number(activityDate.slice(0, 4));
+    if (year < firstYear || year > lastYear) continue;
 
     const month = activityDate.slice(0, 7);
     const current = monthly.get(month) || {
@@ -223,7 +248,7 @@ export function aggregateMonthlyContributorActivity(
     monthly.set(month, current);
   }
 
-  return Array.from(monthly, ([month, data]) => {
+  const rows = Array.from(monthly, ([month, data]) => {
     const contributors = Array.from(data.counts, ([login, counts]) => ({
       login,
       ...counts,
@@ -231,11 +256,6 @@ export function aggregateMonthlyContributorActivity(
     }))
       .filter(contributor => data.validContributors.has(contributor.login))
       .sort((a, b) => b.total - a.total || a.login.localeCompare(b.login));
-    const yearFirstContributors = contributors
-      .filter(contributor => firstSeenInYear.get(contributor.login)?.slice(0, 7) === month
-        && firstSeen.get(contributor.login)! < `${year}-01-01`)
-      .map(contributor => contributor.login)
-      .sort();
     const newContributors = contributors
       .filter(contributor => firstSeen.get(contributor.login)?.slice(0, 7) === month)
       .map(contributor => contributor.login)
@@ -244,18 +264,17 @@ export function aggregateMonthlyContributorActivity(
     return {
       month,
       contributor_count: data.validContributors.size,
-      year_first_contributor_count: yearFirstContributors.length,
       new_contributor_count: newContributors.length,
       issue_count: data.issue_count,
       pr_count: data.pr_count,
       merged_pr_count: data.merged_pr_count,
       unmerged_pr_count: data.unmerged_pr_count,
-      year_first_contributors: yearFirstContributors,
       new_contributors: newContributors,
       contributors,
       contributions: data.contributions,
     };
   }).sort((a, b) => a.month.localeCompare(b.month));
+  return normalizeMonthlyContributorActivity(rows);
 }
 
 export function aggregateContributorSummary(

@@ -119,3 +119,30 @@ test('activity outcomes, dated GitHub actions and both first-contribution cohort
   assert.ok(!github.some(row=>row.text.includes('2026-09-28')));
   assert.ok(report.sections[0].table?.rows.some(row=>row[0]==='往年贡献过、本年首次（人）'));
 });
+
+test('January compares with December using the first valid date in each year, not the first date across both', () => {
+  const history = [
+    { number: 1, type: 'issue', status: 'open', author: 'veteran', created_at: '2025-06-01' },
+    { number: 2, type: 'issue', status: 'open', author: 'returns', created_at: '2026-12-01' },
+    { number: 3, type: 'pr', status: 'merged', author: 'returns', created_at: '2026-12-20', merged_at: '2027-01-07' },
+    { number: 4, type: 'issue', status: 'open', author: 'returns', created_at: '2027-01-09' },
+    { number: 5, type: 'issue', status: 'open', author: 'veteran', created_at: '2027-01-04' },
+    { number: 6, type: 'issue', status: 'open', author: 'new', created_at: '2027-01-10' },
+  ] as const;
+  const december = aggregateMonthlyContributorActivity([...history], 2026);
+  const january = aggregateMonthlyContributorActivity([...history], 2027);
+  const period = reportPeriod('month','2027-01','2027-02-02');
+  const make = (months: typeof january) => buildOperationsReport(period, { ...sources, github: { date:'2027-01-31', months } }, report.generatedAt);
+  const full = make([...december, ...january]);
+  const rows = full.sections[0].table!.rows;
+  const pair = (label: string) => rows.find(row => row[0] === label)?.slice(1,3);
+  assert.deepEqual(pair('有效贡献者（人）'), ['3','1']);
+  assert.deepEqual(pair('历史首次贡献者（人）'), ['1','1']);
+  assert.deepEqual(pair('往年贡献过、本年首次（人）'), ['2','0']);
+  assert.deepEqual(pair('提交 PR（条）'), ['0','1']);
+  assert.deepEqual(pair('合并 PR（条）'), ['1','0']);
+  assert.match(reportText(full), /往年贡献过、本年首次：returns（2027-01-07）、veteran（2027-01-04）/);
+  assert.equal(full.sections.find(s => s.title.startsWith('期内趋势'))?.table?.rows[0].at(-1), '2');
+  assert.equal(make(january).sections[0].table?.rows.find(row => row[0] === '有效贡献者（人）')?.[2], '—');
+  assert.match(reportText(make(december)), /所选年份暂无/);
+});

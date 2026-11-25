@@ -8,15 +8,19 @@ import {
   type ReminderSettings,
 } from '@/lib/db';
 import { isReminderEligible } from '@/lib/data-safeguards';
+import { eventAccess } from '@/lib/event-access';
+
+const denied = () => NextResponse.json({ error: '仅管理员可管理提醒配置' }, { status: 403 });
 
 export async function GET(request: Request) {
+  if (await eventAccess() !== 'admin') return denied();
   const { searchParams } = new URL(request.url);
   const platform = searchParams.get('platform');
 
   try {
     if (platform) {
       const settings = await getReminderSettings(platform) as ReminderSettings | null;
-      return NextResponse.json(settings);
+      return NextResponse.json(settings, { headers: { 'Cache-Control': 'private, no-store' } });
     }
 
     const settings = (await getReminderSettings() as ReminderSettings[]).filter(setting => isReminderEligible(setting.platform));
@@ -26,7 +30,7 @@ export async function GET(request: Request) {
       settings,
       stalePlatforms,
       hasStaleData: stalePlatforms.length > 0
-    });
+    }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     console.error('Error fetching reminder settings:', error);
     return NextResponse.json({ error: 'Failed to fetch data' }, { status: 500 });
@@ -34,6 +38,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (await eventAccess() !== 'admin') return denied();
   try {
     const body = await request.json();
     const { platform, update_frequency_days, reminder_enabled, webhook_url } = body;
@@ -60,6 +65,7 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  if (await eventAccess() !== 'admin') return denied();
   try {
     const body = await request.json();
     const { platform, action } = body;

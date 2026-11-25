@@ -145,6 +145,26 @@ test('snapshot excludes future eligible dates including future merges of old PRs
   assert.deepEqual(summary, ['2025-12-31', 42, 1, 1, 1, 1, 1, 0]);
 });
 
+test('2027 snapshots retain 2026 details and count a returning newcomer only as year-first', async t => {
+  const { activity, summary } = await runSync(t, [
+    issue(1, 'returning', '2026-12-24'),
+    pr(2, 'returning', '2026-12-31', '2027-01-02'),
+    issue(3, 'new', '2027-01-02'),
+    issue(4, 'future', '2027-01-31'),
+    pr(5, 'pending', '2027-01-01', '2027-02-01'),
+  ], { today: '2027-01-02' });
+  const months = JSON.parse(String(activity?.[13])) as import('../src/lib/contributor-activity').MainRepoMonthlyActivity[];
+  const dec = months.find(m => m.month === '2026-12');
+  const jan = months.find(m => m.month === '2027-01');
+  assert.deepEqual(dec?.new_contributors, ['returning']);
+  assert.deepEqual(jan?.year_first_contributors, ['returning']);
+  assert.deepEqual(jan?.new_contributors, ['new']);
+  assert.equal(jan?.contributor_count, 2);
+  assert.equal(jan?.unmerged_pr_count, 1);
+  assert.ok(!months.some(m => m.month > '2027-01' || m.contributions.some(c => c.author === 'future')));
+  assert.deepEqual(summary, ['2027-01-02', 42, 0, 1, 1, 2, 2, 1]);
+});
+
 test('empty complete history produces measured zeros', async (t) => {
   const { result, summary } = await runSync(t, []);
   assert.equal(result.success, true);

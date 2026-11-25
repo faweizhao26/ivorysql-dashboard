@@ -464,9 +464,9 @@ export interface ArticleDetails {
   platform: string;
   article_title: string;
   article_url?: string;
-  views: number;
-  likes: number;
-  comments: number;
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
   content_category?: string;
   content_source?: string;
   published_date?: string;
@@ -860,25 +860,11 @@ export async function getLatestGitHubActivityMonths(): Promise<MainRepoMonthlyAc
   return result.rows[0]?.main_repo_monthly_activity ?? [];
 }
 
-export async function saveArticleDetails(article: ArticleDetails, execute = query): Promise<void> {
-  const conflictTarget = article.article_url
-    ? `(platform, article_url) WHERE article_url IS NOT NULL AND article_url <> ''`
-    : `(date, platform, article_title) WHERE article_url IS NULL OR article_url = ''`;
-
+export async function insertManualArticle(article: ArticleDetails, execute = query): Promise<void> {
   await execute(`
     INSERT INTO article_details 
     (date, platform, article_title, article_url, views, likes, comments, content_category, content_source, published_date)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    ON CONFLICT ${conflictTarget} DO UPDATE SET
-      date = EXCLUDED.date,
-      article_title = EXCLUDED.article_title,
-      article_url = EXCLUDED.article_url,
-      views = EXCLUDED.views,
-      likes = EXCLUDED.likes,
-      comments = EXCLUDED.comments,
-      content_category = COALESCE(EXCLUDED.content_category, article_details.content_category),
-      content_source = COALESCE(EXCLUDED.content_source, article_details.content_source),
-      updated_at = CURRENT_TIMESTAMP
   `, [article.date, article.platform, article.article_title, article.article_url || null,
     article.views, article.likes, article.comments,
     article.content_category || null, article.content_source || null, article.published_date || null]);
@@ -1100,16 +1086,15 @@ export async function getAllArticleDetailsForExport(platform?: string, range?: A
 export async function saveReminderSettings(settings: ReminderSettings): Promise<void> {
   await query(`
     INSERT INTO reminder_settings 
-    (platform, update_frequency_days, reminder_enabled, webhook_url, last_data_updated, updated_at)
-    VALUES ($1, $2, $3, $4, COALESCE($5, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)
+    (platform, update_frequency_days, reminder_enabled, webhook_url, updated_at)
+    VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
     ON CONFLICT (platform) DO UPDATE SET
       update_frequency_days = EXCLUDED.update_frequency_days,
       reminder_enabled = EXCLUDED.reminder_enabled,
       webhook_url = EXCLUDED.webhook_url,
-      last_data_updated = COALESCE(EXCLUDED.last_data_updated, reminder_settings.last_data_updated),
       updated_at = CURRENT_TIMESTAMP
   `, [settings.platform, settings.update_frequency_days, settings.reminder_enabled,
-      settings.webhook_url || null, settings.last_data_updated || null]);
+      settings.webhook_url || null]);
 }
 
 export async function getReminderSettings(platform?: string): Promise<ReminderSettings | ReminderSettings[] | null> {
@@ -1137,7 +1122,7 @@ export async function updateReminderLastUpdated(platform: string): Promise<void>
   `, [platform]);
 }
 
-export async function getStalePlatforms(): Promise<{ platform: string; daysSinceUpdate: number; updateFrequency: number }[]> {
+export async function getStalePlatforms(): Promise<{ platform: string; daysSinceUpdate: number | null; updateFrequency: number }[]> {
   const result = await query(`
     SELECT r.*,
       CASE WHEN s.run_count > 0 THEN s.last_success_at ELSE r.last_data_updated END AS effective_updated_at
@@ -1153,14 +1138,13 @@ export async function getStalePlatforms(): Promise<{ platform: string; daysSince
   
   return result.rows.map(s => {
     const updatedAt = contentUpdateMode(s.platform) === 'manual' ? s.last_data_updated : s.effective_updated_at;
-    const lastUpdated = updatedAt ? new Date(updatedAt) : new Date(0);
-    const daysSinceUpdate = Math.floor((today.getTime() - lastUpdated.getTime()) / (1000 * 60 * 60 * 24));
+    const daysSinceUpdate = updatedAt ? Math.floor((today.getTime() - new Date(updatedAt).getTime()) / 86_400_000) : null;
     return {
       platform: s.platform,
       daysSinceUpdate,
       updateFrequency: s.update_frequency_days
     };
-  }).filter(s => s.daysSinceUpdate >= s.updateFrequency);
+  }).filter(s => s.daysSinceUpdate === null || s.daysSinceUpdate >= s.updateFrequency);
 }
 
 export async function logReminderSent(platform: string, status: string): Promise<void> {

@@ -6,7 +6,7 @@ import { POST, PUT, DELETE, parseArticleDetailsInput } from '../src/app/api/arti
 const article = { id: 1, date: '2026-10-10', platform: 'wechat', article_title: 'IvorySQL', article_url: 'https://example.com/article', views: 10, likes: 2, comments: 1 };
 type RecordedQuery = { sql: string; values?: unknown[]; transactional: boolean };
 
-async function capture(operation: () => Promise<Response>, options: { failOn?: RegExp; missing?: boolean; empty?: boolean } = {}) {
+async function capture(operation: () => Promise<Response>, options: { failOn?: RegExp; missing?: boolean; empty?: boolean; duplicate?: boolean } = {}) {
   const queries: RecordedQuery[] = [];
   let transactional = false;
   const execute = async (sql: string, values?: unknown[]) => {
@@ -14,6 +14,7 @@ async function capture(operation: () => Promise<Response>, options: { failOn?: R
     if (sql === 'BEGIN') transactional = true;
     if (!sql.startsWith('CREATE TABLE')) queries.push({ sql, values, transactional });
     if (options.failOn?.test(sql)) throw new Error('Injected write failure');
+    if (options.duplicate && /^INSERT INTO article_details/.test(sql) && !sql.includes('DO UPDATE')) throw Object.assign(new Error('Duplicate article'), { code: '23505' });
     if (sql === 'COMMIT' || sql === 'ROLLBACK') transactional = false;
     if (/SELECT[\s\S]*FROM article_details/.test(sql)) {
       return { rows: options.missing || options.empty && !/WHERE id/.test(sql) ? [] : [article] };
@@ -59,19 +60,33 @@ test('a malformed article JSON body is a client error', async () => {
   assert.deepEqual(queries, []);
 });
 
-test('upsert rebuilds old and new dates inside one transaction and shares automatic sync locks', async () => {
+test('create refreshes only its own date inside one transaction and shares automatic sync locks', async () => {
   const { response, queries } = await capture(() => POST(request('POST', { ...article, date: '2026-10-19' })));
   assert.equal(response.status, 200);
   assert.equal(queries[0].sql, 'BEGIN');
   assert.equal(queries.at(-1)?.sql, 'COMMIT');
   assert.ok(queries.slice(0, -1).every(query => query.transactional));
-  const lookup = queries.findIndex(query => /SELECT[\s\S]*FROM article_details/.test(query.sql));
+  const insert = queries.findIndex(query => /^INSERT INTO article_details/.test(query.sql));
   const lock = queries.findIndex(query => /pg_advisory_xact_lock/.test(query.sql));
-  assert.ok(lock >= 0 && lock < lookup);
+  assert.ok(lock >= 0 && lock < insert);
   assert.ok(queries.some(query => query.values?.includes('article-sync:wechat')));
   const aggregateDates = queries.filter(query => /INSERT INTO article_stats/.test(query.sql)).map(query => query.values?.[0]);
-  assert.deepEqual(aggregateDates.sort(), ['2026-10-10', '2026-10-19']);
+  assert.deepEqual(aggregateDates, ['2026-10-19']);
   assert.match(queries.at(-2)!.sql, /UPDATE reminder_settings/);
+});
+
+test('missing counters remain unknown and an explicit zero remains measured', async () => {
+  const { response, queries } = await capture(() => POST(request('POST', { ...article, views: null, likes: 0, comments: undefined })));
+  assert.equal(response.status, 200);
+  const insert = queries.find(q => /^INSERT INTO article_details/.test(q.sql))!;
+  assert.deepEqual(insert.values?.slice(4, 7), [null, 0, null]);
+});
+
+test('a duplicate create rolls back without changing the existing article or reminders', async () => {
+  const { response, queries } = await capture(() => POST(request('POST', article)), { duplicate: true });
+  assert.equal(response.status, 409);
+  assert.equal(queries.at(-1)?.sql, 'ROLLBACK');
+  assert.ok(!queries.some(q => /UPDATE reminder_settings|INSERT INTO article_stats/.test(q.sql)));
 });
 
 test('partial edits retain missing and unknown metrics and recompute the effective date', async () => {

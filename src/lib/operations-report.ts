@@ -47,32 +47,45 @@ export function buildOperationsReport(period: ReportPeriod, data: ReportSources,
       reads: readings.reduce((sum, views) => sum + views, 0), median: median(readings) };
   });
 
-  const coverage = '2026';
   const github = data.github;
-  const covered = github && start.slice(0, 4) === coverage;
-  const items = [...new Map(github?.months.flatMap(m => m.contributions).map(c => [c.type + ':' + c.number, c]) ?? []).values()];
-  const issues = items.filter(c => c.type === 'issue' && within(c.created_at));
-  const opened = items.filter(c => c.type === 'pr' && within(c.created_at));
-  const merged = items.filter(c => c.type === 'pr' && c.status === 'merged' && within(c.merged_at));
-  const contributors = new Set([...issues, ...merged].map(c => c.author));
-  const months = covered ? normalizeMonthlyContributorActivity(github.months) : [];
-  const firstSeen = new Map<string,string>();
-  for (const item of items) {
-    const day = item.type === 'issue' ? item.created_at : item.status === 'merged' ? item.merged_at : undefined;
-    if (!day?.startsWith(coverage + '-')) continue;
-    const earliest = firstSeen.get(item.author);
-    if (!earliest || day < earliest) firstSeen.set(item.author, day);
-  }
-  const historical = new Set(months.flatMap(m => m.new_contributors));
-  const returning = new Set(months.flatMap(m => m.year_first_contributors));
-  const firstIn = (names: Set<string>, range: ReportRange) => [...names].filter(name => inRange(firstSeen.get(name), range)).sort();
-  const newcomers = firstIn(historical, period);
-  const firstThisYear = firstIn(returning, period);
-  const githubLines = covered ? [
-    line(`记录到 Issue 创建 ${issues.length} 条、PR 提交 ${opened.length} 条、PR 合并 ${merged.length} 条。`),
-    line(`有效贡献者 ${contributors.size} 人，历史首次 ${newcomers.length} 人，往年贡献过、本年首次 ${firstThisYear.length} 人。创建 Issue 或合并 PR 计为有效贡献，两类首次不重复，同一人跨月去重。`),
-    ...(newcomers.length ? [line(`历史首次：${newcomers.map(name => name + '（' + firstSeen.get(name) + '）').join('、')}。`)] : []),
-    ...(firstThisYear.length ? [line(`往年贡献过、本年首次：${firstThisYear.map(name => name + '（' + firstSeen.get(name) + '）').join('、')}。`)] : []),
+  const months = normalizeMonthlyContributorActivity(github?.months ?? []);
+  const years = new Set(months.map(m => m.month.slice(0, 4)));
+  // PRs live in their merge month, but submission counts use their creation date.
+  const items = [...new Map(months.flatMap(m => m.contributions).map(c => [c.type + ':' + c.number, c])).values()];
+  const firsts = months.flatMap(month => {
+    const firstDate = new Map<string,string>();
+    for (const item of month.contributions) {
+      const date = item.type === 'issue' ? item.created_at : item.status === 'merged' ? item.merged_at : undefined;
+      if (!date || date.slice(0, 7) !== month.month) continue;
+      const day = date.slice(0, 10);
+      if (!firstDate.has(item.author) || day < firstDate.get(item.author)!) firstDate.set(item.author, day);
+    }
+    const cohort = (names: string[], historical: boolean) => names.flatMap(name => {
+      const day = firstDate.get(name);
+      return day ? [{ name, day, historical }] : [];
+    });
+    return [...cohort(month.new_contributors, true), ...cohort(month.year_first_contributors, false)];
+  }).sort((a,b) => a.name.localeCompare(b.name));
+  const githubIn = (range: ReportRange) => {
+    if (!github || github.date < range.start || !years.has(range.start.slice(0, 4))) return null;
+    const observed = { start: range.start, end: github.date < range.end ? github.date : range.end };
+    const issues = items.filter(c => c.type === 'issue' && inRange(c.created_at, observed));
+    const merges = items.filter(c => c.type === 'pr' && c.status === 'merged' && inRange(c.merged_at, observed));
+    const first = firsts.filter(c => inRange(c.day, observed));
+    const names = (historical: boolean) => first.filter(c => c.historical === historical).map(c => `${c.name}（${c.day}）`);
+    const newcomers = names(true), returning = names(false);
+    return {
+      people: new Set([...issues, ...merges].map(c => c.author)).size, issues: issues.length, merged: merges.length,
+      submitted: items.filter(c => c.type === 'pr' && inRange(c.created_at, observed)).length,
+      historical: newcomers.length, returning: returning.length, newcomers, returningNames: returning,
+    };
+  };
+  const current = githubIn(period);
+  const githubLines = current && github ? [
+    line(`记录到 Issue 创建 ${current.issues} 条、PR 提交 ${current.submitted} 条、PR 合并 ${current.merged} 条。`),
+    line(`有效贡献者 ${current.people} 人，历史首次 ${current.historical} 人，往年贡献过、本年首次 ${current.returning} 人。创建 Issue 或合并 PR 计为有效贡献，两类首次不重复，同一人跨月去重。`),
+    ...(current.historical ? [line(`历史首次：${current.newcomers.join('、')}。`)] : []),
+    ...(current.returning ? [line(`往年贡献过、本年首次：${current.returningNames.join('、')}。`)] : []),
     line(`来源：${github.date} 的主仓库月度快照。${github.date < end ? '快照早于统计截止日，本期数据可能不全。' : ''}PR 提交数以快照收录的明细为准。`),
   ] : [line('所选年份暂无可用的主仓库月度贡献明细，未估算人数或活动量。')];
   const counterLine = ({ label, start: a, end: b }: ReportSources['counters'][number]) => {
@@ -133,17 +146,12 @@ export function buildOperationsReport(period: ReportPeriod, data: ReportSources,
   const count = (range: ReportRange) => {
     const local = data.contributions.filter(c => inRange(c.date, range));
     const publications = data.articles.filter(a => inRange(a.date, range));
-    const completeGithub = github && range.start.startsWith(coverage + '-') && github.date >= range.end;
-    const issues = completeGithub ? items.filter(c => c.type === 'issue' && inRange(c.created_at, range)) : [];
-    const merges = completeGithub ? items.filter(c => c.type === 'pr' && c.status === 'merged' && inRange(c.merged_at, range)) : [];
     return {
       articles: publications.length, channels: segments(publications.map(a => platformName(a.platform))), events: heldIn(range).length,
       focus: articleFocus(range),
       advocates: new Set(local.map(c => c.participant_id)).size, actions: local.length,
       qualified: [...milestones.values()].filter(date => inRange(date, range)).length,
-      github: completeGithub ? { people: new Set([...issues, ...merges].map(c => c.author)).size, issues: issues.length,
-        submitted: items.filter(c => c.type === 'pr' && inRange(c.created_at,range)).length, merged: merges.length,
-        historical: firstIn(historical,range).length, returning: firstIn(returning,range).length } : null,
+      github: github && github.date >= range.end ? githubIn(range) : null,
     };
   };
   const analysis = analyzeOperations(period, {
@@ -158,14 +166,14 @@ export function buildOperationsReport(period: ReportPeriod, data: ReportSources,
     upcoming: upcoming.length,
     unassigned: activities.filter(e => ['intent','preparing','confirmed'].includes(e.detail.status) && !e.event_date && !e.detail.month).length,
     incompleteCounters: data.counters.filter(c => c.start?.value == null || c.end?.value == null || c.start.date !== shiftDate(start,-1) || c.end.date !== end).map(c => c.label),
-    githubCurrent: Boolean(covered && github.date >= end),
+    githubCurrent: Boolean(current && github && github.date >= end),
   }, count);
 
   return {
     period, generatedAt,
     summary: [
       `本期看板记录了 ${released.length} 条渠道发布记录（跨渠道分别计数）。${measured.length ? `有数据的 ${measured.length} 条截至生成日累计阅读 ${number(reads)} 次。` : '暂无可汇总的阅读量。'}`,
-      ...(covered ? [`主仓库快照记录到 ${contributors.size} 位有效贡献者，其中 ${newcomers.length} 位是历史首次贡献者。`] : []),
+      ...(current ? [`主仓库快照记录到 ${current.people} 位有效贡献者，其中 ${current.historical} 位是历史首次贡献者。`] : []),
       `本期记录 ${completed.length} 场已完成活动。${archive.length ? `另有 ${archive.length} 条历史活动记录未确认完成状态。` : ''}`,
       `${active.size} 人完成了 ${actions} 项有日期的布道行为，${qualified.length} 人本期首次达到 100 分。`,
     ],
@@ -179,7 +187,7 @@ export function buildOperationsReport(period: ReportPeriod, data: ReportSources,
         })),
         line('文章按渠道记录列示。投稿来自明确的来源标记或与布道者官方供稿记录匹配的文章链接；未把一般社区来稿推定为布道者投稿。'),
       ], appendix:articleDetails },
-      { title: 'GitHub 社区', lines: [...data.counters.slice(0, 2).map(counterLine), ...githubLines], appendix:covered ? contributorDetails(items,within) : [] },
+      { title: 'GitHub 社区', lines: [...data.counters.slice(0, 2).map(counterLine), ...githubLines], appendix:current && github ? contributorDetails(items, day => within(day) && day! <= github.date) : [] },
       { title: '社区活动', lines: [
         line(`已完成活动 ${held.length} 场；参与人数按每场已填数据列示，不做跨活动人数去重。`),
         ...(held.length ? [line('已完成类型：' + segments(held.map(eventType)).map(t => t.label + ' ' + t.count + ' 场').join('、') + '。')] : []),

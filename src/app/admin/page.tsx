@@ -26,6 +26,7 @@ interface DataEntry {
 interface ArticleEntry {
   id?: number;
   date: string;
+  published_date?: string | null;
   platform: string;
   article_title: string;
   article_url?: string;
@@ -47,7 +48,7 @@ interface ReminderSetting {
 
 interface StalePlatform {
   platform: string;
-  daysSinceUpdate: number;
+  daysSinceUpdate: number | null;
   updateFrequency: number;
 }
 
@@ -117,7 +118,7 @@ export default function AdminPage() {
               <ul className="mt-2 space-y-1">
                 {stalePlatforms.map(p => (
                   <li key={p.platform} className="text-sm text-amber-300/80">
-                    • {p.platform} - 已 {p.daysSinceUpdate} 天未更新（建议 {p.updateFrequency} 天内更新）
+                    • {p.platform} - {p.daysSinceUpdate === null ? '暂无更新记录' : `已 ${p.daysSinceUpdate} 天未更新`}（建议 {p.updateFrequency} 天内更新）
                   </li>
                 ))}
               </ul>
@@ -450,7 +451,8 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             id: editingArticle.id,
-            date,
+            published_date: date,
+            ...(!editingArticle.published_date || editingArticle.date === editingArticle.published_date ? { date } : {}),
             platform,
             article_title: articleTitle,
             article_url: articleUrl,
@@ -472,9 +474,10 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
             platform,
             article_title: articleTitle,
             article_url: articleUrl,
-            views: views.trim() === '' ? 0 : views,
-            likes: likes.trim() === '' ? 0 : likes,
-            comments: comments.trim() === '' ? 0 : comments,
+            published_date: date,
+            views: views.trim() === '' ? null : views,
+            likes: likes.trim() === '' ? null : likes,
+            comments: comments.trim() === '' ? null : comments,
             content_category: contentCategory || null,
             content_source: contentSource || null
           })
@@ -509,7 +512,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
   function handleEdit(article: ArticleEntry) {
     setEditingArticle(article);
     setIsEditing(true);
-    setDate(article.date);
+    setDate(article.published_date || article.date);
     setArticleTitle(article.article_title);
     setArticleUrl(article.article_url || '');
     setViews(article.views?.toString() ?? '');
@@ -591,8 +594,9 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">日期</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1" htmlFor="article-publication-date">发布日期</label>
               <input
+                id="article-publication-date"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
@@ -712,7 +716,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-700">
-                    <th className="text-left py-2 px-3 font-medium text-slate-400">日期</th>
+                    <th className="text-left py-2 px-3 font-medium text-slate-400">发布日期</th>
                     <th className="text-left py-2 px-3 font-medium text-slate-400">标题</th>
                     <th className="text-right py-2 px-3 font-medium text-slate-400">阅读</th>
                     <th className="text-left py-2 px-3 font-medium text-slate-400">分类</th>
@@ -723,7 +727,7 @@ function ArticleSection({ onDataChange }: { onDataChange: () => void }) {
                 <tbody>
                   {displayedArticles.map((article, index) => (
                     <tr key={article.id || index} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                      <td className="py-2 px-3">{article.date}</td>
+                      <td className="py-2 px-3">{article.published_date || article.date}</td>
                       <td className="py-2 px-3 max-w-xs truncate">
                         {article.article_url ? (
                           <a 

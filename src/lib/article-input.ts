@@ -45,8 +45,8 @@ export function parseArticleInput(body: unknown, partial = false): Partial<Artic
   }
   for (const key of ['views', 'likes', 'comments'] as const) {
     const value = input[key];
-    if (value === undefined || partial && value === null) {
-      if (!partial) article[key] = 0;
+    if (value == null) {
+      if (!partial) article[key] = null;
       continue;
     }
     const count = typeof value === 'string' && /^\d+$/.test(value.trim()) ? Number(value.trim()) : value;

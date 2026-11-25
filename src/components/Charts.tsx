@@ -106,7 +106,7 @@ export function MultiLineChart({ title, data, dataKeys, colors = ['#6366F1', '#1
               tick={{ fontSize: 12, fill: 'var(--chart-label)' }}
               tickFormatter={formatDateTick}
             />
-            <YAxis tick={{ fontSize: 12, fill: 'var(--chart-label)' }} />
+            <YAxis width="auto" allowDecimals={false} tick={{ fontSize: 12, fill: 'var(--chart-label)' }} />
             <Tooltip
               contentStyle={chartTooltipStyle}
               labelFormatter={(label) => `日期: ${label}`}
@@ -119,7 +119,8 @@ export function MultiLineChart({ title, data, dataKeys, colors = ['#6366F1', '#1
                 dataKey={key}
                 stroke={chartColor(colors[index % colors.length])}
                 strokeWidth={2}
-                dot={{ fill: chartColor(colors[index % colors.length]), strokeWidth: 2, r: 3 }}
+                strokeDasharray={index % 2 ? '6 3' : undefined}
+                dot={data.length <= 30 && { fill: chartColor(colors[index % colors.length]), r: 3 }}
               />
             ))}
           </LineChart>
